@@ -4,3 +4,5 @@ dist
 .dev.vars
 .claude/settings.local.json
 graphify-out/
+test-results/
+playwright-report/

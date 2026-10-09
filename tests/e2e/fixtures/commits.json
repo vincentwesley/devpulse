@@ -1,0 +1,10 @@
+[
+ {
+  "repo": "alpha",
+  "sha": "abc1234",
+  "message": "Fix thing\n\nbody",
+  "author": "vin",
+  "ts": "2026-10-08T10:00:00Z",
+  "url": "https://github.com/o/alpha/commit/abc1234"
+ }
+]

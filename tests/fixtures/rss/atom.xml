@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Blog</title>
+<entry><title>Atom one</title><link rel="self" href="https://ex.com/self"/><link rel="alternate" href="https://ex.com/a1"/><updated>2024-03-01T00:00:00Z</updated><published>2024-02-01T00:00:00Z</published></entry>
+<entry><title type="html">Atom two</title><link href="https://ex.com/a2"/><updated>2024-04-01T12:00:00+02:00</updated></entry>
+</feed>

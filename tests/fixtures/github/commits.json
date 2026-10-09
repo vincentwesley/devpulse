@@ -1,0 +1,4 @@
+[
+  {"sha":"a1","html_url":"https://github.com/o/metalens/commit/a1","commit":{"message":"feat: one\n\nbody text","author":{"name":"Vincent","date":"2026-10-08T09:00:00Z"}},"author":{"login":"vincentwesley"}},
+  {"sha":"b2","html_url":"https://github.com/o/metalens/commit/b2","commit":{"message":"fix: two","author":{"name":"Anon","date":"2026-10-07T09:00:00Z"}},"author":null}
+]

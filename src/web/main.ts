@@ -19,13 +19,24 @@ btn.addEventListener("click", () => {
   } catch {}
 });
 
-// Sections keep their "no data yet" empty state until real endpoints land (M1+).
+import { getCommits, getHeatmap, getPosts, getProjects } from "./api";
+import { renderCommits, renderHeatmap } from "./heatmap";
+import { renderPosts } from "./posts";
+import { renderProjects } from "./projects";
+
 async function render() {
-  try {
-    const { ok } = (await (await fetch("/api/health")).json()) as { ok?: boolean };
-    document.body.dataset.api = ok ? "up" : "down";
-  } catch {
-    document.body.dataset.api = "down";
-  }
+  await Promise.all([
+    getProjects().then(renderProjects),
+    getHeatmap().then(renderHeatmap),
+    getCommits().then(renderCommits),
+    getPosts().then(renderPosts),
+  ]);
+  document.body.dataset.loaded = "1";
 }
 render();
+setInterval(() => {
+  if (!document.hidden) render();
+}, 60_000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) render();
+});

@@ -5,5 +5,38 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--
 .top, main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 h1, h2 { font-family: var(--font-head); margin: 0.25rem 0; }
-main { display: grid; gap: 1.5rem; padding-bottom: 3rem; }
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding-bottom: 3rem; }
 .empty { font-family: var(--font-mono); margin: 0.5rem 0 0; }
+
+h3 { font-family: var(--font-head); margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+.muted { color: var(--fg-muted); font-size: 0.9rem; }
+.grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); margin-top: 0.75rem; }
+.proj { padding: 0.9rem; background: var(--bg); box-shadow: var(--pix); display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
+.proj__head { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
+.pill { font: 400 0.8rem var(--font-label); padding: 0.15rem 0.5rem; border: 2px solid var(--border-strong); white-space: nowrap; }
+.pill--up { border-color: var(--accent); }
+.pill--down { border-color: var(--fx-2); background: color-mix(in srgb, var(--fx-2) 25%, transparent); }
+.proj__stats { margin: 0; display: grid; gap: 0.3rem; font-family: var(--font-mono); font-size: 0.85rem; }
+.proj__stats div { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.proj__stats dt { color: var(--fg-muted); }
+.proj__stats dd { margin: 0; text-align: right; }
+.spark-line { width: 120px; height: 28px; color: var(--accent); display: block; }
+.lh { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.score { font: 0.78rem var(--font-mono); padding: 0.15rem 0.4rem; border: 2px solid var(--border-strong); }
+.score--good { border-color: var(--accent); }
+.score--ok { border-style: dashed; border-color: var(--fx-3); }
+.score--poor { border-color: var(--fx-2); border-style: double; border-width: 4px; }
+.deps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.dep { font-size: 0.7rem; }
+.dep--major, .dep--critical, .ci--failure { background: color-mix(in srgb, var(--fx-2) 30%, var(--bg-elev)); }
+.dep--minor { background: color-mix(in srgb, var(--fx-3) 25%, var(--bg-elev)); }
+.heat-wrap { overflow-x: auto; padding: 0.4rem 0.25rem; margin-top: 0.5rem; }
+.heat { display: block; max-width: none; }
+.heat rect { fill: var(--border); }
+.heat .l1 { fill: color-mix(in srgb, var(--accent) 30%, var(--bg-elev)); }
+.heat .l2 { fill: color-mix(in srgb, var(--accent) 55%, var(--bg-elev)); }
+.heat .l3 { fill: color-mix(in srgb, var(--accent) 80%, var(--bg-elev)); }
+.heat .l4 { fill: var(--accent); }
+.list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.list li { overflow-wrap: anywhere; }

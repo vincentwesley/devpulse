@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Blog</title>
+<item><title>Old</title><link>https://ex.com/old</link><pubDate>Mon, 01 Jan 2024 10:00:00 GMT</pubDate></item>
+<item><title>New</title><link>https://ex.com/new</link><pubDate>Tue, 02 Jan 2024 10:00:00 GMT</pubDate></item>
+<item><title>No link</title></item>
+<item><title>No date</title><link>https://ex.com/nodate</link></item>
+</channel></rss>

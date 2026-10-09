@@ -87,10 +87,29 @@ describe("syncGithub", () => {
     const sqls = log.map((q) => q.sql);
     expect(log.filter((q) => q.sql.startsWith("INSERT INTO projects")).map((q) => q.args[0])).toEqual(["o/metalens"]);
     expect(log.find((q) => q.sql.startsWith("UPDATE projects SET deps"))?.args).toEqual(['["https://www.githubstatus.com"]', "o/metalens"]);
-    expect(log.find((q) => q.sql.startsWith("DELETE FROM projects"))?.args).toEqual(["o/metalens"]);
+    expect(log.find((q) => q.sql.startsWith("DELETE FROM projects"))?.args).toEqual(["2026-10-09T05:00:00.000Z"]);
+    expect(log.some((q) => q.sql.includes("ON CONFLICT(sha) DO NOTHING"))).toBe(true);
     expect(sqls.some((s) => s.startsWith("INSERT INTO ci"))).toBe(true);
     expect(sqls.filter((s) => s.includes("commits_recent (")).length).toBe(2);
     expect(sqls.filter((s) => s.startsWith("INSERT INTO commits_daily")).length).toBe(3);
+  });
+
+  it("runs endpoint 403 still yields deps + commits", async () => {
+    vi.stubGlobal("fetch", async (url: string) => {
+      const ok = (b: unknown) => new Response(JSON.stringify(b));
+      if (url.includes("/users/")) return ok(repos);
+      if (url.includes("/contents/")) return ok(file);
+      if (url.includes("/actions/runs")) return new Response("", { status: 403 });
+      if (url.includes("/commits")) return ok(commits);
+      return ok(calendar);
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { db, log } = fakeDb({ "COUNT(*)": [{ n: 5 }] });
+    await syncGithub(env(db), new Date("2026-10-09T05:00:00Z"));
+    const sqls = log.map((q) => q.sql);
+    expect(sqls.some((s) => s.startsWith("UPDATE projects SET deps"))).toBe(true);
+    expect(sqls.some((s) => s.includes("ON CONFLICT(sha) DO NOTHING"))).toBe(true);
+    expect(sqls.some((s) => s.startsWith("INSERT INTO ci"))).toBe(false);
   });
 
   it("skips heatmap off-hour when table has data", async () => {
@@ -100,6 +119,21 @@ describe("syncGithub", () => {
     expect(urls.some((u) => u.endsWith("/graphql"))).toBe(false);
     await syncGithub(env(db), new Date("2026-10-09T00:00:00Z"));
     expect(urls.some((u) => u.endsWith("/graphql"))).toBe(true);
+  });
+});
+
+describe("syncGithub cap", () => {
+  it("syncs at most MAX_REPOS and warns", async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ ...repos[0], full_name: `o/r${i}`, name: `r${i}` }));
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify(url.includes("/users/") ? many : url.includes("/actions/") ? runs : url.includes("/commits") ? commits : {}), { status: url.includes("/contents/") ? 404 : 200 });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await syncGithub({ DB: fakeDb({ "COUNT(*)": [{ n: 1 }] }).db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o" } as unknown as Env, new Date("2026-10-09T05:00:00Z"));
+    expect(urls.filter((u) => u.includes("/commits")).length).toBe(10);
+    expect(warn).toHaveBeenCalled();
   });
 });
 

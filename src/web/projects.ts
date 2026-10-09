@@ -1,7 +1,6 @@
 import * as d3 from "d3";
-import { add, el, link, show, type Project, type Res } from "./api";
+import { add, el, link, NODATA, show, type Project, type Res } from "./api";
 
-const NODATA = "no data yet";
 const LH: [keyof NonNullable<Project["lighthouse"]>, string][] = [
   ["performance", "Perf"], ["accessibility", "A11y"], ["best_practices", "Best"], ["seo", "SEO"],
 ];

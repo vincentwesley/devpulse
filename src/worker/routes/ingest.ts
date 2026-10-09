@@ -1,6 +1,6 @@
 import type { Env } from "../env";
+import { json, readBounded } from "../lib/http";
 
-const json = (body: unknown, status = 200) => Response.json(body, { status });
 const sha = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 
 async function authed(req: Request, token: string): Promise<boolean> {
@@ -13,7 +13,7 @@ async function authed(req: Request, token: string): Promise<boolean> {
 }
 
 // Accepts "YYYY-Www" or an ISO date; returns "YYYY-Www" or null.
-export function weekId(w: unknown): string | null {
+function weekId(w: unknown): string | null {
   if (typeof w !== "string") return null;
   if (/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/.test(w)) return w;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(w)) return null;
@@ -32,9 +32,8 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   if (!env.INGEST_TOKEN) return json({ error: "ingest disabled" }, 503);
   if (!(await authed(req, env.INGEST_TOKEN))) return json({ error: "unauthorized" }, 401);
 
-  if (Number(req.headers.get("Content-Length")) > 2048) return json({ error: "body too large" }, 413);
-  const text = await req.text();
-  if (text.length > 2048) return json({ error: "body too large" }, 413);
+  const text = await readBounded(req, 2048);
+  if (text === null) return json({ error: "body too large" }, 413);
   let b: any;
   try { b = JSON.parse(text); } catch { return json({ error: "invalid json" }, 400); }
   const week = weekId(b?.week);

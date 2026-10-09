@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { route, weekId } from "../../src/worker/routes/ingest";
+import { route } from "../../src/worker/routes/ingest";
 import type { Env } from "../../src/worker/env";
 
 const runs: unknown[][] = [];
@@ -55,9 +55,9 @@ describe("ingest route", () => {
     expect(r!.status).toBe(200);
     expect(runs[0].slice(1)).toEqual(["o/r", "2024-W05", 90, 100, 95, 80]);
   });
-  it("weekId", () => {
-    expect(weekId("2024-W05")).toBe("2024-W05");
-    expect(weekId("2020-12-28")).toBe("2020-W53");
-    expect(weekId("bad")).toBeNull();
+  it("date at year boundary maps to W53", async () => {
+    runs.length = 0;
+    await call(post({ ...good, week: "2020-12-28" }));
+    expect(runs[0][2]).toBe("2020-W53");
   });
 });

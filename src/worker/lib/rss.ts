@@ -1,4 +1,4 @@
-export interface FeedItem { title: string; url: string; published: string }
+interface FeedItem { title: string; url: string; published: string }
 
 const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 const text = (s: string) =>
@@ -11,8 +11,12 @@ const text = (s: string) =>
     return ENT[ent.toLowerCase()] ?? m;
   }).trim();
 
-const tag = (block: string, name: string) =>
-  new RegExp(String.raw`<${name}(?:\s[^>]*)?>([\s\S]*?)</${name}>`, "i").exec(block)?.[1];
+const tagRe = new Map<string, RegExp>();
+const tag = (block: string, name: string) => {
+  let re = tagRe.get(name);
+  if (!re) tagRe.set(name, (re = new RegExp(String.raw`<${name}(?:\s[^>]*)?>([\s\S]*?)</${name}>`, "i")));
+  return re.exec(block)?.[1];
+};
 
 function link(block: string): string {
   // Atom: <link rel="alternate" href="..."/>; RSS: <link>url</link>

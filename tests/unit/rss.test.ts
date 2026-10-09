@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseFeed } from "../../src/worker/lib/rss";
 // @ts-expect-error plain .mjs without types
-import { median, weekId } from "../../scripts/lib.mjs";
+import { median } from "../../scripts/lib.mjs";
 
 const fx = (n: string) => readFileSync(new URL(`../fixtures/rss/${n}.xml`, import.meta.url), "utf8");
 
@@ -31,10 +31,5 @@ describe("scripts/lib", () => {
   it("median", () => {
     expect(median([90, 70, 80])).toBe(80);
     expect(median([1, 2])).toBe(2);
-  });
-  it("weekId", () => {
-    expect(weekId(new Date("2024-01-01T00:00:00Z"))).toBe("2024-W01");
-    expect(weekId(new Date("2021-01-03T00:00:00Z"))).toBe("2020-W53");
-    expect(weekId(new Date("2026-10-05T12:00:00Z"))).toBe("2026-W41");
   });
 });

@@ -1,7 +1,7 @@
 // Pure GitHub response parsers (no I/O).
 export interface Repo { full_name: string; name: string; homepage: string | null; topics?: string[]; private?: boolean; default_branch: string }
 
-export const TOPIC = "devpulse";
+const TOPIC = "devpulse";
 
 export const isHttps = (u: string | null | undefined): boolean => {
   try { return new URL(u ?? "").protocol === "https:"; } catch { return false; }
@@ -16,16 +16,12 @@ export const decodeContent = (f: { content?: string }): string => {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 };
 
-/** `.devpulse.json` text -> valid dependency URLs (https only, max 10). Invalid -> []. */
+/** `.devpulse.json` text (or the stored JSON array) -> valid dependency URLs (https only, max 10). Invalid -> []. */
 export function parseDeps(text: string): string[] {
   try {
-    const d = (JSON.parse(text) as { deps?: unknown }).deps;
-    if (!Array.isArray(d) || d.length > 10) return [];
-    const urls = d.map((u) => {
-      if (typeof u !== "string") return null;
-      try { return new URL(u).protocol === "https:" ? u : null; } catch { return null; }
-    });
-    return urls.every(Boolean) ? (urls as string[]) : [];
+    const j = JSON.parse(text) as { deps?: unknown } | null;
+    const d = Array.isArray(j) ? j : j?.deps;
+    return Array.isArray(d) && d.length <= 10 && d.every((u) => typeof u === "string" && isHttps(u)) ? (d as string[]) : [];
   } catch { return []; }
 }
 

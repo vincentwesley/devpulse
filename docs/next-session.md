@@ -1,7 +1,7 @@
 > Update at the end of any session that changed state. Keep it lean.
 
 Continue work on **DevPulse** (local only, no GitHub repo yet, not deployed).
-Handover 2026-10-09: M0-M4 code done and verified locally against fixtures (typecheck, 33 vitest, playwright+axe, build). Security-reviewed. Nothing has run against live GitHub/Cloudflare. Only do what the owner asks.
+Handover 2026-10-09: M0-M4 code done and verified locally (typecheck, 37 vitest, playwright+axe, build). Security-reviewed. Worker smoke-tested locally with wrangler dev (cron, all routes, ingest auth, Lighthouse run). Simplify + code-review done. Nothing has run against live GitHub/Cloudflare/RSS. Only do what the owner asks.
 
 ## Before anything
 1. Work in `C:\Coding Projects\devpulse`. Read `docs/PLAN.md` in full.
@@ -28,6 +28,6 @@ Worker: api router (`routes/{projects,github,posts,ingest}.ts`), cron (`cron.ts`
 1. `wrangler.jsonc` database_id is a placeholder; CI deploy job fails until secrets exist.
 2. Live GitHub/Statuspage/RSS behaviour untested (fixtures only); expect small fixes on first real run.
 3. Repo discovery uses `/users/{owner}/repos` (public repos only).
-4. lighthouse is pinned at 13.0.1 (latest 13.5.0).
+4. MAX_REPOS=10 (free-plan 50-subrequest cap; split crons per cadence before raising). Skipped: GraphQL batching of per-repo calls, route-table rewrite, shared CI composite action.
 
 Report outcomes tersely.

@@ -1,17 +1,17 @@
 import type { Env } from "../env";
-
-const json = (body: unknown) => Response.json(body, { headers: { "Cache-Control": "public, max-age=300" } });
+import { COMMITS_RETURNED, HEATMAP_DAYS } from "../config";
+import { json } from "../lib/http";
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET") return null;
   if (pathname === "/api/heatmap") {
-    const from = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const from = new Date(Date.now() - HEATMAP_DAYS * 864e5).toISOString().slice(0, 10);
     const { results } = await env.DB.prepare("SELECT date, count FROM commits_daily WHERE date >= ? ORDER BY date ASC").bind(from).all();
-    return json({ days: results });
+    return json({ days: results }, 200, 300);
   }
   if (pathname === "/api/commits") {
-    const { results } = await env.DB.prepare("SELECT repo, sha, message, author, ts, url FROM commits_recent ORDER BY ts DESC LIMIT 20").all<{ message: string }>();
-    return json(results.map((r) => ({ ...r, message: (r.message ?? "").split("\n")[0] })));
+    const { results } = await env.DB.prepare("SELECT repo, sha, message, author, ts, url FROM commits_recent ORDER BY ts DESC LIMIT ?").bind(COMMITS_RETURNED).all<{ message: string }>();
+    return json(results.map((r) => ({ ...r, message: (r.message ?? "").split("\n")[0] })), 200, 300);
   }
   return null;
 }

@@ -1,3 +1,5 @@
+import { isHttps } from "../worker/lib/github-parse";
+
 export type Res<T> = { state: "ok"; data: T } | { state: "empty" } | { state: "error" };
 
 export interface Project {
@@ -6,7 +8,10 @@ export interface Project {
   lighthouse: { week: string; performance: number; accessibility: number; best_practices: number; seo: number } | null;
   deps: { url: string; name: string; indicator: string }[];
 }
-export interface Commit { repo: string; sha: string; message: string; author: string; ts: string | number; url: string }
+export interface Commit { repo: string; sha: string; message: string; author: string; ts: string; url: string }
+export const NODATA = "no data yet";
+/** ISO timestamp -> YYYY-MM-DD. */
+export const fmtDate = (s: string) => s.slice(0, 10);
 export interface Post { title: string; url: string; published: string }
 export interface Heat { days: { date: string; count: number }[] }
 
@@ -39,22 +44,18 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = "", cls
 export const add = (p: Node, ...kids: (Node | string)[]) => {
   for (const k of kids) p.appendChild(typeof k === "string" ? document.createTextNode(k) : k);
 };
-export const isHttps = (u: string) => {
-  try { return new URL(u).protocol === "https:"; } catch { return false; }
-};
 export const link = (text: string, href: string, cls = "") =>
   isHttps(href) ? el("a", text, cls, { href, target: "_blank", rel: "noopener noreferrer" }) : el("span", text, cls);
 
 /** Replace the section body (everything after the h2) with the built node, or the empty/error message. */
 export function show<T>(sectionId: string, res: Res<T>, build: (d: T) => HTMLElement) {
   const sec = document.getElementById(sectionId)!;
-  sec.querySelector(":scope > .body")?.remove();
-  sec.querySelector(":scope > .empty")?.remove();
+  sec.querySelectorAll(":scope > .body, :scope > .empty").forEach((e) => e.remove());
   if (res.state === "ok") {
     const b = build(res.data);
     b.classList.add("body");
     add(sec, b);
   } else {
-    add(sec, el("p", res.state === "empty" ? "no data yet" : "couldn't load", `empty${res.state === "error" ? " empty--err" : ""}`, { role: "status" }));
+    add(sec, el("p", res.state === "empty" ? NODATA : "couldn't load", `empty${res.state === "error" ? " empty--err" : ""}`, { role: "status" }));
   }
 }

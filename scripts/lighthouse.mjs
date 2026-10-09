@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { median, weekId } from "./lib.mjs";
+import { median } from "./lib.mjs";
 
 const { DEVPULSE_URL, INGEST_TOKEN } = process.env;
 if (!DEVPULSE_URL || !INGEST_TOKEN) throw new Error("DEVPULSE_URL and INGEST_TOKEN are required");
 
 const CATS = { performance: "performance", accessibility: "accessibility", best_practices: "best-practices", seo: "seo" };
-const week = weekId();
+const week = new Date().toISOString().slice(0, 10); // ingest normalises a date to its ISO week
 let failed = 0;
 
 const projects = await (await fetch(`${DEVPULSE_URL}/api/projects`)).json();
@@ -20,11 +20,13 @@ for (const p of projects) {
     }
     const scores = Object.fromEntries(Object.entries(CATS).map(([k, id]) =>
       [k, median(runs.map((r) => Math.round(r[id].score * 100)))]));
-    const res = await fetch(`${DEVPULSE_URL}/api/ingest/lighthouse`, {
+    const send = () => fetch(`${DEVPULSE_URL}/api/ingest/lighthouse`, {
       method: "POST",
       headers: { Authorization: `Bearer ${INGEST_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({ project: p.repo, week, scores }),
     });
+    // The pooled connection from the earlier GET can be dead after minutes of Lighthouse runs (ECONNRESET): retry once.
+    const res = await send().catch(send);
     if (!res.ok) throw new Error(`ingest ${res.status}`);
     console.log(p.repo, scores);
   } catch (e) {

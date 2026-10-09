@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { add, el, link, show, type Commit, type Heat, type Res } from "./api";
+import { add, el, fmtDate, link, show, type Commit, type Heat, type Res } from "./api";
 
 function heat(days: Heat["days"]) {
   const cell = 11, step = 14;
@@ -28,17 +28,12 @@ export function renderHeatmap(res: Res<Heat>) {
   show("heatmap", res, (h) => heat(h.days));
 }
 
-const when = (ts: string | number) => {
-  const d = new Date(typeof ts === "number" && ts < 1e12 ? ts * 1000 : ts);
-  return isNaN(+d) ? "" : d.toISOString().slice(0, 10);
-};
-
 export function renderCommits(res: Res<Commit[]>) {
   show("commits", res, (cs) => {
     const ul = el("ul", "", "list");
     for (const c of cs.slice(0, 10)) {
       const li = el("li");
-      add(li, link(c.message.split("\n")[0], c.url), el("span", ` ${c.repo} · ${c.author} · ${when(c.ts)}`, "muted"));
+      add(li, link(c.message.split("\n")[0], c.url), el("span", ` ${c.repo} · ${c.author} · ${fmtDate(c.ts)}`, "muted"));
       add(ul, li);
     }
     return ul;

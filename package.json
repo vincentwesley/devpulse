@@ -1,0 +1,27 @@
+{
+  "name": "devpulse",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "db:migrate:local": "wrangler d1 migrations apply devpulse --local"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/workers-types": "^5.20261009.1",
+    "@playwright/test": "^1.64.0",
+    "@types/d3": "^7.4.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
+  },
+  "dependencies": {
+    "d3": "^7.9.0"
+  }
+}

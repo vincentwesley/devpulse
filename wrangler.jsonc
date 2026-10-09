@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "devpulse",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-09",
+  // No SPA fallback: unknown paths get a plain 404.
+  "assets": { "directory": "dist", "binding": "ASSETS" },
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": { "GITHUB_OWNER": "vincentwesley" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "devpulse",
+      // TODO(owner): run `wrangler d1 create devpulse` and paste the id here.
+      "database_id": "REPLACE_AFTER_d1_create",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

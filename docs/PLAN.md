@@ -19,8 +19,8 @@ Vercel Hobby cron runs at most once a day and the plan is non-commercial only, a
 - **Real data only:** fixtures exist only in tests. An empty state reads "no data yet" and is never filled with placeholder data.
 
 ## Scaffold notes
-- `public/_headers` and `.github/workflows/ci.yml` are copied as-is from `_house`. In M0 adapt the CSP and headers for the Worker (assets headers, `connect-src 'self'`) and CI for `wrangler deploy` on main.
-- `tokens.css`, fonts and the credits card are NOT copied yet. Copy them from `_house` in M0, when UI exists.
+- M0 done (code scaffold): `public/_headers` (strict CSP, `connect-src 'self'`, immutable `/assets/*`), CI with a deploy job, house kit in `src/web/house/` (tokens.css, fonts, credits card), Worker stubs in `src/worker/`, D1 migration `migrations/0001_init.sql`.
+- Not done in M0 (needs owner): `wrangler d1 create devpulse` and paste the id into `wrangler.jsonc`, Cloudflare repo secrets, first deploy to workers.dev.
 
 ## MVP scope
 A grid of project cards (up/down, 30-day uptime %, latency sparkline, CI badge, latest Lighthouse scores, dependency status), a commit heatmap with recent commits, the 5 latest portfolio posts, and the credits card.

@@ -1,0 +1,9 @@
+@import "./house/tokens.css";
+@import "./house/credits/credits.css";
+
+body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--font-body); }
+.top, main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+h1, h2 { font-family: var(--font-head); margin: 0.25rem 0; }
+main { display: grid; gap: 1.5rem; padding-bottom: 3rem; }
+.empty { font-family: var(--font-mono); margin: 0.5rem 0 0; }

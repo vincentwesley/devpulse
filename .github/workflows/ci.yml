@@ -17,7 +17,27 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run typecheck --if-present
-      - run: npm test --if-present
+      - run: npm run typecheck
+      - run: npm test
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e --if-present
+      - run: npm run test:e2e
+
+  # Fails until the repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID exist
+  # and wrangler.jsonc has a real D1 database_id.
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

@@ -11,8 +11,8 @@ One Cloudflare Worker (Workers Static Assets + `scheduled()` cron + `/api/*`), D
 - Real data only: no placeholder data in shipped features; fixtures in tests only. Empty state = "no data yet".
 - Free tiers only.
 
-## Commands (planned, not yet created)
-`npm run dev` / `build` / `test` / `e2e`, `wrangler dev --test-scheduled`, `wrangler deploy`.
+## Commands
+`npm run dev|build|typecheck|test|test:e2e|db:migrate:local`, `npx wrangler dev --test-scheduled`, `npx wrangler deploy` (needs login + D1 id).
 
 ## Docs
 Read `docs/PLAN.md` (architecture, milestones) and `docs/next-session.md` (handoff) first.

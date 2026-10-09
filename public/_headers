@@ -1,0 +1,19 @@
+# Strict Cloudflare Pages headers. Copy to <output dir>/_headers. No external hosts: self-host fonts and assets.
+# To widen per project: append hosts to connect-src (APIs) or img-src (images), e.g. img-src 'self' data: https://avatars.githubusercontent.com
+# Keep it narrow: add one host at a time, never a wildcard, and never 'unsafe-inline' for script-src.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  X-Frame-Options: DENY
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Hashed build output (Astro /_astro/, Vite /assets/). Unhashed files must NOT go here; keep them on no-cache.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

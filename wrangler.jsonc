@@ -11,8 +11,7 @@
     {
       "binding": "DB",
       "database_name": "devpulse",
-      // TODO(owner): run `wrangler d1 create devpulse` and paste the id here.
-      "database_id": "REPLACE_AFTER_d1_create",
+      "database_id": "188754a5-e745-4649-8c5b-6d8ff6396dea",
       "migrations_dir": "migrations"
     }
   ]

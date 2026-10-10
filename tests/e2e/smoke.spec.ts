@@ -26,12 +26,14 @@ test("populated state", async ({ page }) => {
   await page.goto("/");
   await loaded(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator(".proj")).toHaveCount(3);
+  await expect(page.locator(".proj")).toHaveCount(4);
   await expect(page.locator(".proj h3 a").first()).toHaveAttribute("rel", "noopener noreferrer");
   await expect(page.locator(".proj").first()).toContainText("99.87%");
   await expect(page.locator(".proj").first()).toContainText("Best 72 needs work");
   await expect(page.locator(".proj").first()).toContainText("SEO 40 poor");
   await expect(page.locator(".proj").nth(1)).toContainText("Beta <b>x</b>"); // escaped, not parsed
+  await expect(page.locator(".proj", { hasText: "NoSite" })).toContainText("no site to monitor");
+  await expect(page.locator(".proj", { hasText: "NoSite" }).locator("h3 a")).toHaveAttribute("href", "https://github.com/vincentwesley/nosite");
   await expect(page.locator(".proj").nth(1)).toContainText("Lighthouse: no data yet");
   await expect(page.locator(".proj").nth(2)).toContainText("no data yet");
   await expect(page.locator(".heat rect")).toHaveCount(365);

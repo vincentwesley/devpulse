@@ -20,7 +20,7 @@ Worker: api router (`routes/{projects,github,posts,ingest}.ts`), cron (`cron.ts`
 1. `npx wrangler login`; `npx wrangler d1 create devpulse`; paste the id into `wrangler.jsonc` `database_id`; `npx wrangler d1 migrations apply DB --remote`.
 2. Create a fine-grained GitHub token (public repos, read-only; contents, actions, metadata). `npx wrangler secret put GITHUB_TOKEN`. Pick any random string for `INGEST_TOKEN` and `wrangler secret put INGEST_TOKEN`.
 3. Set `PORTFOLIO_RSS_URL` (var in `wrangler.jsonc`); the portfolio may need `@astrojs/rss` first (change goes in the portfolio repo).
-4. Add topic `devpulse` + a homepage URL to each repo to monitor (MetaLens, DueReminder, ...). Optional `.devpulse.json` `{ "deps": ["https://status-page"] }` in a repo.
+4. Repos are auto-discovered (public, non-fork, non-archived, newest 10). Set the repo "Website" (https) to enable uptime; topic `devpulse-ignore` hides one. Optional `.devpulse.json` `{ "deps": ["https://status-page"] }` in a repo.
 5. `npx wrangler deploy`. Then push to a (private) GitHub repo, add Actions secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `INGEST_TOKEN` and variable `DEVPULSE_URL`.
 6. After deploy: verify live data with `wrangler dev --test-scheduled` / the deployed site (M5), run Lighthouse workflow once via workflow_dispatch.
 

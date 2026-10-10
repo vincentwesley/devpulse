@@ -1,6 +1,6 @@
 import type { Env } from "./env";
 import { COMMITS_KEPT, HEATMAP_DAYS, MAX_REPOS } from "./config";
-import { decodeContent, mapCalendar, mapCommits, mapRun, parseDeps, selectProjects, type CalendarResp, type GhCommit, type Repo } from "./lib/github-parse";
+import { decodeContent, mapCalendar, mapCommits, mapRun, parseDeps, selectProjects, siteUrl, type CalendarResp, type GhCommit, type Repo } from "./lib/github-parse";
 import { pool, TIMEOUT_MS } from "./lib/http";
 
 const API = "https://api.github.com";
@@ -25,9 +25,9 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
     all.push(...batch);
     if (batch.length < 100) break;
   }
-  const selected = selectProjects(all);
-  if (selected.length > MAX_REPOS) console.warn(`${selected.length} repos exceed MAX_REPOS=${MAX_REPOS}; syncing the first ${MAX_REPOS}`);
-  const repos = selected.slice(0, MAX_REPOS);
+  const eligible = selectProjects(all);
+  if (eligible.length > MAX_REPOS) console.warn(`${eligible.length} repos exceed MAX_REPOS=${MAX_REPOS}; syncing the ${MAX_REPOS} most recently pushed`);
+  const repos = eligible.slice(0, MAX_REPOS);
   const ts = now.toISOString();
 
   // (2) per repo (bounded concurrency): deps, CI, commits -> statements, applied in one batch below
@@ -58,7 +58,7 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
   await db.batch([
     ...repos.map((r) =>
       db.prepare("INSERT INTO projects (repo,name,url,topics,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(repo) DO UPDATE SET name=excluded.name,url=excluded.url,topics=excluded.topics,updated_at=excluded.updated_at")
-        .bind(r.full_name, r.name, r.homepage, JSON.stringify(r.topics), ts)),
+        .bind(r.full_name, r.name, siteUrl(r), JSON.stringify(r.topics), ts)),
     db.prepare("DELETE FROM projects WHERE updated_at <> ?").bind(ts),
     ...["ci", "commits_recent"].map((t) => db.prepare(`DELETE FROM ${t} WHERE repo NOT IN (SELECT repo FROM projects)`)),
     ...perRepo.flat(),

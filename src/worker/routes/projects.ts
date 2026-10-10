@@ -15,7 +15,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
 
   const db = env.DB;
   const since = Math.floor(Date.now() / 1000) - UPTIME_DAYS * 86400;
-  const { results: projects } = await db.prepare("SELECT repo, name, url, deps FROM projects ORDER BY name").all<{ repo: string; name: string; url: string; deps: string | null }>();
+  const { results: projects } = await db.prepare("SELECT repo, name, url, deps FROM projects ORDER BY name").all<{ repo: string; name: string; url: string | null; deps: string | null }>();
   // Per-project index lookups on checks(project, ts), never a table scan.
   const [ci, lh, api, ...rest] = (await db.batch([
     db.prepare("SELECT repo, status, conclusion, url FROM ci"),
@@ -28,11 +28,12 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const ciBy = by(ci, "repo"), lhBy = by(lh, "project"), apiBy = by(api, "url");
 
   const body = projects.map((p, i) => {
-    const h = (rest[i].results as { ok: number; ms: number | null }[]).reverse(); // oldest first
-    const a = rest[projects.length + i].results[0] as { n: number; up: number } | undefined;
-    const c = ciBy.get(p.repo), l = lhBy.get(p.repo);
+    const site = !!p.url;
+    const h = site ? (rest[i].results as { ok: number; ms: number | null }[]).reverse() : []; // oldest first
+    const a = site ? (rest[projects.length + i].results[0] as { n: number; up: number } | undefined) : undefined;
+    const c = ciBy.get(p.repo), l = site ? lhBy.get(p.repo) : undefined;
     return {
-      repo: p.repo, name: p.name, url: p.url,
+      repo: p.repo, name: p.name, url: p.url || null,
       up: h.length ? !!h[h.length - 1].ok : null,
       uptime30d: a?.n ? Math.round((a.up / a.n) * 1000) / 10 : null,
       latencyMs: h.filter((x) => x.ms != null).map((x) => x.ms as number),

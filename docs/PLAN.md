@@ -10,7 +10,7 @@ Vercel Hobby cron runs at most once a day and the plan is non-commercial only, a
 - **Storage: D1** (free: 5 GB, 100k writes a day). Tables: `projects`, `checks` (time, project, ok, ms), `lighthouse` (week, project, 4 scores), `ci` (latest run per repo), `commits_daily`, `api_status`, `posts`. A daily job deletes `checks` older than 90 days. No KV; API responses are cached with `Cache-Control` / Cache API.
 - **One cron, `*/15 * * * *`.**
   - Every run: fetch each project URL with HEAD/GET to record status and latency, and poll each dependency's Statuspage `/api/v2/status.json`.
-  - When the minute is 0 (hourly): GitHub sync, which finds repos with the topic `devpulse` and a homepage URL, then pulls their latest Actions runs and recent commits. Also fetch the portfolio RSS feed.
+  - When the minute is 0 (hourly): GitHub sync, which auto-discovers every public, non-fork, non-archived repo without the topic `devpulse-ignore` (newest 10 by push), then pulls their latest Actions runs and recent commits. Also fetch the portfolio RSS feed.
   - Daily: fetch the contribution calendar through GitHub GraphQL (needed for the heatmap; REST doesn't provide it) and prune old `checks`.
 - **Dependencies per project:** an optional `.devpulse.json` in each repo, e.g. `{ "deps": ["https://www.githubstatus.com"] }`. Without it, the project has no dependency panel.
 - **Lighthouse:** a weekly GitHub Actions workflow in the devpulse repo. It reads `/api/projects`, runs `lighthouse` (mobile, 3 runs, median) and POSTs the scores to `/api/ingest/lighthouse` with a bearer `INGEST_TOKEN`. A Worker can't run Chrome, and Browser Rendering's free quota is tight, so Actions it is.
@@ -35,7 +35,7 @@ Not in the MVP: alerts and notifications, private repos, auth, history beyond 90
 - **M5** Polish: a11y with axe, screenshots at 375px and desktop in dark and light, reduced motion, `security-review`, go live.
 
 ## Owner prerequisites
-Create the fine-grained GitHub token. Add the `devpulse` topic and a homepage URL to each repo you want monitored. Confirm the portfolio RSS URL. Have a Cloudflare account logged in through wrangler.
+Create the fine-grained GitHub token. Set a repo "Website" (https) to enable uptime for it; `devpulse-ignore` topic hides a repo. Confirm the portfolio RSS URL. Have a Cloudflare account logged in through wrangler.
 
 ## Verification (later milestones)
 Vitest for the parsers and sync logic using recorded fixtures. Playwright and axe on the built site with D1 seeded only in the test environment. Run `wrangler dev --test-scheduled` and hit `/__scheduled` to check the cron. After deploying, check the real dashboard shows live data for MetaLens and DueReminder.

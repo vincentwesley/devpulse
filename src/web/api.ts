@@ -3,7 +3,7 @@ import { isHttps } from "../worker/lib/github-parse";
 export type Res<T> = { state: "ok"; data: T } | { state: "empty" } | { state: "error" };
 
 export interface Project {
-  repo: string; name: string; url: string; up: boolean | null; uptime30d: number | null; latencyMs: number[];
+  repo: string; name: string; url: string | null; up: boolean | null; uptime30d: number | null; latencyMs: number[];
   ci: { status: string; conclusion: string | null; url: string } | null;
   lighthouse: { week: string; performance: number; accessibility: number; best_practices: number; seo: number } | null;
   deps: { url: string; name: string; indicator: string }[];

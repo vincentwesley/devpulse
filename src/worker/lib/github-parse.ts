@@ -1,14 +1,21 @@
 // Pure GitHub response parsers (no I/O).
-export interface Repo { full_name: string; name: string; homepage: string | null; topics?: string[]; private?: boolean; default_branch: string }
+export interface Repo { full_name: string; name: string; homepage: string | null; topics?: string[]; private?: boolean; fork?: boolean; archived?: boolean; pushed_at?: string; default_branch: string }
 
-const TOPIC = "devpulse";
+const IGNORE = "devpulse-ignore";
 
 export const isHttps = (u: string | null | undefined): boolean => {
   try { return new URL(u ?? "").protocol === "https:"; } catch { return false; }
 };
 
-export const selectProjects = (repos: Repo[]): Repo[] =>
-  repos.filter((r) => !r.private && r.topics?.includes(TOPIC) && isHttps(r.homepage?.trim()));
+/** Valid https homepage or null (= no site to monitor). */
+export const siteUrl = (r: Repo): string | null => (isHttps(r.homepage?.trim()) ? r.homepage!.trim() : null);
+
+/** Public, non-fork, non-archived, not `devpulse-ignore`; newest push first, capped at `max`. */
+export const selectProjects = (repos: Repo[], max = Infinity): Repo[] =>
+  repos
+    .filter((r) => !r.private && !r.fork && !r.archived && !r.topics?.includes(IGNORE))
+    .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
+    .slice(0, max);
 
 /** Contents API file -> text. */
 export const decodeContent = (f: { content?: string }): string => {

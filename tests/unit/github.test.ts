@@ -4,7 +4,7 @@ import runs from "../fixtures/github/runs.json";
 import commits from "../fixtures/github/commits.json";
 import calendar from "../fixtures/github/calendar.json";
 import file from "../fixtures/github/devpulse-file.json";
-import { mapCalendar, mapCommits, mapRun, parseDeps, selectProjects } from "../../src/worker/lib/github-parse";
+import { mapCalendar, mapCommits, mapRun, parseDeps, selectProjects, siteUrl } from "../../src/worker/lib/github-parse";
 import { syncGithub } from "../../src/worker/github";
 import { route } from "../../src/worker/routes/github";
 import type { Env } from "../../src/worker/env";
@@ -32,8 +32,15 @@ function fakeDb(rows: Record<string, unknown[]> = {}) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("parsers", () => {
-  it("keeps only public repos with topic + homepage", () => {
+  it("excludes private/fork/archived/ignored; keeps repos without homepage", () => {
     expect(selectProjects(repos).map((r) => r.full_name)).toEqual(["o/metalens"]);
+    const base = { name: "x", homepage: null, default_branch: "main" };
+    const r = (n: string, pushed_at: string, homepage: string | null = null) => ({ ...base, full_name: n, homepage, pushed_at });
+    const out = selectProjects([r("o/a", "2026-01-01T00:00:00Z"), r("o/b", "2026-03-01T00:00:00Z", "http://x"), r("o/c", "2026-02-01T00:00:00Z", "https://c.dev")]);
+    expect(out.map((x) => x.full_name)).toEqual(["o/b", "o/c", "o/a"]);
+    expect(selectProjects(out, 2).map((x) => x.full_name)).toEqual(["o/b", "o/c"]);
+    expect(siteUrl(out[0])).toBeNull();
+    expect(siteUrl(out[1])).toBe("https://c.dev");
   });
   it("validates .devpulse.json", () => {
     expect(parseDeps('{"deps":["https://www.githubstatus.com"]}')).toEqual(["https://www.githubstatus.com"]);
@@ -124,7 +131,7 @@ describe("syncGithub", () => {
 
 describe("syncGithub cap", () => {
   it("syncs at most MAX_REPOS and warns", async () => {
-    const many = Array.from({ length: 12 }, (_, i) => ({ ...repos[0], full_name: `o/r${i}`, name: `r${i}` }));
+    const many = Array.from({ length: 12 }, (_, i) => ({ ...repos[0], full_name: `o/r${i}`, name: `r${i}`, pushed_at: `2026-10-${10 + i}T00:00:00Z` }));
     const urls: string[] = [];
     vi.stubGlobal("fetch", async (url: string) => {
       urls.push(url);

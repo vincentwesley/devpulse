@@ -56,6 +56,17 @@
   "deps": []
  },
  {
+  "repo": "vincentwesley/nosite",
+  "name": "NoSite",
+  "url": null,
+  "up": null,
+  "uptime30d": null,
+  "latencyMs": [],
+  "ci": null,
+  "lighthouse": null,
+  "deps": []
+ },
+ {
   "repo": "vincentwesley/gamma",
   "name": "Gamma",
   "url": "https://gamma.example.com",

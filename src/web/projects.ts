@@ -23,9 +23,10 @@ function card(p: Project) {
   const c = el("article", "", "proj");
   const head = el("div", "", "proj__head");
   const h3 = el("h3");
-  add(h3, link(p.name, p.url));
-  const pill = p.up === null ? el("span", NODATA, "pill pill--none") : el("span", p.up ? "▲ Up" : "▼ Down", `pill ${p.up ? "pill--up" : "pill--down"}`);
-  add(head, h3, pill);
+  add(h3, link(p.name, p.url ?? `https://github.com/${p.repo}`));
+  const pill = !p.url ? null : p.up === null ? el("span", NODATA, "pill pill--none") : el("span", p.up ? "▲ Up" : "▼ Down", `pill ${p.up ? "pill--up" : "pill--down"}`);
+  add(head, h3);
+  if (pill) add(head, pill);
 
   const stats = el("dl", "", "proj__stats");
   const row = (k: string, v: Node | string) => {
@@ -35,8 +36,10 @@ function card(p: Project) {
     add(g, el("dt", k), dd);
     add(stats, g);
   };
-  row("Uptime 30d", p.uptime30d == null ? NODATA : `${p.uptime30d.toFixed(2)}%`);
-  row("Latency", p.latencyMs?.length ? spark(p.latencyMs) : NODATA);
+  if (p.url) {
+    row("Uptime 30d", p.uptime30d == null ? NODATA : `${p.uptime30d.toFixed(2)}%`);
+    row("Latency", p.latencyMs?.length ? spark(p.latencyMs) : NODATA);
+  }
   const ci = p.ci;
   row("CI", ci ? link(ci.conclusion ?? ci.status, ci.url, `hs-chip ci ci--${ci.conclusion ?? ci.status}`) : NODATA);
 
@@ -47,7 +50,7 @@ function card(p: Project) {
       const g = grade(n);
       add(lh, el("span", `${label} ${n} ${gradeWord[g]}`, `score score--${g}`));
     }
-  } else add(lh, el("span", `Lighthouse: ${NODATA}`, "muted"));
+  } else add(lh, el("span", p.url ? `Lighthouse: ${NODATA}` : "no site to monitor", "muted"));
 
   const deps = el("ul", "", "deps", { "aria-label": "Dependency status" });
   for (const d of p.deps ?? []) {

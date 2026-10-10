@@ -1,7 +1,7 @@
 [
-  {"full_name":"o/metalens","name":"metalens","homepage":"https://metalens.example.dev","topics":["devpulse","vgc"],"private":false,"default_branch":"main"},
-  {"full_name":"o/nohome","name":"nohome","homepage":"","topics":["devpulse"],"private":false,"default_branch":"main"},
-  {"full_name":"o/notopic","name":"notopic","homepage":"https://x.example","topics":["other"],"private":false,"default_branch":"main"},
-  {"full_name":"o/priv","name":"priv","homepage":"https://p.example","topics":["devpulse"],"private":true,"default_branch":"main"},
-  {"full_name":"o/http","name":"http","homepage":"http://insecure.example","topics":["devpulse"],"private":false,"default_branch":"main"}
+  {"full_name":"o/metalens","name":"metalens","homepage":"https://metalens.example.dev","topics":["vgc"],"private":false,"default_branch":"main","pushed_at":"2026-10-08T00:00:00Z"},
+  {"full_name":"o/priv","name":"priv","homepage":"https://p.example","topics":[],"private":true,"default_branch":"main"},
+  {"full_name":"o/forked","name":"forked","homepage":"https://f.example","fork":true,"private":false,"default_branch":"main"},
+  {"full_name":"o/old","name":"old","homepage":"https://o.example","archived":true,"private":false,"default_branch":"main"},
+  {"full_name":"o/hidden","name":"hidden","homepage":"https://h.example","topics":["devpulse-ignore"],"private":false,"default_branch":"main"}
 ]

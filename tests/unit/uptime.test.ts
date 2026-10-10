@@ -146,3 +146,15 @@ describe("GET /api/projects", () => {
     expect(two).toMatchObject({ up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [] });
   });
 });
+
+describe("request options", () => {
+  it("sends User-Agent; project checks don't follow redirects", async () => {
+    const seen: RequestInit[] = [];
+    vi.stubGlobal("fetch", async (_u: string, init: RequestInit) => (seen.push(init), resp(minor)));
+    const projects = [{ repo: "a/x", url: "https://x.test", deps: '["https://www.githubstatus.com"]' }];
+    await runUptime(fakeDb({ projects }).env, true);
+    expect(seen).toHaveLength(2);
+    expect(seen.every((i) => (i.headers as Record<string, string>)["User-Agent"].startsWith("DevPulse/1.0"))).toBe(true);
+    expect(seen[0].redirect).toBe("manual");
+  });
+});

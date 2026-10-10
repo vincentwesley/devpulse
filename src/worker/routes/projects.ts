@@ -4,15 +4,9 @@ import { parseDeps } from "../lib/github-parse";
 import { json } from "../lib/http";
 
 type Rows<T> = { results: T[] };
-const CACHE_SECONDS = 60;
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET" || pathname !== "/api/projects") return null;
-  // Workers edge cache; absent (e.g. unit tests) -> skip.
-  const cache = typeof caches === "undefined" ? undefined : (caches as unknown as { default: Cache }).default;
-  const hit = await cache?.match(req.url);
-  if (hit) return hit;
-
   const db = env.DB;
   const since = Math.floor(Date.now() / 1000) - UPTIME_DAYS * 86400;
   const { results: projects } = await db.prepare("SELECT repo, name, url, deps FROM projects ORDER BY name").all<{ repo: string; name: string; url: string | null; deps: string | null }>();
@@ -42,7 +36,5 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
       deps: parseDeps(p.deps ?? "[]").map((u) => ({ url: u, name: apiBy.get(u)?.name ?? u, indicator: apiBy.get(u)?.indicator ?? "unknown" })),
     };
   });
-  const res = json(body, 200, CACHE_SECONDS);
-  await cache?.put(req.url, res.clone());
-  return res;
+  return json(body, 200, 60);
 }

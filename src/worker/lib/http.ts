@@ -1,7 +1,16 @@
 export const TIMEOUT_MS = 10_000;
 
 export const json = (body: unknown, status = 200, cacheSeconds?: number) =>
-  Response.json(body, { status, headers: cacheSeconds ? { "Cache-Control": `public, max-age=${cacheSeconds}` } : undefined });
+  Response.json(body, {
+    status,
+    headers: {
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+      ...(cacheSeconds && { "Cache-Control": `public, max-age=${cacheSeconds}` }),
+    },
+  });
+
+export const UA = "DevPulse/1.0 (uptime monitor for vincentwesley's own projects; +https://github.com/vincentwesley)";
 
 /** Body text, or null if it exceeds maxBytes (checks Content-Length first, then the text length). */
 export async function readBounded(src: Request | Response, maxBytes: number): Promise<string | null> {

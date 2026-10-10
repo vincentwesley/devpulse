@@ -1,6 +1,6 @@
 import type { Env } from "./env";
 import { parseDeps } from "./lib/github-parse";
-import { pool, readBounded, TIMEOUT_MS } from "./lib/http";
+import { pool, readBounded, TIMEOUT_MS, UA } from "./lib/http";
 import { isUp, parseStatuspage, type PageStatus } from "./lib/statuspage";
 
 const CONCURRENCY = 5;
@@ -12,7 +12,7 @@ export async function checkProject(env: Env, repo: string, url: string): Promise
   let status: number | null = null;
   let ok = 0;
   try {
-    const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const r = await fetch(url, { redirect: "manual", headers: { "User-Agent": UA }, signal: AbortSignal.timeout(TIMEOUT_MS) });
     status = r.status;
     ok = isUp(r.status) ? 1 : 0;
   } catch {}
@@ -25,7 +25,7 @@ export async function checkStatuspage(env: Env, urls: string | string[]): Promis
   const list = [urls].flat();
   let s: PageStatus | null = null;
   try {
-    const r = await fetch(`${new URL(list[0]).origin}/api/v2/status.json`, { redirect: "follow", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const r = await fetch(`${new URL(list[0]).origin}/api/v2/status.json`, { redirect: "follow", headers: { "User-Agent": UA }, signal: AbortSignal.timeout(TIMEOUT_MS) });
     const text = r.ok ? await readBounded(r, MAX_JSON) : null;
     if (text) s = parseStatuspage(JSON.parse(text));
   } catch {}

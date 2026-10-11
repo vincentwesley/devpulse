@@ -4,7 +4,7 @@ Continue work on **DevPulse** (local only, no GitHub repo yet, not deployed).
 Handover 2026-10-09: M0-M4 code done and verified locally (typecheck, 37 vitest, playwright+axe, build). Security-reviewed. Worker smoke-tested locally with wrangler dev (cron, all routes, ingest auth, Lighthouse run). Simplify + code-review done. Nothing has run against live GitHub/Cloudflare/RSS. Only do what the owner asks.
 
 ## Before anything
-1. Work in `C:\Coding Projects\devpulse`. Read `docs/PLAN.md` in full.
+1. Work in the repo root. Read `docs/PLAN.md` in full.
 2. Do not create a GitHub repo or change visibility without an OK (new repos start private).
 
 ## How to work here

@@ -1,6 +1,9 @@
 {
   "name": "devpulse",
   "private": true,
+  "license": "MIT",
+  "author": "Vincent Wesley",
+  "repository": { "type": "git", "url": "git+https://github.com/vincentwesley/devpulse.git" },
   "version": "0.0.0",
   "type": "module",
   "scripts": {

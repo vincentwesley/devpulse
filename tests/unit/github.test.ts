@@ -123,7 +123,11 @@ describe("syncGithub", () => {
     await expect(syncGithub(env(db))).rejects.toThrow("graphql 502");
     expect(log).toEqual([]);
     vi.stubGlobal("fetch", async () => ok({ errors: [{ message: "x" }] }));
-    await expect(syncGithub(env(db))).rejects.toThrow("no data");
+    await expect(syncGithub(env(db))).rejects.toThrow("graphql errors");
+    expect(log).toEqual([]);
+    // partial data + errors must also throw before any write
+    vi.stubGlobal("fetch", async () => ok({ errors: [{ message: "x" }], data: { viewer: { repositories: { pageInfo: { hasNextPage: false, endCursor: null }, nodes } } } }));
+    await expect(syncGithub(env(db))).rejects.toThrow("graphql errors");
     expect(log).toEqual([]);
   });
 
@@ -144,6 +148,8 @@ describe("syncGithub", () => {
     await syncGithub(env(db), new Date("2026-10-09T05:00:00Z"));
     expect(calls.length).toBe(3);
     expect(log.filter((q) => q.sql.startsWith("INSERT INTO projects")).length).toBe(50);
+    // hasNextPage still true after 3 pages: private aggregates are kept, not overwritten
+    expect(log.some((q) => q.sql.includes("totals_private") || q.sql.includes("private_agg"))).toBe(false);
   });
 });
 

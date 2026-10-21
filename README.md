@@ -11,9 +11,12 @@ npm run dev                       # frontend; use `npx wrangler dev` for the Wor
 npm run typecheck && npm test && npm run build
 ```
 
+## Deploy
+Run `npx wrangler d1 migrations apply DB --remote` **before** `npx wrangler deploy`.
+
 ## Secrets and network calls
 Worker secrets (never committed; see `.dev.vars.example`):
-- `GITHUB_TOKEN`: read-only GitHub token (Metadata + Contents). Public repos are listed by name; with access to private repos they contribute **aggregates only** (language bytes, commit and line counts), never a name, URL or message.
+- `GITHUB_TOKEN`: fine-grained token, **All repositories** (needed for private aggregates), read-only: Metadata, Contents, Commit statuses, Checks (the last two feed `ci_state`). Public repos are listed by name; with access to private repos they contribute **aggregates only** (language bytes, commit and line counts), never a name, URL or message.
 - `PSI_KEY` (optional): Google API key for PageSpeed Insights.
 
 Outbound calls (Worker only, never the browser): `api.github.com` (GraphQL sync, `stats/code_frequency`), `www.googleapis.com` (PageSpeed Insights, weekly Lighthouse scores), each monitored site and status page (uptime), and the optional blog RSS feed.

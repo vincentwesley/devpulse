@@ -24,20 +24,20 @@ describe("parseCodeFreq", () => {
 });
 
 describe("syncLoc", () => {
-  const priv = (names: string[]) => ({ data: { viewer: { repositories: { nodes: names.map((n) => ({ nameWithOwner: n, isArchived: false, repositoryTopics: { nodes: [] } })) } } } });
+  const priv = (names: string[], hasNextPage = false) => ({ data: { viewer: { repositories: { pageInfo: { hasNextPage }, nodes: names.map((n) => ({ nameWithOwner: n, isArchived: false, repositoryTopics: { nodes: [] } })) } } } });
   /** status per repo path; default 200 with 2 weeks of data. */
-  const run = async (status: Record<string, number>, privNames = ["o/secret-project-xyz"], pubs = ["o/pub", "o/pub2"]) => {
+  const run = async (status: Record<string, number>, privNames = ["o/secret-project-xyz"], pubs = ["o/pub", "o/pub2"], now?: Date, hasNext = false) => {
     const urls: string[] = [];
     vi.stubGlobal("fetch", async (u: string) => {
       urls.push(u);
-      if (u.endsWith("/graphql")) return new Response(JSON.stringify(priv(privNames)));
+      if (u.endsWith("/graphql")) return new Response(JSON.stringify(priv(privNames, hasNext)));
       const repo = /repos\/(.+)\/stats/.exec(u)![1];
       const s = status[repo] ?? 200;
-      return s === 200 ? new Response(JSON.stringify([week(0, 100, -40), week(1, 10, -5)])) : new Response("", { status: s });
+      return s === 200 ? new Response(JSON.stringify([week(0, 100, -40), week(1, 10, -5)])) : new Response(null, { status: s });
     });
     const { db, log } = fakeDb({ "FROM projects": pubs.map((repo) => ({ repo })) });
-    await syncLoc({ DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o" } as unknown as Env);
-    return { log, urls };
+    await syncLoc({ DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o" } as unknown as Env, now);
+    return { log, urls, stats: urls.filter((u) => u.includes("stats/")).map((u) => /repos\/(.+)\/stats/.exec(u)![1]) };
   };
   const loc = (log: { sql: string; args: unknown[] }[]) => log.filter((q) => q.sql.startsWith("UPDATE projects SET loc")).map((q) => q.args);
   const agg = (log: { sql: string; args: unknown[] }[]) => log.find((q) => q.sql.includes("INTO private_agg"))?.args;
@@ -73,8 +73,26 @@ describe("syncLoc", () => {
     const { log } = await run({});
     expect(JSON.stringify(log)).not.toContain("secret-project-xyz");
   });
-  it("caps repos per slot at CODEFREQ_MAX (45) + 1 list call", async () => {
-    const { urls } = await run({}, Array.from({ length: 20 }, (_, i) => `o/p${i}`), Array.from({ length: 40 }, (_, i) => `o/u${i}`));
-    expect(urls.length).toBe(46);
+  it("404/204 on a private repo count as 0 and do not block", async () => {
+    expect(agg((await run({ "o/secret-project-xyz": 404 })).log)).toEqual([0]);
+    expect(agg((await run({ "o/secret-project-xyz": 204 })).log)).toEqual([0]);
+  });
+  it("over-quota private list (>10) is not sampled; old aggregate kept; budget goes to public", async () => {
+    const { log, urls } = await run({}, Array.from({ length: 11 }, (_, i) => `o/p${i}`), Array.from({ length: 60 }, (_, i) => `o/u${i}`));
+    expect(agg(log)).toBeUndefined();
+    expect(urls.length).toBe(46); // 1 list + 45 public
+  });
+  it("private list with hasNextPage keeps the old aggregate", async () => {
+    expect(agg((await run({}, ["o/a"], ["o/pub"], undefined, true)).log)).toBeUndefined();
+  });
+  it("rotates public repos by day so all get covered; stays <= 45 + 1 calls", async () => {
+    const pubs = Array.from({ length: 60 }, (_, i) => `o/u${i}`);
+    const seen = new Set<string>();
+    for (const d of [1, 2, 3]) {
+      const r = await run({}, [], pubs, new Date(Date.UTC(2026, 0, d)));
+      expect(r.urls.length).toBe(46);
+      r.stats.forEach((x) => seen.add(x));
+    }
+    expect(seen.size).toBe(60);
   });
 });

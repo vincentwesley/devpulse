@@ -14,7 +14,7 @@ function fakeDb(tables: Record<string, unknown[]>) {
     const t = /FROM (\w+)/.exec(sql.replace(/\(SELECT[^)]*\)/g, ""))?.[1] ?? "";
     const key = /COUNT\(\*\)/.test(sql) ? "agg" : /FROM checks/.test(sql) ? "recent" : /FROM lighthouse l/.test(sql) ? "lighthouse" : t;
     const rows = (tables[key] ?? []) as { project?: string }[];
-    return key === "agg" || key === "recent" ? rows.filter((r) => r.project === args[0]) : rows;
+    return (key === "agg" || key === "recent") && !/GROUP BY project|row_number/.test(sql) ? rows.filter((r) => r.project === args[0]) : rows; // /api/projects' grouped queries return every project
   };
   const DB = {
     prepare(sql: string) {
@@ -129,11 +129,11 @@ describe("GET /api/projects", () => {
       languages: [{ repo: "a/one", lang: "TypeScript", bytes: 3, color: "#3178c6" }, { repo: "a/one", lang: "CSS", bytes: 1, color: null }],
       code_freq: [{ repo: "a/one", week: 1700000000, added: 5, removed: 2 }],
       agg: [{ project: "a/one", n: 3, up: 2 }],
-      // newest first, as the per-project ORDER BY ts DESC query returns them
+      // oldest first, as the window query's ORDER BY project, ts returns them
       recent: [
-        { project: "a/one", ok: 1, ms: 150 },
-        { project: "a/one", ok: 0, ms: 200 },
         { project: "a/one", ok: 1, ms: 100 },
+        { project: "a/one", ok: 0, ms: 200 },
+        { project: "a/one", ok: 1, ms: 150 },
       ],
       lighthouse: [{ project: "a/one", week: "2026-W40", performance: 90, accessibility: 100, best_practices: 95, seo: 99 }],
       api_status: [{ url: "https://d.test", name: "D", indicator: "none" }],

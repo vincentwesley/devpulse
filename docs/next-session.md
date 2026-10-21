@@ -17,11 +17,11 @@ Handover 2026-10-09: M0-M4 code done and verified locally (typecheck, 37 vitest,
 Worker: api router (`routes/{projects,github,posts,stats,badge}.ts`), cron (`cron.ts` dispatch: uptime every 15 min; hourly GitHub sync + RSS; daily prune), D1 migration `0001_init.sql`, weekly PageSpeed Insights Lighthouse in the Worker cron (`psi.ts`), daily LOC (`loc.ts`), migration `0002_hub.sql`. Frontend: project cards, D3 heatmap, commits, posts, credits card. Screenshots in `docs/screens/m1-*`.
 
 ## Needs the owner (do last, in order)
-1. `npx wrangler login`; `npx wrangler d1 create devpulse`; paste the id into `wrangler.jsonc` `database_id`; `npx wrangler d1 migrations apply DB --remote`.
-2. Create a fine-grained GitHub token (public repos, read-only; contents, actions, metadata). `npx wrangler secret put GITHUB_TOKEN`.
+1. `npx wrangler login`; `npx wrangler d1 create devpulse`; paste the id into `wrangler.jsonc` `database_id`;
+2. Create a fine-grained GitHub token: **All repositories** (for private aggregates), read-only Metadata, Contents, Commit statuses, Checks (needed for `ci_state`). `npx wrangler secret put GITHUB_TOKEN`. Optional: `npx wrangler secret put PSI_KEY` (PageSpeed Insights).
 3. Set `PORTFOLIO_RSS_URL` (var in `wrangler.jsonc`); the portfolio may need `@astrojs/rss` first (change goes in the portfolio repo).
-4. Repos are auto-discovered (public, non-fork, non-archived, newest 10). Set the repo "Website" (https) to enable uptime; topic `devpulse-ignore` hides one. Optional `.devpulse.json` `{ "deps": ["https://status-page"] }` in a repo.
-5. `npx wrangler deploy`. Then push to a (private) GitHub repo, add Actions secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+4. Repos are auto-discovered (public, non-fork, non-archived, newest 50). Set the repo "Website" (https) to enable uptime; topic `devpulse-ignore` hides one. Optional `.devpulse.json` `{ "deps": ["https://status-page"] }` in a repo.
+5. `npx wrangler d1 migrations apply DB --remote` BEFORE `npx wrangler deploy`. Then push to a (private) GitHub repo, add Actions secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 6. After deploy: verify live data with `wrangler dev --test-scheduled` / the deployed site (M5); Lighthouse now runs in the Worker cron (Mon 01:00 UTC, PageSpeed Insights).
 
 ## Known gaps / ideas

@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import { add, el, fmtDate, link, NODATA, type Commit, type Project } from "./api";
 import { commitsFor, firstLine, relTime, safeColor } from "./hubutil";
 
-const BADGE = "https://devpulse.vincentwesleybiz.workers.dev/badge";
+const BADGE = `${location.origin}/badge`;
 let dlg: HTMLDialogElement | null = null;
 
 function freqChart(p: Project) {

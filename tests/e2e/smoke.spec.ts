@@ -156,7 +156,7 @@ for (const theme of ["dark", "light"]) {
     await expect(dlg).not.toContainText("Fix thing");
     await expect(dlg.locator(".hub-chart rect")).toHaveCount(52);
     await expect(dlg).toContainText("Go 100.0%");
-    await expect(dlg.locator(".hub-snippet")).toHaveText("![status](https://devpulse.vincentwesleybiz.workers.dev/badge/Beta%20%3Cb%3Ex%3C%2Fb%3E.svg)");
+    await expect(dlg.locator(".hub-snippet")).toHaveText(`![status](${new URL(page.url()).origin}/badge/Beta%20%3Cb%3Ex%3C%2Fb%3E.svg)`);
     const r = await new AxeBuilder({ page }).analyze();
     expect(r.violations).toEqual([]);
     await page.keyboard.press("Escape");

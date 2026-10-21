@@ -27,23 +27,27 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const { results: projects } = await db.prepare(
     "SELECT repo, name, url, deps, topics, description, language, stars, forks, created_at, pushed_at, release_tag, release_at, license, commit_count, loc, ci_state FROM projects ORDER BY name",
   ).all<P>();
-  // Per-project index lookups on checks(project, ts), never a table scan.
-  const [lh, api, langs, freq, ...rest] = (await db.batch([
+  // Constant statement count (D1 free tier: 50 queries/invocation), however many projects there are.
+  const recent = Math.floor(Date.now() / 1000) - 2 * 86400; // latency window: 48 points at 15 min = 12h, so 2 days bounds the scan
+  const [lh, api, langs, freq, upt, lat] = (await db.batch([
     db.prepare("SELECT l.* FROM lighthouse l WHERE l.week = (SELECT MAX(week) FROM lighthouse WHERE project = l.project)"),
     db.prepare("SELECT url, name, indicator FROM api_status"),
     db.prepare("SELECT repo, lang, bytes, color FROM languages"),
     db.prepare("SELECT repo, week, \"add\" AS added, \"del\" AS removed FROM code_freq ORDER BY week"),
-    ...projects.map((p) => db.prepare("SELECT ok, ms FROM checks WHERE project = ? ORDER BY ts DESC LIMIT ?").bind(p.repo, LATENCY_POINTS)),
-    ...projects.map((p) => db.prepare("SELECT COUNT(*) AS n, SUM(ok) AS up FROM checks WHERE project = ? AND ts >= ?").bind(p.repo, since)),
+    db.prepare("SELECT project, COUNT(*) AS n, SUM(ok) AS up FROM checks WHERE ts >= ? GROUP BY project").bind(since),
+    db.prepare("SELECT project, ok, ms FROM (SELECT project, ok, ms, ts, row_number() OVER (PARTITION BY project ORDER BY ts DESC) AS rn FROM checks WHERE ts >= ?) WHERE rn <= ? ORDER BY project, ts").bind(recent, LATENCY_POINTS),
   ])) as Rows<any>[];
   const by = <T extends object>(r: Rows<T>, k: keyof T) => new Map(r.results.map((x) => [x[k], x]));
   const group = <T extends { repo: string }>(r: Rows<T>) => r.results.reduce((m, x) => m.set(x.repo, [...(m.get(x.repo) ?? []), x]), new Map<string, T[]>());
   const lhBy = by(lh, "project"), apiBy = by(api, "url"), langBy = group<{ repo: string; lang: string; bytes: number; color: string | null }>(langs), freqBy = group<{ repo: string; week: number; added: number; removed: number }>(freq);
+  const uptBy = by(upt, "project");
+  const latBy = new Map<string, { ok: number; ms: number | null }[]>(); // oldest first (ORDER BY ts)
+  for (const x of lat.results as { project: string; ok: number; ms: number | null }[]) latBy.set(x.project, [...(latBy.get(x.project) ?? []), x]);
 
-  const body = projects.map((p, i) => {
+  const body = projects.map((p) => {
     const site = !!p.url;
-    const h = site ? (rest[i].results as { ok: number; ms: number | null }[]).reverse() : []; // oldest first
-    const a = site ? (rest[projects.length + i].results[0] as { n: number; up: number } | undefined) : undefined;
+    const h = site ? latBy.get(p.repo) ?? [] : [];
+    const a = site ? (uptBy.get(p.repo) as { n: number; up: number } | undefined) : undefined;
     const l = site ? lhBy.get(p.repo) : undefined;
     return {
       repo: p.repo, name: p.name, url: p.url || null,

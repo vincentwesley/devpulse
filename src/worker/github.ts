@@ -9,7 +9,9 @@ export const ghHeaders = (env: Env) => ({ Authorization: `Bearer ${env.GITHUB_TO
 export async function gql<T>(env: Env, query: string, variables: object): Promise<T> {
   const r = await fetch(`${API}/graphql`, { method: "POST", headers: ghHeaders(env), body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!r.ok) throw new Error(`graphql ${r.status}`);
-  return (await r.json()) as T;
+  const j = (await r.json()) as T & { errors?: unknown[] };
+  if (Array.isArray(j.errors) && j.errors.length) throw new Error("graphql errors"); // partial data must never drive deletes
+  return j;
 }
 
 export const TOPICS = "repositoryTopics(first:20){nodes{topic{name}}}";
@@ -31,16 +33,18 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
 
   // (1) one GraphQL query per page (<= MAX_REPO_PAGES). Any failure throws before a single write, so a bad sync never deletes data.
   const nodes: GqlRepo[] = [];
-  let after: string | null = null;
+  let after: string | null = null, more = false;
   for (let i = 0; i < MAX_REPO_PAGES; i++) {
     const conn: NonNullable<NonNullable<ReposResp["data"]>["viewer"]>["repositories"] | undefined = (await gql<ReposResp>(env, REPOS_QUERY, { after, n: REPO_PAGE })).data?.viewer?.repositories;
     if (!conn) throw new Error("graphql repositories: no data");
     nodes.push(...conn.nodes.filter((n): n is GqlRepo => !!n));
-    if (!conn.pageInfo.hasNextPage) break;
+    more = conn.pageInfo.hasNextPage;
+    if (!more) break;
     after = conn.pageInfo.endCursor;
   }
   const { pub: repos, priv } = mapRepos(nodes, MAX_REPOS);
   if (repos.length === MAX_REPOS) console.warn(`syncing the ${MAX_REPOS} most recently pushed public repos`);
+  if (more) console.warn(`repo list truncated at ${nodes.length} repos, keeping previous private aggregates`);
   const ts = now.toISOString();
 
   // Every selected repo gets updated_at=ts, so stale projects are `updated_at <> ts` (one bound param, however many repos).
@@ -58,10 +62,13 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
     db.prepare("DELETE FROM projects WHERE updated_at <> ?").bind(ts),
     ...["ci", "commits_recent", "languages", "code_freq"].map((t) => db.prepare(`DELETE FROM ${t} WHERE repo NOT IN (SELECT repo FROM projects)`)),
     db.prepare("DELETE FROM commits_recent WHERE sha NOT IN (SELECT sha FROM commits_recent ORDER BY ts DESC LIMIT ?)").bind(COMMITS_KEPT),
-    db.prepare("DELETE FROM totals_private"),
-    ...priv.langs.map((l) => db.prepare("INSERT INTO totals_private (lang,bytes,color) VALUES (?,?,?)").bind(l.lang, l.bytes, l.color)),
-    // loc is owned by the daily code_frequency slot; this only refreshes counts.
-    db.prepare("INSERT INTO private_agg (id,repos,commit_count) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET repos=excluded.repos,commit_count=excluded.commit_count").bind(priv.repos, priv.commits),
+    // Truncated list = incomplete private totals: keep the previous ones.
+    ...(more ? [] : [
+      db.prepare("DELETE FROM totals_private"),
+      ...priv.langs.map((l) => db.prepare("INSERT INTO totals_private (lang,bytes,color) VALUES (?,?,?)").bind(l.lang, l.bytes, l.color)),
+      // loc is owned by the daily code_frequency slot; this only refreshes counts.
+      db.prepare("INSERT INTO private_agg (id,repos,commit_count) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET repos=excluded.repos,commit_count=excluded.commit_count").bind(priv.repos, priv.commits),
+    ]),
   ]);
 
   // (2) heatmap: daily at 00 UTC or when empty

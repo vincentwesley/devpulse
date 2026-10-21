@@ -2,8 +2,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseFeed } from "../../src/worker/lib/rss";
-// @ts-expect-error plain .mjs without types
-import { median } from "../../scripts/lib.mjs";
 
 const fx = (n: string) => readFileSync(new URL(`../fixtures/rss/${n}.xml`, import.meta.url), "utf8");
 
@@ -25,11 +23,4 @@ describe("parseFeed", () => {
     expect(r[1].title).toBe("Tom & Jerry \u2019s A &bogus;");
   });
   it("garbage -> empty", () => expect(parseFeed("not xml")).toEqual([]));
-});
-
-describe("scripts/lib", () => {
-  it("median", () => {
-    expect(median([90, 70, 80])).toBe(80);
-    expect(median([1, 2])).toBe(2);
-  });
 });

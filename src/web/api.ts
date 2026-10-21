@@ -7,6 +7,23 @@ export interface Project {
   ci: { status: string; conclusion: string | null; url: string } | null;
   lighthouse: { week: string; performance: number; accessibility: number; best_practices: number; seo: number } | null;
   deps: { url: string; name: string; indicator: string }[];
+  // Hub fields (GitHub GraphQL sync). Public repos only; private repos never appear here.
+  ciState: string | null; // raw statusCheckRollup: SUCCESS | FAILURE | ERROR | PENDING | EXPECTED
+  description: string | null; topics: string[]; language: string | null;
+  stars: number; forks: number; createdAt: string | null; pushedAt: string | null;
+  release: { tag: string; at: string | null } | null; license: string | null;
+  commitCount: number | null; loc: number | null; // loc = additions + |deletions| churn, an estimate
+  languages: Language[];
+  codeFreq: { week: number; add: number; del: number }[]; // last 26 weeks, week = unix seconds
+}
+export interface Language { lang: string; bytes: number; color: string | null; pct: number }
+export interface Languages { public: Language[]; all: Language[]; privateIncluded: boolean }
+export interface Stats {
+  streak: { current: number; longest: number };
+  busiestWeekday: string | null; weekdayTotals: number[]; // Sunday..Saturday
+  contributionsThisYear: number;
+  mostActive30d: { repo: string; name: string; commits: number } | null;
+  totals: { repos: number; commits: number; loc: number }; // public + private aggregates
 }
 export interface Commit { repo: string; sha: string; message: string; author: string; ts: string; url: string }
 export const NODATA = "no data yet";
@@ -30,6 +47,8 @@ const noItems = (a: unknown[]) => !Array.isArray(a) || a.length === 0;
 export const getProjects = () => get<Project[]>("/api/projects", noItems);
 export const getCommits = () => get<Commit[]>("/api/commits", noItems);
 export const getPosts = () => get<Post[]>("/api/posts", noItems);
+export const getStats = () => get<Stats>("/api/stats", (s) => !s.totals?.repos);
+export const getLanguages = () => get<Languages>("/api/languages", (l) => noItems(l.all));
 export const getHeatmap = () => get<Heat>("/api/heatmap", (h) => noItems(h.days));
 
 /** Create an element with text (textContent only) and optional class / attrs. */

@@ -1,4 +1,5 @@
 import type { Env } from "./env";
+import { MAX_SITES, MAX_STATUS_ORIGINS } from "./config";
 import { parseDeps } from "./lib/github-parse";
 import { pool, readBounded, TIMEOUT_MS, UA } from "./lib/http";
 import { isUp, parseStatuspage, type PageStatus } from "./lib/statuspage";
@@ -38,8 +39,9 @@ export async function checkStatuspage(env: Env, urls: string | string[]): Promis
 const originOf = (u: string) => { try { return new URL(u).origin; } catch { return u; } };
 
 export async function runUptime(env: Env, withStatuspages = false): Promise<void> {
-  const { results } = await env.DB.prepare("SELECT repo, url, deps FROM projects").all<{ repo: string; url: string | null; deps: string | null }>();
-  const stmts = await pool(results.filter((p) => p.url), CONCURRENCY, (p) => checkProject(env, p.repo, p.url!));
+  const { results } = await env.DB.prepare("SELECT repo, url, deps FROM projects ORDER BY pushed_at DESC").all<{ repo: string; url: string | null; deps: string | null }>();
+  // ponytail: only the MAX_SITES most recently pushed sites are monitored (subrequest cap); raise with a paid plan.
+  const stmts = await pool(results.filter((p) => p.url).slice(0, MAX_SITES), CONCURRENCY, (p) => checkProject(env, p.repo, p.url!));
   if (stmts.length) await env.DB.batch(stmts);
   if (!withStatuspages) return;
   const byOrigin = new Map<string, string[]>();
@@ -47,5 +49,5 @@ export async function runUptime(env: Env, withStatuspages = false): Promise<void
     const o = originOf(u);
     byOrigin.set(o, [...(byOrigin.get(o) ?? []), u]);
   }
-  await pool([...byOrigin.values()], CONCURRENCY, (urls) => checkStatuspage(env, urls));
+  await pool([...byOrigin.values()].slice(0, MAX_STATUS_ORIGINS), CONCURRENCY, (urls) => checkStatuspage(env, urls));
 }

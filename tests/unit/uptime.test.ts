@@ -123,9 +123,11 @@ describe("GET /api/projects", () => {
   it("aggregates", async () => {
     const { env } = fakeDb({
       projects: [
-        { repo: "a/one", name: "One", url: "https://one.test", deps: '["https://d.test"]' },
+        { repo: "a/one", name: "One", url: "https://one.test", deps: '["https://d.test"]', ci_state: "SUCCESS", topics: '["vgc"]', description: "d", language: "TypeScript", stars: 3, forks: 1, pushed_at: "2026-10-01T00:00:00Z", release_tag: "v1", release_at: "2026-10-02T00:00:00Z", license: "MIT", commit_count: 9, loc: 1234 },
         { repo: "a/two", name: "Two", url: "https://two.test", deps: null },
       ],
+      languages: [{ repo: "a/one", lang: "TypeScript", bytes: 3, color: "#3178c6" }, { repo: "a/one", lang: "CSS", bytes: 1, color: null }],
+      code_freq: [{ repo: "a/one", week: 1700000000, added: 5, removed: 2 }],
       agg: [{ project: "a/one", n: 3, up: 2 }],
       // newest first, as the per-project ORDER BY ts DESC query returns them
       recent: [
@@ -133,7 +135,6 @@ describe("GET /api/projects", () => {
         { project: "a/one", ok: 0, ms: 200 },
         { project: "a/one", ok: 1, ms: 100 },
       ],
-      ci: [{ repo: "a/one", status: "completed", conclusion: "success", url: "u" }],
       lighthouse: [{ project: "a/one", week: "2026-W40", performance: 90, accessibility: 100, best_practices: 95, seo: 99 }],
       api_status: [{ url: "https://d.test", name: "D", indicator: "none" }],
     });
@@ -141,9 +142,13 @@ describe("GET /api/projects", () => {
     expect(r!.headers.get("Cache-Control")).toBe("public, max-age=60");
     const [one, two] = (await r!.json()) as any[];
     expect(one).toMatchObject({ up: true, uptime30d: 66.7, latencyMs: [100, 200, 150], ci: { conclusion: "success" } });
+    expect(one.ci).toEqual({ status: "completed", conclusion: "success", url: "https://github.com/a/one/actions" });
+    expect(one).toMatchObject({ ciState: "SUCCESS", topics: ["vgc"], language: "TypeScript", stars: 3, forks: 1, release: { tag: "v1", at: "2026-10-02T00:00:00Z" }, license: "MIT", commitCount: 9, loc: 1234 });
+    expect(one.languages).toEqual([{ lang: "TypeScript", bytes: 3, color: "#3178c6", pct: 75 }, { lang: "CSS", bytes: 1, color: null, pct: 25 }]);
+    expect(one.codeFreq).toEqual([{ week: 1700000000, add: 5, del: 2 }]);
     expect(one.lighthouse.week).toBe("2026-W40");
     expect(one.deps).toEqual([{ url: "https://d.test", name: "D", indicator: "none" }]);
-    expect(two).toMatchObject({ up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [] });
+    expect(two).toMatchObject({ up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [], release: null, languages: [], codeFreq: [], topics: [], stars: 0 });
   });
 });
 

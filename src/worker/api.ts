@@ -1,15 +1,18 @@
 import type { Env } from "./env";
 import { json } from "./lib/http";
 import * as github from "./routes/github";
-import * as ingest from "./routes/ingest";
+import * as badge from "./routes/badge";
 import * as posts from "./routes/posts";
 import * as projects from "./routes/projects";
+import * as stats from "./routes/stats";
 
-const CACHED = new Set(["/api/projects", "/api/heatmap", "/api/commits", "/api/posts"]);
+const CACHED = new Set(["/api/projects", "/api/heatmap", "/api/commits", "/api/posts", "/api/stats", "/api/languages"]);
+// Badges: only 200s are stored, and a 200 needs an existing project, so the key space is bounded.
+const isCached = (p: string) => CACHED.has(p) || p.startsWith("/badge/");
 
 /** Edge cache keyed on pathname only, so query strings can't force D1 reads. Absent (unit tests) -> skip. */
 async function cached(req: Request, pathname: string, run: () => Promise<Response | null>): Promise<Response | null> {
-  const cache = typeof caches === "undefined" || req.method !== "GET" || !CACHED.has(pathname) ? undefined : (caches as unknown as { default: Cache }).default;
+  const cache = typeof caches === "undefined" || req.method !== "GET" || !isCached(pathname) ? undefined : (caches as unknown as { default: Cache }).default;
   const key = new Request(new URL(pathname, new URL(req.url).origin));
   const hit = await cache?.match(key);
   if (hit) return hit;
@@ -22,7 +25,7 @@ export async function handleApi(req: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(req.url);
   try {
     if (req.method === "GET" && pathname === "/api/health") return json({ ok: true });
-    for (const m of [projects, github, posts, ingest]) {
+    for (const m of [projects, github, posts, stats, badge]) {
       const res = await cached(req, pathname, () => m.route(req, env, pathname));
       if (res) return res;
     }

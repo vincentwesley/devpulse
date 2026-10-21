@@ -1,0 +1,51 @@
+{
+  "data": { "viewer": { "repositories": {
+    "pageInfo": { "hasNextPage": false, "endCursor": null },
+    "nodes": [
+      {
+        "nameWithOwner": "o/metalens", "name": "metalens", "isPrivate": false, "isArchived": false,
+        "description": "VGC meta tool", "homepageUrl": "https://metalens.example.dev",
+        "repositoryTopics": { "nodes": [{ "topic": { "name": "vgc" } }] },
+        "stargazerCount": 7, "forkCount": 2, "createdAt": "2026-01-02T00:00:00Z", "pushedAt": "2026-10-08T00:00:00Z",
+        "primaryLanguage": { "name": "TypeScript" },
+        "languages": { "edges": [
+          { "size": 9000, "node": { "name": "TypeScript", "color": "#3178c6" } },
+          { "size": 1000, "node": { "name": "CSS", "color": "#663399" } }
+        ] },
+        "latestRelease": { "tagName": "v1.4.0", "publishedAt": "2026-10-12T00:00:00Z" },
+        "licenseInfo": { "spdxId": "MIT", "name": "MIT License" },
+        "object": { "text": "{ \"deps\": [\"https://www.githubstatus.com\"] }" },
+        "defaultBranchRef": { "target": {
+          "statusCheckRollup": { "state": "SUCCESS" },
+          "history": { "totalCount": 120, "nodes": [
+            { "oid": "a1", "messageHeadline": "feat: one", "committedDate": "2026-10-08T09:00:00Z", "url": "https://github.com/o/metalens/commit/a1", "author": { "name": "V", "user": { "login": "vincentwesley" } } },
+            { "oid": "a2", "messageHeadline": "fix: two", "committedDate": "2026-10-07T09:00:00Z", "url": "https://github.com/o/metalens/commit/a2", "author": { "name": "Anon", "user": null } }
+          ] }
+        } }
+      },
+      {
+        "nameWithOwner": "o/secret-project-xyz", "name": "secret-project-xyz", "isPrivate": true, "isArchived": false,
+        "description": "top secret description", "homepageUrl": "https://secret-site.example",
+        "repositoryTopics": { "nodes": [{ "topic": { "name": "secret-topic" } }] },
+        "stargazerCount": 0, "forkCount": 0, "createdAt": "2026-02-02T00:00:00Z", "pushedAt": "2026-10-09T00:00:00Z",
+        "primaryLanguage": { "name": "Rust" },
+        "languages": { "edges": [
+          { "size": 4000, "node": { "name": "Rust", "color": "#dea584" } },
+          { "size": 1000, "node": { "name": "TypeScript", "color": "#3178c6" } }
+        ] },
+        "latestRelease": { "tagName": "secret-v1", "publishedAt": "2026-10-09T00:00:00Z" },
+        "licenseInfo": null,
+        "object": { "text": "{ \"deps\": [\"https://secret-dep.example\"] }" },
+        "defaultBranchRef": { "target": {
+          "statusCheckRollup": { "state": "FAILURE" },
+          "history": { "totalCount": 33, "nodes": [
+            { "oid": "s1", "messageHeadline": "secret commit message", "committedDate": "2026-10-09T09:00:00Z", "url": "https://github.com/o/secret-project-xyz/commit/s1", "author": { "name": "V", "user": { "login": "vincentwesley" } } }
+          ] }
+        } }
+      },
+      { "nameWithOwner": "o/old", "name": "old", "isPrivate": false, "isArchived": true, "homepageUrl": "https://o.example", "pushedAt": "2026-10-01T00:00:00Z", "repositoryTopics": { "nodes": [] } },
+      { "nameWithOwner": "o/hidden", "name": "hidden", "isPrivate": false, "isArchived": false, "homepageUrl": "https://h.example", "pushedAt": "2026-10-02T00:00:00Z", "repositoryTopics": { "nodes": [{ "topic": { "name": "devpulse-ignore" } }] } },
+      { "nameWithOwner": "o/bare", "name": "bare", "isPrivate": false, "isArchived": false, "homepageUrl": "", "pushedAt": "2026-10-03T00:00:00Z", "repositoryTopics": { "nodes": [] }, "defaultBranchRef": null, "object": null }
+    ]
+  } } }
+}

@@ -6,15 +6,15 @@ A personal dashboard showing the health of all of vincentwesley's deployed proje
 Vercel Hobby cron runs at most once a day and the plan is non-commercial only, and it would need a third-party database. Cloudflare's free tier has cron triggers, D1 and static assets, and every existing project already deploys there.
 
 ## Architecture
-- **One Worker, `devpulse`, using Workers Static Assets.** It serves the Vite + TS frontend, `/api/*` (JSON GET routes plus one POST ingest route) and a `scheduled()` handler. No separate Pages project.
+- **One Worker, `devpulse`, using Workers Static Assets.** It serves the Vite + TS frontend, `/api/*` (JSON GET routes, plus `/badge/:repo.svg`) and a `scheduled()` handler. No separate Pages project.
 - **Storage: D1** (free: 5 GB, 100k writes a day). Tables: `projects`, `checks` (time, project, ok, ms), `lighthouse` (week, project, 4 scores), `ci` (latest run per repo), `commits_daily`, `api_status`, `posts`. A daily job deletes `checks` older than 90 days. No KV; API responses are cached with `Cache-Control` / Cache API.
 - **One cron, `*/15 * * * *`.**
   - Every run: fetch each project URL with HEAD/GET to record status and latency, and poll each dependency's Statuspage `/api/v2/status.json`.
   - When the minute is 0 (hourly): GitHub sync, which auto-discovers every public, non-fork, non-archived repo without the topic `devpulse-ignore` (newest 10 by push), then pulls their latest Actions runs and recent commits. Also fetch the portfolio RSS feed.
   - Daily: fetch the contribution calendar through GitHub GraphQL (needed for the heatmap; REST doesn't provide it) and prune old `checks`.
 - **Dependencies per project:** an optional `.devpulse.json` in each repo, e.g. `{ "deps": ["https://www.githubstatus.com"] }`. Without it, the project has no dependency panel.
-- **Lighthouse:** a weekly GitHub Actions workflow in the devpulse repo. It reads `/api/projects`, runs `lighthouse` (mobile, 3 runs, median) and POSTs the scores to `/api/ingest/lighthouse` with a bearer `INGEST_TOKEN`. A Worker can't run Chrome, and Browser Rendering's free quota is tight, so Actions it is.
-- **Secrets:** `GITHUB_TOKEN` is a fine-grained, public-repo, read-only token kept as a Worker secret. `INGEST_TOKEN` is both a Worker secret and an Actions secret. The browser never sees a token. Strict CSP comes from `_house/_headers`, set through the Worker's assets headers.
+- **Lighthouse:** the Worker cron calls PageSpeed Insights (mobile, four categories, optional `PSI_KEY`) once per monitored site every Monday 01:00 UTC and upserts the `lighthouse` table.
+- **Secrets:** `GITHUB_TOKEN` is a fine-grained, read-only token kept as a Worker secret (private repos are aggregated only, never named). The browser never sees a token. Strict CSP comes from `_house/_headers`, set through the Worker's assets headers.
 - **Frontend:** Vite + TS, D3 only for the heatmap and the uptime/Lighthouse sparklines. Plain DOM, no framework. House style, dark by default, credits card at the bottom.
 - **Real data only:** fixtures exist only in tests. An empty state reads "no data yet" and is never filled with placeholder data.
 
@@ -30,7 +30,7 @@ Not in the MVP: alerts and notifications, private repos, auth, history beyond 90
 - **M0** Scaffold the Worker, static assets and D1 migration; copy house kit; deploy a "hello" build to workers.dev; set up CI (`_house/ci.yml` plus `wrangler deploy` on main).
 - **M1** GitHub sync: topic discovery, CI, commits, heatmap (GraphQL).
 - **M2** Uptime cron and dependency status, cards with sparklines.
-- **M3** Lighthouse weekly workflow and ingest route.
+- **M3** Weekly Lighthouse (now PageSpeed Insights in the Worker cron).
 - **M4** RSS posts. Add `@astrojs/rss` to the portfolio if it's missing (that change goes in the portfolio repo).
 - **M5** Polish: a11y with axe, screenshots at 375px and desktop in dark and light, reduced motion, `security-review`, go live.
 

@@ -7,5 +7,5 @@ Do not open a public issue for a vulnerability. You can expect an acknowledgemen
 ## Scope and safety notes
 - This project is provided "as is", without warranty (see `LICENSE`).
 - It contains no install-time scripts (`preinstall`/`postinstall`/`prepare`) and does not run code on your machine when you clone it.
-- Secrets are never committed. Configuration is read from environment variables; see `.env.example` where present.
+- Secrets are never committed. Configuration is read from environment variables; see `.dev.vars.example` where present.
 - Only the latest version on the default branch is supported.

@@ -1,5 +1,169 @@
 [
  {
+  "ciState": null,
+  "description": "Alpha <i>tool</i> for testing",
+  "topics": [
+   "vite",
+   "cloudflare"
+  ],
+  "language": "TypeScript",
+  "stars": 7,
+  "forks": 2,
+  "createdAt": "2025-01-01T00:00:00Z",
+  "pushedAt": "2026-10-18T10:00:00Z",
+  "release": {
+   "tag": "v1.2.0",
+   "at": "2026-10-01T00:00:00Z"
+  },
+  "license": "MIT",
+  "commitCount": 80,
+  "loc": 12345,
+  "languages": [
+   {
+    "lang": "TypeScript",
+    "bytes": 700,
+    "color": "#3178c6",
+    "pct": 70
+   },
+   {
+    "lang": "CSS",
+    "bytes": 300,
+    "color": "red; background:url(x)",
+    "pct": 30
+   }
+  ],
+  "codeFreq": [
+   {
+    "week": 1760000000,
+    "add": 6,
+    "del": 1
+   },
+   {
+    "week": 1760604800,
+    "add": 43,
+    "del": 14
+   },
+   {
+    "week": 1761209600,
+    "add": 80,
+    "del": 27
+   },
+   {
+    "week": 1761814400,
+    "add": 27,
+    "del": 0
+   },
+   {
+    "week": 1762419200,
+    "add": 64,
+    "del": 13
+   },
+   {
+    "week": 1763024000,
+    "add": 11,
+    "del": 26
+   },
+   {
+    "week": 1763628800,
+    "add": 48,
+    "del": 39
+   },
+   {
+    "week": 1764233600,
+    "add": 85,
+    "del": 12
+   },
+   {
+    "week": 1764838400,
+    "add": 32,
+    "del": 25
+   },
+   {
+    "week": 1765443200,
+    "add": 69,
+    "del": 38
+   },
+   {
+    "week": 1766048000,
+    "add": 16,
+    "del": 11
+   },
+   {
+    "week": 1766652800,
+    "add": 53,
+    "del": 24
+   },
+   {
+    "week": 1767257600,
+    "add": 90,
+    "del": 37
+   },
+   {
+    "week": 1767862400,
+    "add": 37,
+    "del": 10
+   },
+   {
+    "week": 1768467200,
+    "add": 74,
+    "del": 23
+   },
+   {
+    "week": 1769072000,
+    "add": 21,
+    "del": 36
+   },
+   {
+    "week": 1769676800,
+    "add": 58,
+    "del": 9
+   },
+   {
+    "week": 1770281600,
+    "add": 5,
+    "del": 22
+   },
+   {
+    "week": 1770886400,
+    "add": 42,
+    "del": 35
+   },
+   {
+    "week": 1771491200,
+    "add": 79,
+    "del": 8
+   },
+   {
+    "week": 1772096000,
+    "add": 26,
+    "del": 21
+   },
+   {
+    "week": 1772700800,
+    "add": 63,
+    "del": 34
+   },
+   {
+    "week": 1773305600,
+    "add": 10,
+    "del": 7
+   },
+   {
+    "week": 1773910400,
+    "add": 47,
+    "del": 20
+   },
+   {
+    "week": 1774515200,
+    "add": 84,
+    "del": 33
+   },
+   {
+    "week": 1775120000,
+    "add": 31,
+    "del": 6
+   }
+  ],
   "repo": "vincentwesley/alpha",
   "name": "Alpha",
   "url": "https://alpha.example.com",
@@ -39,6 +203,158 @@
   ]
  },
  {
+  "ciState": null,
+  "description": null,
+  "topics": [],
+  "language": "Go",
+  "stars": 20,
+  "forks": 0,
+  "createdAt": "2025-01-01T00:00:00Z",
+  "pushedAt": "2026-10-10T10:00:00Z",
+  "release": null,
+  "license": null,
+  "commitCount": null,
+  "loc": null,
+  "languages": [
+   {
+    "lang": "Go",
+    "bytes": 10,
+    "color": "#00ADD8",
+    "pct": 100
+   }
+  ],
+  "codeFreq": [
+   {
+    "week": 1760000000,
+    "add": 7,
+    "del": 2
+   },
+   {
+    "week": 1760604800,
+    "add": 44,
+    "del": 15
+   },
+   {
+    "week": 1761209600,
+    "add": 81,
+    "del": 28
+   },
+   {
+    "week": 1761814400,
+    "add": 28,
+    "del": 1
+   },
+   {
+    "week": 1762419200,
+    "add": 65,
+    "del": 14
+   },
+   {
+    "week": 1763024000,
+    "add": 12,
+    "del": 27
+   },
+   {
+    "week": 1763628800,
+    "add": 49,
+    "del": 0
+   },
+   {
+    "week": 1764233600,
+    "add": 86,
+    "del": 13
+   },
+   {
+    "week": 1764838400,
+    "add": 33,
+    "del": 26
+   },
+   {
+    "week": 1765443200,
+    "add": 70,
+    "del": 39
+   },
+   {
+    "week": 1766048000,
+    "add": 17,
+    "del": 12
+   },
+   {
+    "week": 1766652800,
+    "add": 54,
+    "del": 25
+   },
+   {
+    "week": 1767257600,
+    "add": 91,
+    "del": 38
+   },
+   {
+    "week": 1767862400,
+    "add": 38,
+    "del": 11
+   },
+   {
+    "week": 1768467200,
+    "add": 75,
+    "del": 24
+   },
+   {
+    "week": 1769072000,
+    "add": 22,
+    "del": 37
+   },
+   {
+    "week": 1769676800,
+    "add": 59,
+    "del": 10
+   },
+   {
+    "week": 1770281600,
+    "add": 6,
+    "del": 23
+   },
+   {
+    "week": 1770886400,
+    "add": 43,
+    "del": 36
+   },
+   {
+    "week": 1771491200,
+    "add": 80,
+    "del": 9
+   },
+   {
+    "week": 1772096000,
+    "add": 27,
+    "del": 22
+   },
+   {
+    "week": 1772700800,
+    "add": 64,
+    "del": 35
+   },
+   {
+    "week": 1773305600,
+    "add": 11,
+    "del": 8
+   },
+   {
+    "week": 1773910400,
+    "add": 48,
+    "del": 21
+   },
+   {
+    "week": 1774515200,
+    "add": 85,
+    "del": 34
+   },
+   {
+    "week": 1775120000,
+    "add": 32,
+    "del": 7
+   }
+  ],
   "repo": "vincentwesley/beta",
   "name": "Beta <b>x</b>",
   "url": "https://beta.example.com",
@@ -56,6 +372,20 @@
   "deps": []
  },
  {
+  "ciState": "PENDING",
+  "description": null,
+  "topics": [],
+  "language": "TypeScript",
+  "stars": 0,
+  "forks": 0,
+  "createdAt": "2025-01-01T00:00:00Z",
+  "pushedAt": "2026-09-01T00:00:00Z",
+  "release": null,
+  "license": null,
+  "commitCount": null,
+  "loc": null,
+  "languages": [],
+  "codeFreq": [],
   "repo": "vincentwesley/nosite",
   "name": "NoSite",
   "url": null,
@@ -67,6 +397,20 @@
   "deps": []
  },
  {
+  "ciState": null,
+  "description": null,
+  "topics": [],
+  "language": null,
+  "stars": 0,
+  "forks": 0,
+  "createdAt": "2025-01-01T00:00:00Z",
+  "pushedAt": null,
+  "release": null,
+  "license": null,
+  "commitCount": null,
+  "loc": null,
+  "languages": [],
+  "codeFreq": [],
   "repo": "vincentwesley/gamma",
   "name": "Gamma",
   "url": "https://gamma.example.com",

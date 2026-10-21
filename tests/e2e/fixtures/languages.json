@@ -1,0 +1,49 @@
+{
+ "privateIncluded": true,
+ "public": [
+  {
+   "lang": "TypeScript",
+   "bytes": 70000,
+   "color": "#3178c6",
+   "pct": 70
+  },
+  {
+   "lang": "CSS",
+   "bytes": 20000,
+   "color": "#563d7c",
+   "pct": 20
+  },
+  {
+   "lang": "Weird",
+   "bytes": 10000,
+   "color": "javascript:x",
+   "pct": 10
+  }
+ ],
+ "all": [
+  {
+   "lang": "TypeScript",
+   "bytes": 55000,
+   "color": "#3178c6",
+   "pct": 55
+  },
+  {
+   "lang": "Python",
+   "bytes": 30000,
+   "color": "#3572a5",
+   "pct": 30
+  },
+  {
+   "lang": "CSS",
+   "bytes": 10000,
+   "color": "#563d7c",
+   "pct": 10
+  },
+  {
+   "lang": "Other",
+   "bytes": 5000,
+   "color": null,
+   "pct": 5
+  }
+ ]
+}

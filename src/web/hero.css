@@ -1,0 +1,21 @@
+/* Hero band + languages. House tokens only; motion gated on no-preference. */
+.hero__role { margin: 0.25rem 0 0.75rem; color: var(--fg-muted); }
+.hero__stats { margin: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
+.hero__stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; padding: 0.6rem 0.7rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
+.hero__stat dt { font-size: 0.8rem; }
+.hero__num { margin: 0; font: 700 1.6rem/1.2 var(--font-mono); color: var(--accent); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.lang__toggle { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
+.lang__toggle .hs-btn[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.lang__bar { display: flex; height: 1.1rem; margin-top: 0.75rem; border: 2px solid var(--border-strong); background: var(--border); overflow: hidden; }
+.lang__seg { display: block; height: 100%; min-width: 0; }
+.lang__legend { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.3rem 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); font-size: 0.9rem; }
+.lang__legend li { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.lang__legend li > :nth-child(2) { overflow-wrap: anywhere; }
+.lang__legend li > :last-child { margin-left: auto; font-family: var(--font-mono); }
+.lang__sw { flex: none; width: 0.8rem; height: 0.8rem; border: 1px solid var(--border-strong); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lang__seg { transform-origin: left; animation: lang-grow 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  @keyframes lang-grow { from { transform: scaleX(0); } }
+}

@@ -1,0 +1,33 @@
+/* Project hub: cards, toolbar, spotlight, detail dialog. Motion only under no-preference. */
+.hub-bar { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; margin-top: 0.75rem; }
+.hub-pick { display: grid; gap: 0.2rem; font: 400 0.8rem var(--font-label); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); }
+.hub-pick select { min-height: 44px; padding: 0 0.6rem; font: 1rem var(--font-body); color: var(--fg); background: var(--bg); border: 2px solid var(--border-strong); border-radius: 0; }
+.hub-spot { margin-top: 0.75rem; display: grid; gap: 0.35rem; }
+.hub-spot h3 { font-size: 1.3rem; }
+.hub-desc { margin: 0; overflow-wrap: anywhere; }
+.hub-meta { margin: 0; font: 0.8rem var(--font-mono); color: var(--fg-muted); overflow-wrap: anywhere; }
+.hub-topics { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.hub-topic, .hub-rel { font-size: 0.65rem; padding: 0.15rem 0.45rem; }
+.hub-langbar { display: flex; height: 8px; background: var(--border); overflow: hidden; }
+.hub-langbar span { display: block; height: 100%; }
+.hub-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
+.hub-btn { padding: 0.3rem 0.8rem; font-size: 0.9rem; }
+.hub-btn--alt { color: var(--accent); background: transparent; }
+.hub-dialog { width: min(40rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; box-sizing: border-box; margin: auto; color: var(--fg); background: var(--bg-elev); border: 0; }
+.hub-dialog::backdrop { background: color-mix(in srgb, var(--bg) 80%, transparent); }
+.hub-dialog__head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.hub-dialog h2 { font-size: 1.4rem; overflow-wrap: anywhere; }
+.hub-dialog h3 { margin-top: 1.1rem; margin-bottom: 0.4rem; }
+.hub-chart { width: 100%; height: auto; display: block; }
+.hub-key::before { content: ""; display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.35rem; background: var(--accent); }
+.hub-key--del::before { background: var(--fx-2); }
+.hub-key + .hub-key { margin-left: 1rem; }
+.hub-langs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-family: var(--font-mono); font-size: 0.85rem; }
+.hub-dot { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.4rem; }
+.hub-snippet { display: block; padding: 0.5rem; background: var(--bg); border: 2px solid var(--border-strong); font: 0.8rem var(--font-mono); overflow-wrap: anywhere; }
+.hub-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .hub-dialog[open] { animation: hub-pop 0.25s var(--fx-ease); }
+  @keyframes hub-pop { from { transform: scale(0.94); opacity: 0; } }
+}
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; } }

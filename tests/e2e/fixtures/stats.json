@@ -1,0 +1,23 @@
+{
+ "streak": {
+  "current": 12,
+  "longest": 40
+ },
+ "busiestWeekday": "Tuesday",
+ "weekdayTotals": [
+  3,
+  9,
+  14,
+  8,
+  7,
+  6,
+  2
+ ],
+ "contributionsThisYear": 812,
+ "mostActive30d": null,
+ "totals": {
+  "repos": 21,
+  "commits": 3456,
+  "loc": 123456
+ }
+}

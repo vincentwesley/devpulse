@@ -1,8 +1,10 @@
 import * as d3 from "d3";
 import "./hub.css";
-import { add, el, fmtDate, getCommits, link, NODATA, show, type Commit, type Project, type Res } from "./api";
-import { openDetail } from "./detail";
-import { ciFromState, commitsFor, firstLine, relTime, safeColor, sortFilter, type Sort, type StatusFilter } from "./hubutil";
+import { add, el, fmtDate, link, NODATA, show, type Commit, type Project, type Res } from "./api";
+import { closeDetail, openDetail, openName } from "./detail";
+import { ciFromState, commitsFor, firstLine, plural, relTime, safeColor, sortFilter, type Sort, type StatusFilter } from "./hubutil";
+import { setPaletteProjects } from "./palette";
+import { DEFAULT_VIEW, parseUrl, toSearch } from "./urlstate";
 
 const LH: [keyof NonNullable<Project["lighthouse"]>, string][] = [
   ["performance", "Perf"], ["accessibility", "A11y"], ["best_practices", "Best"], ["seo", "SEO"],
@@ -22,7 +24,12 @@ function spark(ms: number[], label = `Latency, last ${ms.length} checks: min ${d
   return svg.node() as unknown as SVGElement;
 }
 
-function card(p: Project, commits: Commit[]) {
+// Toolbar state, seeded from the URL, survives the periodic re-render.
+const { p: _p, ...seed } = parseUrl(location.search, "");
+const view: typeof DEFAULT_VIEW = seed;
+const saveUrl = () => history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
+
+function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
   const c = el("article", "", "proj");
   const head = el("div", "", "proj__head");
   const h3 = el("h3");
@@ -56,7 +63,7 @@ function card(p: Project, commits: Commit[]) {
       const g = grade(n);
       add(lh, el("span", `${label} ${n} ${gradeWord[g]}`, `score score--${g}`));
     }
-  } else add(lh, el("span", p.url ? `Lighthouse: ${NODATA}` : "no site to monitor", "muted"));
+  } else add(lh, p.url ? el("span", `Lighthouse: ${NODATA}`, "muted") : el("span", "no live site", "hs-chip hub-nosite"));
 
   const deps = el("ul", "", "deps", { "aria-label": "Dependency status" });
   for (const d of p.deps ?? []) {
@@ -67,8 +74,14 @@ function card(p: Project, commits: Commit[]) {
   add(c, head);
   if (p.description) add(c, el("p", p.description, "hub-desc"));
   if (p.topics?.length) {
-    const t = el("ul", "", "hub-topics", { "aria-label": "Topics" });
-    for (const x of p.topics) add(t, el("li", x, "hs-chip hub-topic"));
+    const t = el("ul", "", "hub-topics", { "aria-label": "Topics (select to filter)" });
+    for (const x of p.topics) {
+      const li = el("li");
+      const b = el("button", x, "hs-chip hub-topic", { type: "button", "aria-pressed": String(view.topic === x) });
+      b.addEventListener("click", () => onTopic(x));
+      add(li, b);
+      add(t, li);
+    }
     add(c, t);
   }
   if (p.languages?.length) {
@@ -82,7 +95,7 @@ function card(p: Project, commits: Commit[]) {
     add(c, bar);
   }
   const meta = el("p", "", "hub-meta");
-  const bits = [p.language, `${p.stars} stars`, `${p.forks} forks`, p.license].filter(Boolean) as string[];
+  const bits = [p.language, p.stars > 0 ? plural(p.stars, "star") : null, p.forks > 0 ? plural(p.forks, "fork") : null, p.commitCount != null ? plural(p.commitCount, "commit") : null, p.license].filter(Boolean) as string[];
   add(meta, bits.join(" · "));
   if (p.release) add(meta, " · ", el("span", p.release.tag, "hs-chip hub-rel"));
   add(c, meta);
@@ -116,9 +129,6 @@ function spotlight(ps: Project[], commits: Commit[]) {
   return s;
 }
 
-// Toolbar state survives the periodic re-render.
-const view: { sort: Sort; lang: string; status: StatusFilter } = { sort: "active", lang: "", status: "all" };
-
 function pick(label: string, opts: [string, string][], value: string, onChange: (v: string) => void) {
   const l = el("label", "", "hub-pick");
   const sel = el("select");
@@ -129,33 +139,90 @@ function pick(label: string, opts: [string, string][], value: string, onChange: 
   return l;
 }
 
+// Latest data, so popstate / hashchange can open the dialog for #p/<name>.
+let cur: { ps: Project[]; commits: Commit[] } = { ps: [], commits: [] };
+function syncDialog() {
+  const name = parseUrl("", location.hash).p;
+  if (!name) return closeDetail();
+  if (name === openName()) return;
+  const p = cur.ps.find((x) => x.name === name);
+  if (p) openDetail(p, cur.commits);
+}
+addEventListener("popstate", syncDialog);
+addEventListener("hashchange", syncDialog);
+
 function hub(ps: Project[], commits: Commit[]) {
   const wrap = el("div");
   const grid = el("div", "", "grid");
+  const count = el("p", "", "muted hub-count", { role: "status" });
+  const langs = [...new Set(ps.map((p) => p.language).filter(Boolean) as string[])].sort();
+  const topics = [...new Set(ps.flatMap((p) => p.topics ?? []))].sort();
+  const bar = el("div", "", "hub-bar", { role: "group", "aria-label": "Project controls" });
+  const search = el("input", "", "", { type: "search", id: "hub-q", name: "q", placeholder: "Search projects", autocomplete: "off", maxlength: "100" });
+  search.value = view.q;
+  const sl = el("label", "", "hub-search");
+  add(sl, el("span", "Search", "hub-lbl"), search);
+  const filters = el("details", "", "hub-filters");
+  const sum = el("summary", "Filters", "hs-btn hub-btn hub-btn--alt");
+  const fbody = el("div", "", "hub-fbody");
+  const clear = el("button", "Clear filters", "hs-btn hub-btn hub-btn--alt", { type: "button" });
+  const active = () => [view.q, view.lang, view.topic, view.status !== "all" ? "x" : "", view.sort !== "active" ? "x" : ""].filter(Boolean).length;
+
   const draw = () => {
     grid.textContent = "";
-    const list = sortFilter(ps, view.sort, view.lang, view.status);
-    if (list.length) add(grid, ...list.map((p) => card(p, commits)));
+    const list = sortFilter(ps, view.sort, view.lang, view.status, view.q, view.topic);
+    if (list.length) add(grid, ...list.map((p) => card(p, commits, setTopic)));
     else add(grid, el("p", "no projects match", "muted", { role: "status" }));
+    count.textContent = `${list.length} of ${plural(ps.length, "project")}`;
+    const n = active();
+    sum.textContent = n ? `Filters (${n})` : "Filters";
+    clear.hidden = !n;
+    saveUrl();
   };
   const redraw = () => {
     if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(draw);
     else draw();
   };
-  const langs = [...new Set(ps.map((p) => p.language).filter(Boolean) as string[])].sort();
-  const bar = el("div", "", "hub-bar", { role: "group", "aria-label": "Project controls" });
-  add(bar,
-    pick("Sort", [["active", "Recently active"], ["stars", "Stars"], ["name", "Name"], ["status", "Status"]], view.sort, (v) => { view.sort = v as Sort; redraw(); }),
-    pick("Language", [["", "All"], ...langs.map((l): [string, string] => [l, l])], view.lang, (v) => { view.lang = v; redraw(); }),
-    pick("Status", [["all", "All"], ["up", "Up"], ["down", "Down"]], view.status, (v) => { view.status = v as StatusFilter; redraw(); }));
+  const selects: Record<string, HTMLSelectElement> = {};
+  const mk = (key: "sort" | "lang" | "status" | "topic", label: string, opts: [string, string][]) => {
+    const l = pick(label, opts, view[key], (v) => { (view as Record<string, string>)[key] = v; redraw(); });
+    selects[key] = l.querySelector("select")!;
+    return l;
+  };
+  function setTopic(t: string) {
+    view.topic = view.topic === t ? "" : t;
+    selects.topic.value = view.topic;
+    redraw();
+  }
+  add(fbody,
+    mk("sort", "Sort", [["active", "Recently active"], ["stars", "Stars"], ["name", "Name"], ["status", "Status"]]),
+    mk("lang", "Language", [["", "All"], ...langs.map((l): [string, string] => [l, l])]),
+    mk("status", "Status", [["all", "All"], ["up", "Up"], ["down", "Down"]]),
+    mk("topic", "Topic", [["", "All"], ...topics.map((t): [string, string] => [t, t])]));
+  clear.addEventListener("click", () => {
+    Object.assign(view, DEFAULT_VIEW);
+    search.value = "";
+    for (const [k, s] of Object.entries(selects)) s.value = (view as Record<string, string>)[k];
+    redraw();
+  });
+  search.addEventListener("input", () => { view.q = search.value; draw(); });
+  filters.open = Boolean(view.lang || view.topic || view.status !== "all" || view.sort !== "active");
+  add(filters, sum, fbody);
+  add(bar, sl, filters, clear);
   const spot = spotlight(ps, commits);
   if (spot) add(wrap, spot);
-  add(wrap, bar, grid);
+  add(wrap, bar, count, grid);
   draw();
   return wrap;
 }
 
-export async function renderProjects(res: Res<Project[]>) {
-  const c = await getCommits();
-  show("projects", res, (ps) => hub(ps, c.state === "ok" ? c.data : []));
+/** main.ts passes both fetches; no internal fetching here. */
+export function renderProjects(projects: Res<Project[]>, commits: Res<Commit[]>) {
+  const cs = commits.state === "ok" ? commits.data : [];
+  if (projects.state === "ok") {
+    cur = { ps: projects.data, commits: cs };
+    setPaletteProjects(projects.data);
+  }
+  show("projects", projects, (ps) => hub(ps, cs));
+  if (projects.state === "ok") syncDialog();
 }

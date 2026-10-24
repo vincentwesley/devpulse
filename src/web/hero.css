@@ -3,10 +3,10 @@
 .hero__stats { margin: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
 .hero__stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; padding: 0.6rem 0.7rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
 .hero__stat dt { font-size: 0.8rem; }
+.hero__stat .hero__num--txt { font-size: 1rem; line-height: 1.4; }
+.hero__num--txt .muted { font-family: var(--font-body); }
 .hero__num { margin: 0; font: 700 1.6rem/1.2 var(--font-mono); color: var(--accent); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
-.lang__toggle { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
-.lang__toggle .hs-btn[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 .lang__bar { display: flex; height: 1.1rem; margin-top: 0.75rem; border: 2px solid var(--border-strong); background: var(--border); overflow: hidden; }
 .lang__seg { display: block; height: 100%; min-width: 0; }
 .lang__legend { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.3rem 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); font-size: 0.9rem; }

@@ -28,10 +28,19 @@ function link(block: string): string {
   return text(tag(block, "link") ?? "");
 }
 
+const MAX_ITEMS = 50, MAX_BLOCK = 20_000;
+
+/** Linear scan: split on each closing tag, take the text after the last opening tag before it (no backreference regex). */
 export function parseFeed(xml: string): FeedItem[] {
   const out: FeedItem[] = [];
-  for (const m of xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi)) {
-    const b = m[2];
+  let from = 0;
+  for (const end of xml.matchAll(/<\/(?:item|entry)\s*>/gi)) {
+    const chunk = xml.slice(from, end.index);
+    from = end.index + end[0].length;
+    const lc = chunk.toLowerCase();
+    const i = Math.max(lc.lastIndexOf("<item"), lc.lastIndexOf("<entry"));
+    if (i < 0) continue;
+    const b = chunk.slice(i, i + MAX_BLOCK);
     const url = link(b);
     if (!url) continue;
     const d = new Date(text(tag(b, "pubDate") ?? tag(b, "published") ?? tag(b, "updated") ?? tag(b, "dc:date") ?? ""));
@@ -40,6 +49,7 @@ export function parseFeed(xml: string): FeedItem[] {
       url,
       published: isNaN(+d) ? "" : d.toISOString(),
     });
+    if (out.length >= MAX_ITEMS) break;
   }
   return out;
 }

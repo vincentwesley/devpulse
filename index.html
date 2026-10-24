@@ -4,44 +4,75 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DevPulse</title>
-  <meta name="description" content="Health of vincentwesley's deployed projects.">
-  <link rel="icon" href="data:,">
+  <meta name="description" content="Live health of the projects vincentwesley ships: uptime, CI, activity.">
+  <meta name="theme-color" content="#11150e">
+  <link rel="canonical" href="https://devpulse.vincentwesleybiz.workers.dev/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DevPulse">
+  <meta property="og:description" content="Live health of the projects vincentwesley ships: uptime, CI, activity.">
+  <meta property="og:url" content="https://devpulse.vincentwesleybiz.workers.dev/">
+  <meta property="og:image" content="https://devpulse.vincentwesleybiz.workers.dev/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DevPulse">
+  <meta name="twitter:description" content="Live health of the projects vincentwesley ships: uptime, CI, activity.">
+  <meta name="twitter:image" content="https://devpulse.vincentwesleybiz.workers.dev/og.png">
+  <script src="/theme-init.js"></script>
   <script type="module" src="/src/web/main.ts"></script>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to content</a>
   <header class="top">
-    <h1>DevPulse</h1>
-    <button id="theme" class="hs-btn" type="button" aria-pressed="false">Light mode</button>
+    <div class="top__row">
+      <h1>DevPulse</h1>
+      <span id="updated" class="muted top__upd"></span>
+      <button id="theme" class="hs-btn" type="button" aria-pressed="false">Light mode</button>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <ul>
+        <li><a href="#hero">Overview</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#status">Status</a></li>
+        <li><a href="#heatmap" data-also="activity">Activity</a></li>
+        <li><a href="#languages">Languages</a></li>
+        <li><a href="#posts">Posts</a></li>
+      </ul>
+    </nav>
+    <p id="offline" class="offline" role="status" hidden>Offline: showing saved data.</p>
   </header>
-  <main>
-    <section id="hero" class="hs-card" aria-labelledby="h-hero">
+  <main id="main" tabindex="-1">
+    <section id="hero" class="hs-card" aria-labelledby="h-hero" aria-busy="true">
       <p class="hs-eyebrow">Hub</p><h2 id="h-hero">vincentwesley</h2>
       <p class="hero__role">Building and shipping small tools.</p>
-      <p class="empty">no data yet</p>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="languages" class="hs-card" aria-labelledby="h-languages">
-      <p class="hs-eyebrow">Stack</p><h2 id="h-languages">Languages</h2>
-      <p class="empty">no data yet</p>
-    </section>
-    <section id="projects" class="hs-card" aria-labelledby="h-projects">
+    <section id="projects" class="hs-card" aria-labelledby="h-projects" aria-busy="true">
       <p class="hs-eyebrow">Uptime &amp; CI</p><h2 id="h-projects">Projects</h2>
-      <p class="empty">no data yet</p>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="heatmap" class="hs-card" aria-labelledby="h-heatmap">
+    <section id="status" class="hs-card" aria-labelledby="h-status" aria-busy="true">
+      <p class="hs-eyebrow">Uptime</p><h2 id="h-status">Status</h2>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
+    </section>
+    <section id="heatmap" class="hs-card" aria-labelledby="h-heatmap" aria-busy="true">
       <p class="hs-eyebrow">Activity</p><h2 id="h-heatmap">Commit heatmap</h2>
-      <p class="empty">no data yet</p>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="activity" class="hs-card" aria-labelledby="h-activity">
+    <section id="activity" class="hs-card" aria-labelledby="h-activity" aria-busy="true">
       <p class="hs-eyebrow">Feed</p><h2 id="h-activity">Activity</h2>
-      <p class="empty">no data yet</p>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="commits" class="hs-card" aria-labelledby="h-commits">
-      <p class="hs-eyebrow">Recent</p><h2 id="h-commits">Latest commits</h2>
-      <p class="empty">no data yet</p>
+    <section id="languages" class="hs-card" aria-labelledby="h-languages" aria-busy="true">
+      <p class="hs-eyebrow">Stack</p><h2 id="h-languages">Languages</h2>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="posts" class="hs-card" aria-labelledby="h-posts">
+    <section id="posts" class="hs-card" aria-labelledby="h-posts" aria-busy="true">
       <p class="hs-eyebrow">Blog</p><h2 id="h-posts">Latest posts</h2>
-      <p class="empty">no data yet</p>
+      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
     <section class="section span-12 creator" aria-labelledby="h-creator">
       <div class="card">

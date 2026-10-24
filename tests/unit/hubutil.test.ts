@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitsFor, relTime, safeColor, sortFilter } from "../../src/web/hubutil";
+import { commitsFor, fuzzy, plural, rankBy, relTime, safeColor, sortFilter } from "../../src/web/hubutil";
 import type { Commit, Project } from "../../src/web/api";
 
 const P = (o: Partial<Project>) => ({ repo: "o/x", name: "x", up: null, stars: 0, language: null, pushedAt: null, ...o }) as Project;
@@ -36,5 +36,23 @@ describe("hub helpers", () => {
     const c = (repo: string, ts: string) => ({ repo, ts }) as Commit;
     const out = commitsFor(P({ repo: "o/x", name: "X" }), [c("x", "1"), c("o/x", "2"), c("y", "3")]);
     expect(out.map((k) => k.ts)).toEqual(["2", "1"]);
+  });
+  it("sort + filter by query and topic", () => {
+    const ps = [P({ name: "Alpha", topics: ["vite"], description: "a tool" }), P({ name: "Beta", topics: ["go"], description: null })];
+    expect(sortFilter([...ps], "name", "", "all", "ALP").map((p) => p.name)).toEqual(["Alpha"]);
+    expect(sortFilter([...ps], "name", "", "all", "", "go").map((p) => p.name)).toEqual(["Beta"]);
+    expect(sortFilter([...ps], "name", "", "all", "tool", "go")).toEqual([]);
+  });
+  it("plural", () => {
+    expect(plural(1, "star")).toBe("1 star");
+    expect(plural(0, "fork")).toBe("0 forks");
+    expect(plural(12345, "commit")).toBe("12,345 commits");
+  });
+  it("fuzzy", () => {
+    expect(fuzzy("zz", "alpha")).toBeNull();
+    expect(fuzzy("", "alpha")).toBe(0);
+    expect(fuzzy("alp", "Alpha")!).toBeGreaterThan(fuzzy("apa", "Alpha")!);
+    expect(rankBy(["Toggle theme", "Status", "Posts"], "st", (x) => x)).toEqual(["Status", "Posts"]);
+    expect(rankBy(["b", "a"], "", (x) => x)).toEqual(["b", "a"]);
   });
 });

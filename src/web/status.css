@@ -1,0 +1,17 @@
+/* Status section. Colour is always paired with an icon/label/readout. */
+.st__site { margin-top: 1rem; padding: 0.75rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
+.st__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.st__head h3 { flex: 1 1 8rem; }
+.st__pill { font: 0.8rem var(--font-label); padding: 0.2rem 0.55rem; border: 2px solid var(--border-strong); white-space: nowrap; }
+.st__pill--up { border-color: var(--accent); }
+.st__pill--down { border-color: var(--fx-2); background: color-mix(in srgb, var(--fx-2) 25%, transparent); }
+.st__pct { font: 0.9rem var(--font-mono); }
+.st__bars { display: flex; gap: 2px; margin-top: 0.6rem; }
+.st__bar { flex: 1 1 0; min-width: 0; height: 44px; padding: 0; border: 0; border-radius: 0; background: var(--border); cursor: pointer; }
+.st__bar--ok { background: var(--accent); }
+.st__bar--warn { background: var(--fx-3); }
+.st__bar--bad { background: var(--fx-2); }
+.st__bar:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.st__bar:hover { filter: brightness(1.2); }
+.st__inc { margin-top: 1.25rem; }
+.st__inc h3 { margin-bottom: 0.25rem; }

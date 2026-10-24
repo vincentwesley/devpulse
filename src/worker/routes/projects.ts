@@ -1,5 +1,4 @@
 import type { Env } from "../env";
-import { LATENCY_POINTS, UPTIME_DAYS } from "../config";
 import { parseDeps } from "../lib/github-parse";
 import { json } from "../lib/http";
 import { withPct } from "./stats";
@@ -18,42 +17,36 @@ const ciOf = (repo: string, s: string | null) =>
     conclusion: s === "SUCCESS" ? "success" : s === "FAILURE" || s === "ERROR" ? "failure" : null,
     url: `https://github.com/${repo}/actions`,
   };
+const latencyOf = (j: string): number[] => { try { const a = JSON.parse(j); return Array.isArray(a) ? a.filter((x) => typeof x === "number") : []; } catch { return []; } };
 const topicsOf = (t: string | null): string[] => { try { const a = JSON.parse(t ?? "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } };
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET" || pathname !== "/api/projects") return null;
   const db = env.DB;
-  const since = Math.floor(Date.now() / 1000) - UPTIME_DAYS * 86400;
   const { results: projects } = await db.prepare(
     "SELECT repo, name, url, deps, topics, description, language, stars, forks, created_at, pushed_at, release_tag, release_at, license, commit_count, loc, ci_state FROM projects ORDER BY name",
   ).all<P>();
   // Constant statement count (D1 free tier: 50 queries/invocation), however many projects there are.
-  const recent = Math.floor(Date.now() / 1000) - 2 * 86400; // latency window: 48 points at 15 min = 12h, so 2 days bounds the scan
-  const [lh, api, langs, freq, upt, lat] = (await db.batch([
+  const [lh, api, langs, freq, upt] = (await db.batch([
     db.prepare("SELECT l.* FROM lighthouse l WHERE l.week = (SELECT MAX(week) FROM lighthouse WHERE project = l.project)"),
     db.prepare("SELECT url, name, indicator FROM api_status"),
     db.prepare("SELECT repo, lang, bytes, color FROM languages"),
     db.prepare("SELECT repo, week, \"add\" AS added, \"del\" AS removed FROM code_freq ORDER BY week"),
-    db.prepare("SELECT project, COUNT(*) AS n, SUM(ok) AS up FROM checks WHERE ts >= ? GROUP BY project").bind(since),
-    db.prepare("SELECT project, ok, ms FROM (SELECT project, ok, ms, ts, row_number() OVER (PARTITION BY project ORDER BY ts DESC) AS rn FROM checks WHERE ts >= ?) WHERE rn <= ? ORDER BY project, ts").bind(recent, LATENCY_POINTS),
+    db.prepare("SELECT project, up, uptime30d, latency_json FROM uptime_summary"), // maintained by the uptime cron; no checks scan here
   ])) as Rows<any>[];
   const by = <T extends object>(r: Rows<T>, k: keyof T) => new Map(r.results.map((x) => [x[k], x]));
   const group = <T extends { repo: string }>(r: Rows<T>) => r.results.reduce((m, x) => m.set(x.repo, [...(m.get(x.repo) ?? []), x]), new Map<string, T[]>());
   const lhBy = by(lh, "project"), apiBy = by(api, "url"), langBy = group<{ repo: string; lang: string; bytes: number; color: string | null }>(langs), freqBy = group<{ repo: string; week: number; added: number; removed: number }>(freq);
   const uptBy = by(upt, "project");
-  const latBy = new Map<string, { ok: number; ms: number | null }[]>(); // oldest first (ORDER BY ts)
-  for (const x of lat.results as { project: string; ok: number; ms: number | null }[]) latBy.set(x.project, [...(latBy.get(x.project) ?? []), x]);
-
   const body = projects.map((p) => {
     const site = !!p.url;
-    const h = site ? latBy.get(p.repo) ?? [] : [];
-    const a = site ? (uptBy.get(p.repo) as { n: number; up: number } | undefined) : undefined;
+    const a = site ? (uptBy.get(p.repo) as { up: number; uptime30d: number | null; latency_json: string } | undefined) : undefined;
     const l = site ? lhBy.get(p.repo) : undefined;
     return {
       repo: p.repo, name: p.name, url: p.url || null,
-      up: h.length ? !!h[h.length - 1].ok : null,
-      uptime30d: a?.n ? Math.round((a.up / a.n) * 1000) / 10 : null,
-      latencyMs: h.filter((x) => x.ms != null).map((x) => x.ms as number),
+      up: a ? !!a.up : null,
+      uptime30d: a?.uptime30d ?? null,
+      latencyMs: a ? latencyOf(a.latency_json) : [],
       ci: ciOf(p.repo, p.ci_state), ciState: p.ci_state,
       lighthouse: l ? { week: l.week, performance: l.performance, accessibility: l.accessibility, best_practices: l.best_practices, seo: l.seo } : null,
       deps: parseDeps(p.deps ?? "[]").map((u) => ({ url: u, name: apiBy.get(u)?.name ?? u, indicator: apiBy.get(u)?.indicator ?? "unknown" })),
@@ -65,5 +58,5 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
       codeFreq: (freqBy.get(p.repo) ?? []).map((f) => ({ week: f.week, add: f.added, del: f.removed })), // public repos only: private repos have no rows here
     };
   });
-  return json(body, 200, 60);
+  return json(body, 200, 300);
 }

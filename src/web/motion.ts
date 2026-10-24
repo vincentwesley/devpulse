@@ -2,7 +2,7 @@ import { animate, inView, stagger } from "motion";
 
 // Enhancement only: content is visible by default; every animation is skipped under reduced motion.
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-const SEL = ".proj, .act li, .stats > div";
+const SEL = ".proj, .stats > div";
 let hoverBound = false;
 
 function scan(root: HTMLElement) {
@@ -23,9 +23,9 @@ function scan(root: HTMLElement) {
 function hover(root: HTMLElement) {
   if (hoverBound) return;
   hoverBound = true;
-  const lift = (e: Event, y: number) => {
+  const lift = (e: PointerEvent, y: number) => {
     const t = (e.target as Element).closest<HTMLElement>(".proj");
-    if (t && !reduced()) animate(t, { y }, { type: "spring", stiffness: 400, damping: 24 });
+    if (t && e.pointerType === "mouse" && matchMedia("(hover: hover)").matches && !reduced()) animate(t, { y }, { type: "spring", stiffness: 400, damping: 24 });
   };
   root.addEventListener("pointerover", (e) => lift(e, -4));
   root.addEventListener("pointerout", (e) => lift(e, 0));

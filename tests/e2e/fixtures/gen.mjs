@@ -26,7 +26,12 @@ w("projects.json", [
 w("commits.json", [{ repo: "alpha", sha: "abc1234", message: "Fix thing\n\nbody", author: "vin", ts: "2026-10-08T10:00:00Z", url: "https://github.com/o/alpha/commit/abc1234" },
   { repo: "beta", sha: "def5678", message: "Beta only", author: "vin", ts: "2026-10-07T10:00:00Z", url: "https://github.com/o/beta/commit/def5678" }]);
 w("posts.json", [{ title: "Hello world", url: "https://vwesley.dev/blog/hello", published: "2026-09-30T00:00:00Z" }]);
-w("stats.json", { streak: { current: 12, longest: 40 }, busiestWeekday: "Tuesday", weekdayTotals: [3, 9, 14, 8, 7, 6, 2], contributionsThisYear: 812, mostActive30d: null, totals: { repos: 21, commits: 3456, loc: 123456 } });
+w("stats.json", { streak: { current: 12, longest: 40 }, busiestWeekday: "Tuesday", weekdayTotals: [3, 9, 14, 8, 7, 6, 2], contributionsThisYear: 812, mostActive30d: null, totals: { repos: 21, commits: 3456, loc: 123456 }, syncedAt: "2026-10-20T10:00:00Z", approx: false });
+const sday = (i, up) => ({ date: new Date(Date.parse("2026-07-24T00:00:00Z") + i * 864e5).toISOString().slice(0, 10), up, total: 96 });
+w("status.json", { sites: [
+  { name: "Alpha", repo: "vincentwesley/alpha", url: "https://alpha.example.com", up: true, uptime90d: 99.9, days: Array.from({ length: 90 }, (_, i) => sday(i, i === 40 ? 90 : 96)) },
+  { name: "Beta <b>x</b>", repo: "vincentwesley/beta", url: "https://beta.example.com", up: false, uptime90d: 80.5, days: Array.from({ length: 90 }, (_, i) => sday(i, i > 80 ? 60 : 96)) }],
+  incidents: [{ name: "Beta <b>x</b>", start: "2026-10-12T10:00:00Z", end: null, status: 503 }] });
 const L = (lang, color, pct) => ({ lang, bytes: pct * 1000, color, pct });
 w("languages.json", { privateIncluded: true,
   public: [L("TypeScript", "#3178c6", 70), L("CSS", "#563d7c", 20), L("Weird", "javascript:x", 10)],

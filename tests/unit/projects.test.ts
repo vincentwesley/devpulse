@@ -15,14 +15,22 @@ describe("/api/projects", () => {
     expect(log.length).toBeLessThanOrEqual(10);
   });
 
-  it("keeps the response shape: uptime, latency oldest-first, up from newest point, no-site = null/empty", async () => {
+  it("never scans checks and reads uptime_summary", async () => {
+    const { db, log } = fakeDb({ "FROM projects": projects });
+    await get(db);
+    expect(log.some((q) => /FROM checks/.test(q.sql))).toBe(false);
+    expect(log.some((q) => /FROM uptime_summary/.test(q.sql))).toBe(true);
+  });
+
+  it("keeps the response shape: uptime, latency oldest-first, up from summary, no-site = null/empty", async () => {
     const { db } = fakeDb({
       "FROM projects": projects.slice(0, 2),
-      "GROUP BY project": [{ project: "o/r1", n: 4, up: 3 }],
-      "row_number()": [{ project: "o/r1", ok: 1, ms: 100 }, { project: "o/r1", ok: 0, ms: null }],
+      "FROM uptime_summary": [{ project: "o/r1", up: 0, uptime30d: 75, latency_json: "[100,200]" }],
     });
-    const body = (await (await get(db)).json()) as { repo: string; up: boolean | null; uptime30d: number | null; latencyMs: number[] }[];
+    const r = await get(db);
+    expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
+    const body = (await r.json()) as { repo: string; up: boolean | null; uptime30d: number | null; latencyMs: number[] }[];
     expect(body[0]).toMatchObject({ repo: "o/r0", up: null, uptime30d: null, latencyMs: [] });
-    expect(body[1]).toMatchObject({ repo: "o/r1", up: false, uptime30d: 75, latencyMs: [100] });
+    expect(body[1]).toMatchObject({ repo: "o/r1", up: false, uptime30d: 75, latencyMs: [100, 200] });
   });
 });

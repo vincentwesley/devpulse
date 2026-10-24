@@ -21,7 +21,15 @@ Worker secrets (never committed; see `.dev.vars.example`):
 
 Outbound calls (Worker only, never the browser): `api.github.com` (GraphQL sync, `stats/code_frequency`), `www.googleapis.com` (PageSpeed Insights, weekly Lighthouse scores), each monitored site and status page (uptime), and the optional blog RSS feed.
 
+## Public routes
+`/api/{projects,status,stats,languages,heatmap,commits,posts,health}`, `/badge/:name.svg`, `/card/:name.svg` (495x120 project card), `/feed.xml` (Atom: commits, releases, posts). All GET, edge-cached 300s (keyed on path only), unknown names return a grey "unknown" SVG with status 404.
+
+## Rate limiting and headers
+Cloudflare Workers Rate Limiting binding `RL` (`wrangler.jsonc`): 60 requests / 10 s per client IP (per location) across `/api/*`, `/badge/*`, `/card/*`, `/feed.xml`; over the limit returns 429 `no-store` with `Retry-After`. Without the binding (tests, local dev) there is no limit. Every Worker response carries HSTS, `Referrer-Policy: no-referrer`, `nosniff` and `frame-ancestors 'none'`; JSON without a TTL is `no-store`. Deploys are local (`wrangler deploy`); CI only tests.
+
 ## Data
 Stored in Cloudflare D1: project metadata, languages, uptime checks, Lighthouse scores, daily contribution counts and recent public commits. Lines of code are an estimate (additions + deletions summed from GitHub's weekly stats).
+Privacy: private repos contribute combined numbers only. `/api/stats` rounds totals (commits to 10, lines to 1000) and sets `approx: true` when private data is included; `/api/languages` returns the combined list only. Uptime is summarised by the 15-minute cron (`uptime_summary`, `daily_uptime`, `incidents`) so requests never scan raw checks.
+
 ## Notice
 Provided as is, without warranty. Licensed under MIT (see `LICENSE`).

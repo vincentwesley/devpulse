@@ -5,13 +5,3 @@
     main > .hs-card { animation: mo-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
   }
 }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; margin: 0.75rem 0 0; }
-.stats > div { padding: 0.5rem 0.7rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
-.stats dt { color: var(--fg-muted); font: 0.75rem var(--font-label); }
-.stats dd { margin: 0.1rem 0 0; font: 1.1rem var(--font-mono); overflow-wrap: anywhere; }
-.months { font: 10px var(--font-mono); fill: var(--fg-muted); }
-.wk { display: block; margin-top: 0.75rem; max-width: 100%; }
-.wk rect { fill: var(--accent); }
-.wk text { font: 10px var(--font-mono); fill: var(--fg-muted); text-anchor: middle; }
-.act { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
-.act li { overflow-wrap: anywhere; }

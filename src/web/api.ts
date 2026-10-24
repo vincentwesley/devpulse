@@ -17,14 +17,18 @@ export interface Project {
   codeFreq: { week: number; add: number; del: number }[]; // last 26 weeks, week = unix seconds
 }
 export interface Language { lang: string; bytes: number; color: string | null; pct: number }
-export interface Languages { public: Language[]; all: Language[]; privateIncluded: boolean }
+export interface Languages { all: Language[] }
 export interface Stats {
   streak: { current: number; longest: number };
   busiestWeekday: string | null; weekdayTotals: number[]; // Sunday..Saturday
   contributionsThisYear: number;
   mostActive30d: { repo: string; name: string; commits: number } | null;
-  totals: { repos: number; commits: number; loc: number }; // public + private aggregates
+  totals: { repos: number; commits: number; loc: number }; // public + private aggregates (rounded when approx)
+  syncedAt: string | null; approx: boolean; // approx: private totals included and rounded
 }
+export interface SiteStatus { name: string; repo: string; url: string; up: boolean | null; uptime90d: number | null; days: { date: string; up: number; total: number }[] }
+export interface Incident { name: string; start: string; end: string | null; status: number | null }
+export interface Status { sites: SiteStatus[]; incidents: Incident[] }
 export interface Commit { repo: string; sha: string; message: string; author: string; ts: string; url: string }
 export const NODATA = "no data yet";
 /** ISO timestamp -> YYYY-MM-DD. */
@@ -49,6 +53,7 @@ export const getCommits = () => get<Commit[]>("/api/commits", noItems);
 export const getPosts = () => get<Post[]>("/api/posts", noItems);
 export const getStats = () => get<Stats>("/api/stats", (s) => !s.totals?.repos);
 export const getLanguages = () => get<Languages>("/api/languages", (l) => noItems(l.all));
+export const getStatus = () => get<Status>("/api/status", (s) => noItems(s.sites));
 export const getHeatmap = () => get<Heat>("/api/heatmap", (h) => noItems(h.days));
 
 /** Create an element with text (textContent only) and optional class / attrs. */

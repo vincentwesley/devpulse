@@ -6,7 +6,7 @@ export type StatusFilter = "all" | "up" | "down";
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60],
 ];
-/** "3 days ago" from an ISO timestamp; "" when missing/invalid. */
+/** "3 days ago" from an ISO timestamp; "" when missing/invalid. The single shared relTime. */
 export function relTime(iso: string | null | undefined, now = Date.now()): string {
   const t = iso ? Date.parse(iso) : NaN;
   if (Number.isNaN(t)) return "";
@@ -35,9 +35,13 @@ const cmp: Record<Sort, (a: Project, b: Project) => number> = {
   name: (a, b) => a.name.localeCompare(b.name),
   status: (a, b) => rank(a) - rank(b),
 };
-export function sortFilter(ps: Project[], sort: Sort, lang: string, status: StatusFilter): Project[] {
+export function sortFilter(ps: Project[], sort: Sort, lang: string, status: StatusFilter, q = "", topic = ""): Project[] {
+  const needle = q.trim().toLowerCase();
+  const hay = (p: Project) => [p.name, p.description, p.language, ...(p.topics ?? [])].join(" ").toLowerCase();
   return ps
     .filter((p) => (!lang || p.language === lang) && (status === "all" || p.up === (status === "up")))
+    .filter((p) => !topic || (p.topics ?? []).includes(topic))
+    .filter((p) => !needle || hay(p).includes(needle))
     .sort((a, b) => cmp[sort](a, b) || a.name.localeCompare(b.name));
 }
 
@@ -46,3 +50,32 @@ export const commitsFor = (p: Project, cs: Commit[]) =>
   cs.filter((c) => c.repo === p.repo || c.repo === p.name || p.repo.endsWith(`/${c.repo}`)).sort((a, b) => b.ts.localeCompare(a.ts));
 
 export const firstLine = (s: string) => s.split("\n", 1)[0];
+
+const PL = new Intl.PluralRules("en");
+/** "1 star" / "7 stars" / "12,345 stars". */
+export const plural = (n: number, word: string) => `${n.toLocaleString("en")} ${PL.select(n) === "one" ? word : `${word}s`}`;
+
+/**
+ * Fuzzy subsequence score of `q` in `text` (case-insensitive); null = no match.
+ * Higher is better: prefix, word starts and consecutive letters score more.
+ */
+export function fuzzy(q: string, text: string): number | null {
+  const a = q.trim().toLowerCase(), b = text.toLowerCase();
+  if (!a) return 0;
+  let score = 0, j = 0, run = 0;
+  for (let i = 0; i < b.length && j < a.length; i++) {
+    if (b[i] !== a[j]) { run = 0; continue; }
+    run++;
+    score += 1 + run * 2 + (i === 0 ? 8 : /[\s\-_/]/.test(b[i - 1]) ? 5 : 0);
+    j++;
+  }
+  return j < a.length ? null : score - b.length * 0.01;
+}
+/** Items matching `q`, best first (stable for ties). */
+export function rankBy<T>(items: T[], q: string, key: (t: T) => string): T[] {
+  return items
+    .map((t, i) => ({ t, i, s: fuzzy(q, key(t)) }))
+    .filter((x): x is { t: T; i: number; s: number } => x.s !== null)
+    .sort((x, y) => y.s - x.s || x.i - y.i)
+    .map((x) => x.t);
+}

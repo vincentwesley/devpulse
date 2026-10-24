@@ -20,9 +20,7 @@ describe("xml escaping", () => {
 
 describe("GET /badge/:repo.svg", () => {
   const rows = (ci: string | null) => ({
-    "FROM projects": [{ repo: "o/metalens", name: "metalens", url: "https://m.test", ci_state: ci }],
-    "SELECT ok FROM checks": [{ ok: 1 }],
-    "FROM checks WHERE project = ? AND ts": [{ n: 10, up: 9 }],
+    "FROM projects": [{ repo: "o/metalens", name: "metalens", url: "https://m.test", ci_state: ci, up: 1, uptime30d: 90 }],
   });
   it("renders svg with strict headers", async () => {
     const r = await get("metalens", env(rows("SUCCESS")));
@@ -39,12 +37,19 @@ describe("GET /badge/:repo.svg", () => {
     expect(await (await get("metalens", env(rows("FAILURE")))).text()).toContain("CI failing");
     expect(await (await get("metalens", env(rows(null)))).text()).toContain("no CI | up 90%");
   });
-  it("404 for unknown, invalid or hostile names (no DB lookup for invalid)", async () => {
-    expect((await get("nope", env({}))).status).toBe(404);
+  it("unknown name -> 404 grey svg cached 300s", async () => {
+    const r = await get("nope", env({}));
+    expect(r.status).toBe(404);
+    expect(r.headers.get("Content-Type")).toBe("image/svg+xml; charset=utf-8");
+    expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(await r.text()).toContain("unknown");
+  });
+  it("404 for invalid or hostile names (no DB lookup, not cached)", async () => {
     for (const bad of ["a%20b", "..%2Fx", "x".repeat(101), "a%3Cb", "o%2Fmetalens"]) {
       const lookups = fakeDb(rows("SUCCESS"));
       const r = await get(bad, { DB: lookups.db } as unknown as Env);
       expect(r.status, bad).toBe(404);
+      expect(r.headers.get("Cache-Control"), bad).toBe("no-store");
       expect(lookups.ops.n, bad).toBe(0);
     }
   });

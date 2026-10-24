@@ -18,15 +18,21 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     const [days, active, totals, priv] = (await db.batch([
       db.prepare("SELECT date, count FROM commits_daily WHERE date >= ? ORDER BY date ASC").bind(iso(+now - HEATMAP_DAYS * 864e5).slice(0, 10)),
       db.prepare("SELECT c.repo AS repo, p.name AS name, COUNT(*) AS commits FROM commits_recent c JOIN projects p ON p.repo = c.repo WHERE c.ts >= ? GROUP BY c.repo ORDER BY commits DESC, c.repo LIMIT 1").bind(iso(+now - 30 * 864e5)),
-      db.prepare("SELECT COUNT(*) AS repos, COALESCE(SUM(commit_count), 0) AS commits, COALESCE(SUM(loc), 0) AS loc FROM projects"),
+      db.prepare("SELECT COUNT(*) AS repos, COALESCE(SUM(commit_count), 0) AS commits, COALESCE(SUM(loc), 0) AS loc, MAX(updated_at) AS synced FROM projects"),
       db.prepare("SELECT repos, commit_count, loc FROM private_agg WHERE id = 1"),
     ])) as { results: any[] }[];
     const t = totals.results[0] ?? {}, p = priv.results[0] ?? {};
+    // Private totals are combined into the numbers and rounded so one sync can't be diffed to reveal a single private repo.
+    const approx = (p.repos ?? 0) > 0 || (p.commit_count ?? 0) > 0 || (p.loc ?? 0) > 0;
+    const [commits, loc] = [(t.commits ?? 0) + (p.commit_count ?? 0), (t.loc ?? 0) + (p.loc ?? 0)];
+    const synced = t.synced ? new Date(t.synced) : null;
     return json({
       ...computeStats(days.results, now),
       // ponytail: counts the newest COMMITS_KEPT stored commits (public repos only), not a full 30-day history.
       mostActive30d: active.results[0] ?? null,
-      totals: { repos: (t.repos ?? 0) + (p.repos ?? 0), commits: (t.commits ?? 0) + (p.commit_count ?? 0), loc: (t.loc ?? 0) + (p.loc ?? 0) },
+      totals: { repos: (t.repos ?? 0) + (p.repos ?? 0), commits: approx ? Math.round(commits / 10) * 10 : commits, loc: approx ? Math.round(loc / 1000) * 1000 : loc },
+      syncedAt: synced && !isNaN(+synced) ? synced.toISOString() : null,
+      approx,
     }, 200, 300);
   }
   if (pathname === "/api/languages") {
@@ -36,7 +42,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     ])) as { results: Lang[] }[];
     const all = new Map<string, Lang>();
     for (const l of [...pub.results, ...priv.results]) all.set(l.lang, { lang: l.lang, bytes: (all.get(l.lang)?.bytes ?? 0) + l.bytes, color: all.get(l.lang)?.color ?? l.color });
-    return json({ public: withPct(pub.results), all: withPct([...all.values()]), privateIncluded: priv.results.length > 0 }, 200, 300);
+    return json({ all: withPct([...all.values()]) }, 200, 300);
   }
   return null;
 }

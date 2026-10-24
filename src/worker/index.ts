@@ -5,7 +5,7 @@ import type { Env } from "./env";
 export default {
   fetch(req, env) {
     const { pathname } = new URL(req.url);
-    if (pathname.startsWith("/api/") || pathname.startsWith("/badge/")) return handleApi(req, env);
+    if (pathname.startsWith("/api/") || pathname.startsWith("/badge/") || pathname.startsWith("/card/") || pathname === "/feed.xml") return handleApi(req, env);
     return env.ASSETS.fetch(req);
   },
   async scheduled(event, env, ctx) {

@@ -28,6 +28,7 @@ export interface Stats {
   mostActive30d: { repo: string; name: string; commits: number } | null;
   totals: { repos: number; commits: number; loc: number }; // public + private aggregates (rounded when approx)
   syncedAt: string | null; approx: boolean; // approx: private totals included and rounded
+  health?: { stale: boolean; since: string | null; tokenDaysLeft: number | null; jobs?: Record<string, { ageMin: number | null; ok: boolean }> };
 }
 export interface SiteStatus { name: string; repo: string; url: string; up: boolean | null; uptime90d: number | null; days: { date: string; up: number; total: number }[] }
 export interface Incident { name: string; start: string; end: string | null; status: number | null }

@@ -1,5 +1,6 @@
 import type { Env } from "../env";
-import { image, readBytes, svg, TIMEOUT_MS } from "../lib/http";
+import { canonicalName } from "../lib/alias";
+import { image, readBytes, redirect, svg, TIMEOUT_MS } from "../lib/http";
 import { NAME } from "./badge";
 
 const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]); // never svg
@@ -13,6 +14,9 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   if ((req.method !== "GET" && req.method !== "HEAD") || !pathname.startsWith("/img/")) return null;
   const name = pathname.slice(5);
   if (!NAME.test(name)) return notFound();
+  const canon = await canonicalName(env, name);
+  if (!canon) return notFound();
+  if (canon !== name) return redirect(`/img/${canon}${new URL(req.url).search}`);
   const p = await env.DB.prepare("SELECT repo, cover_path FROM projects WHERE name = ? AND cover_path IS NOT NULL").bind(name).first<{ repo: string; cover_path: string }>();
   if (!p) return notFound();
   const repo = p.repo.split("/").pop()!;

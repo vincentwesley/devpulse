@@ -7,8 +7,7 @@ import { toProjectPath } from "./urlstate";
 interface Item { label: string; group: "Project" | "Section" | "Action"; run: () => void }
 
 const SECTIONS: [string, string][] = [
-  ["hero", "Hub"], ["featured", "Featured"], ["projects", "Projects"], ["status", "Status"], ["heatmap", "Commit heatmap"],
-  ["activity", "Activity"], ["languages", "Languages"], ["posts", "Latest posts"],
+  ["bento", "Overview"], ["projects", "Projects"], ["activity", "Activity"], ["status", "Uptime"], ["posts", "Latest posts"],
 ];
 const SHORTCUTS: [string, string][] = [
   ["/ or Ctrl+K", "Open the command palette"], ["?", "Show this help"], ["Up / Down", "Move through results"],
@@ -104,6 +103,9 @@ function open(showHelp = false) {
   dlg!.showModal();
   (showHelp ? help.querySelector("button")! : input).focus();
 }
+
+/** Open the palette (header hint button). */
+export const openPalette = () => open();
 
 // A just-closed dialog's input can keep focus for a frame; that is not typing.
 const typing = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]") && !t.closest("dialog:not([open])");

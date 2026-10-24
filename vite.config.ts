@@ -14,5 +14,6 @@ const emitSw = {
 export default defineConfig({
   plugins: [emitSw],
   build: { outDir: "dist", emptyOutDir: true },
-  test: { include: ["tests/unit/**/*.test.ts"] },
+  // "cloudflare:email" only exists in workerd: unit tests get a recording stub.
+  test: { include: ["tests/unit/**/*.test.ts"], alias: { "cloudflare:email": "/tests/unit/_email.ts" } },
 });

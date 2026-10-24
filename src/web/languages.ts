@@ -24,5 +24,5 @@ function chart(list: Language[]) {
 }
 
 export function renderLanguages(langs: Res<Languages>) {
-  show("languages", langs, (d) => chart(d.all));
+  show("tile-langs", langs, (d) => chart(d.all));
 }

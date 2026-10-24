@@ -51,7 +51,7 @@ describe("routes", () => {
     expect(b.totals).toEqual({ repos: 5, commits: 140, loc: 6000 }); // private included: commits to 10, loc to 1000
     expect(b.approx).toBe(true);
     expect(b.mostActive30d).toEqual({ repo: "o/a", name: "a", commits: 4 });
-    expect(Object.keys(b).sort()).toEqual(["approx", "busiestWeekday", "contributionsThisYear", "mostActive30d", "streak", "syncedAt", "totals", "weekdayTotals"]);
+    expect(Object.keys(b).sort()).toEqual(["approx", "busiestWeekday", "contributionsThisYear", "health", "mostActive30d", "streak", "syncedAt", "totals", "weekdayTotals"]);
   });
   it("/api/stats with no data is all zeros / null", async () => {
     const b = (await (await get("/api/stats", {}))!.json()) as any;

@@ -1,5 +1,6 @@
 import type { Env } from "../env";
-import { svg } from "../lib/http";
+import { canonicalName } from "../lib/alias";
+import { redirect, svg } from "../lib/http";
 import { NAME, notFoundSvg, xml } from "./badge";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -38,7 +39,9 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const m = /^\/card\/(.+)\.svg$/.exec(pathname);
   if (!m) return null;
   if (!NAME.test(m[1])) return notFoundSvg();
-  const n = m[1];
+  const n = await canonicalName(env, m[1]);
+  if (!n) return notFoundSvg();
+  if (n !== m[1]) return redirect(`/card/${n}.svg`);
   const [proj, langs, upt] = (await env.DB.batch([
     env.DB.prepare("SELECT name, description, stars, ci_state, url, tagline FROM projects WHERE name = ?").bind(n),
     env.DB.prepare("SELECT lang, bytes, color FROM languages WHERE repo = (SELECT repo FROM projects WHERE name = ?)").bind(n),

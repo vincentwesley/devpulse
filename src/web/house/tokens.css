@@ -2,13 +2,12 @@
 @font-face { font-family: "Space Grotesk"; src: url("fonts/space-grotesk-latin-wght-normal.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
 @font-face { font-family: "Inter"; src: url("fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Silkscreen"; src: url("fonts/silkscreen-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 800; font-style: normal; font-display: swap; }
 
 :root {
   --font-head: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-label: "Silkscreen", ui-monospace, monospace; /* pixel accent: eyebrows, badges, chips, "Made by" only */
-  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --font-mono: ui-monospace, Consolas, monospace; /* DevPulse overrides with --font-data (Departure Mono) in ../tokens-app.css */
 }
 
 /* Dark is the default (also without JS). */

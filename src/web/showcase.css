@@ -1,7 +1,6 @@
 /* Showcase: featured cards, cover thumbs / generated tiles, project page. Tokens only; motion gated. */
 main > section[hidden] { display: none; }
-body[data-view="project"] .tabs { display: none; }
-body[data-view="project"] main > section:not(#pp):not(.creator) { display: none; }
+body[data-view="project"] main > :not(#pp):not(.creator) { display: none; }
 .sc-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .sc-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin-top: 0.75rem; }

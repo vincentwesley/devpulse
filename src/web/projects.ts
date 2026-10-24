@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import "./hub.css";
-import { add, el, fmtDate, link, NODATA, show, type Commit, type Project, type Res } from "./api";
+import { add, el, fmtDate, link, NODATA, show, type Commit, type Project, type Res, type Status } from "./api";
 import { closeDetail, openDetail, openName } from "./detail";
 import { ciFromState, commitsFor, firstLine, plural, relTime, safeColor, sortFilter, type Sort, type StatusFilter } from "./hubutil";
 import { setPaletteProjects } from "./palette";
@@ -219,24 +219,25 @@ function hub(ps: Project[], commits: Commit[]) {
 export function showTopic(t: string) {
   view.topic = t;
   held = null;
-  show("projects", { state: "ok", data: cur.ps }, (ps) => hub(ps, cur.commits));
+  show("ledger", { state: "ok", data: cur.ps }, (ps) => hub(ps, cur.commits));
   return toSearch(view);
 }
 
 /** main.ts passes both fetches; no internal fetching here. */
-let held: [Res<Project[]>, Res<Commit[]>] | null = null;
+let held: [Res<Project[]>, Res<Commit[]>, Res<Status>] | null = null;
 document.addEventListener("focusout", () => setTimeout(() => {
-  if (held && !document.getElementById("projects")?.contains(document.activeElement)) renderProjects(...held);
+  if (held && !document.getElementById("ledger")?.contains(document.activeElement)) renderProjects(...held);
 }));
-export function renderProjects(projects: Res<Project[]>, commits: Res<Commit[]>) {
+// STUB ledger: still the old card grid (Builder L replaces the body, keeps the signature). `_status` feeds the mini uptime bar later.
+export function renderProjects(projects: Res<Project[]>, commits: Res<Commit[]>, _status: Res<Status>) {
   const cs = commits.state === "ok" ? commits.data : [];
   if (projects.state === "ok") {
     cur = { ps: projects.data, commits: cs };
     setPaletteProjects(projects.data);
   }
-  const sec = document.getElementById("projects")!;
-  if (sec.contains(document.activeElement) && sec.querySelector(":scope > .body:not(.skel)")) { held = [projects, commits]; return; } // don't yank the search box mid-typing
+  const sec = document.getElementById("ledger")!;
+  if (sec.contains(document.activeElement) && sec.querySelector(":scope > .body:not(.skel)")) { held = [projects, commits, _status]; return; } // don't yank the search box mid-typing
   held = null;
-  show("projects", projects, (ps) => hub(ps, cs));
+  show("ledger", projects, (ps) => hub(ps, cs));
   if (projects.state === "ok") syncDialog();
 }

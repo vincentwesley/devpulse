@@ -1,0 +1,63 @@
+/* DevPulse design system: spacing, type scale, colour roles, status glyphs, density. Imported after house/tokens.css. */
+@font-face { font-family: "Departure Mono"; src: url("./house/fonts/departure-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+
+:root {
+  /* Data font: every number and piece of metadata. Old rules that use --font-mono follow it. */
+  --font-data: "Departure Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-mono: var(--font-data);
+
+  /* Spacing scale */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 40px;
+
+  /* Type scale (rem; clamp on the large steps). Nothing below 12px. */
+  --fs-display: clamp(1.75rem, 1.25rem + 2.2vw, 2.75rem);
+  --fs-h2: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+  --fs-h3: 1.0625rem;
+  --fs-body: 1rem;
+  --fs-meta: 0.8125rem;  /* 13px, data font */
+  --fs-micro: 0.75rem;   /* 12px, Silkscreen labels only at this size or larger */
+
+  /* Hairline rules instead of nested boxes */
+  --rule: 1px solid var(--border);
+  --rule-strong: 1px solid var(--border-strong);
+
+  /* Colour roles: mint = live/primary, peach = needs attention, lavender = work in progress / selection.
+     --x is the fill/border colour, --x-fg the text-safe variant (peach and lavender need darkening on the light theme). */
+  --live: var(--accent);        --live-fg: var(--accent);
+  --attn: var(--fx-2);          --attn-fg: var(--fx-2);
+  --wip: var(--fx-3);           --wip-fg: var(--fx-3);
+  --select: color-mix(in srgb, var(--fx-3) 22%, transparent);
+
+  /* Status glyphs: colour is never the only signal */
+  --glyph-ok: "\25CF";    /* ● */
+  --glyph-attn: "\25B2";  /* ▲ */
+  --glyph-wip: "\25C6";   /* ◆ */
+
+  /* Focus ring (house :focus-visible stays; this is for custom widgets) */
+  --ring: 2px solid var(--focus);
+
+  /* Density: rows read these. [data-density="compact"] on <html> tightens the ledger. */
+  --row-pad: var(--s3);
+  --row-min: 44px;
+  --header-h: 56px;
+}
+:root[data-theme="light"] {
+  --attn-fg: #9a4a1f;
+  --wip-fg: #5b43b0;
+}
+:root[data-density="compact"] { --row-pad: var(--s2); }
+
+/* Status primitive: <span class="dp-status" data-s="ok|attn|wip">text</span>. Glyph + colour + text. */
+.dp-status { display: inline-flex; align-items: center; gap: var(--s2); font: 400 var(--fs-meta)/1.3 var(--font-data); color: var(--fg); }
+.dp-status::before { content: var(--glyph-ok); color: var(--live); line-height: 1; }
+.dp-status[data-s="attn"]::before { content: var(--glyph-attn); color: var(--attn-fg); }
+.dp-status[data-s="wip"]::before { content: var(--glyph-wip); color: var(--wip-fg); }
+.dp-status[data-s="none"]::before { content: var(--glyph-ok); color: var(--fg-muted); }
+
+/* Hairline-ruled section head: h2 + optional meta on the right */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); margin: 0 0 var(--s3); padding-bottom: var(--s2); border-bottom: var(--rule); }
+.sec-head h2 { margin: 0; font: 600 var(--fs-h2)/1.2 var(--font-head); }
+.meta { font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); }
+.micro { font: 400 var(--fs-micro)/1.2 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
+.icon { display: inline-block; flex: none; vertical-align: middle; fill: currentColor; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

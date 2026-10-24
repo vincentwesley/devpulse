@@ -21,6 +21,9 @@
   <meta name="twitter:title" content="DevPulse">
   <meta name="twitter:description" content="Live health of the projects vincentwesley ships: uptime, CI, activity.">
   <meta name="twitter:image" content="https://devpulse.vwesley.workers.dev/og.png">
+  <link rel="preload" href="/src/web/house/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/src/web/house/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/src/web/house/fonts/departure-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <script src="/theme-init.js"></script>
   <script type="module" src="/src/web/main.ts"></script>
 </head>
@@ -29,56 +32,47 @@
   <header class="top">
     <div class="top__row">
       <h1>DevPulse</h1>
-      <span id="updated" class="muted top__upd"></span>
-      <button id="theme" class="hs-btn" type="button" aria-pressed="false">Light mode</button>
+      <span id="verdict" class="verdict" role="status"><span class="dp-glyph" aria-hidden="true"></span><span class="verdict__t">Checking&hellip;</span></span>
+      <span id="updated" class="meta top__upd"></span>
+      <div class="top__tools">
+        <button id="kbd" class="iconbtn" type="button"><span class="sr-only">Command palette </span><span class="kbd__k">/ &middot; &#8984;K</span></button>
+        <button id="theme" class="iconbtn" type="button" aria-pressed="false" aria-label="Light mode"></button>
+      </div>
     </div>
-    <nav class="tabs" aria-label="Sections">
-      <ul>
-        <li><a href="#hero">Overview</a></li>
-        <li hidden><a href="#featured">Featured</a></li>
-        <li><a href="#projects">Projects</a></li>
-        <li><a href="#status">Status</a></li>
-        <li><a href="#heatmap" data-also="activity">Activity</a></li>
-        <li><a href="#languages">Languages</a></li>
-        <li><a href="#posts">Posts</a></li>
-      </ul>
-    </nav>
+    <p id="banner" class="banner" role="status" hidden></p>
     <p id="offline" class="offline" role="status" hidden>Offline: showing saved data.</p>
   </header>
   <main id="main" tabindex="-1">
-    <section id="hero" class="hs-card" aria-labelledby="h-hero" aria-busy="true">
-      <p class="hs-eyebrow">Hub</p><h2 id="h-hero">vincentwesley</h2>
-      <p class="hero__role">Building and shipping small tools.</p>
+    <section id="bento" aria-labelledby="h-bento">
+      <h2 id="h-bento" class="sr-only">Overview</h2>
+      <div id="tile-featured" class="tile" aria-busy="true"><h2 class="tile__t micro">Featured</h2><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+      <div id="tile-pulse" class="tile" aria-busy="true"><h2 class="tile__t micro">Pulse</h2><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+      <div id="tile-contrib" class="tile" aria-busy="true"><h2 class="tile__t micro">Contributions</h2><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+      <div id="tile-totals" class="tile" aria-busy="true"><h2 class="tile__t micro">Totals</h2><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+      <div id="tile-langs" class="tile" aria-busy="true"><h2 class="tile__t micro">Languages</h2><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+    </section>
+    <section id="projects" aria-labelledby="h-projects">
+      <div class="sec-head"><h2 id="h-projects">Projects</h2></div>
+      <div class="master">
+        <div id="ledger" aria-busy="true"><div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div></div>
+        <aside id="detail-pane" aria-label="Project detail" hidden></aside>
+      </div>
+    </section>
+    <div class="split">
+      <section id="activity" aria-labelledby="h-activity" aria-busy="true">
+        <div class="sec-head"><h2 id="h-activity">Activity</h2></div>
+        <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
+      </section>
+      <section id="status" aria-labelledby="h-status" aria-busy="true">
+        <div class="sec-head"><h2 id="h-status">Uptime</h2></div>
+        <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
+      </section>
+    </div>
+    <section id="posts" aria-labelledby="h-posts" aria-busy="true">
+      <div class="sec-head"><h2 id="h-posts">Latest posts</h2></div>
       <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
     </section>
-    <section id="featured" class="hs-card" aria-labelledby="h-featured" hidden>
-      <p class="hs-eyebrow">Showcase</p><h2 id="h-featured">Featured</h2>
-    </section>
-    <section id="projects" class="hs-card" aria-labelledby="h-projects" aria-busy="true">
-      <p class="hs-eyebrow">Uptime &amp; CI</p><h2 id="h-projects">Projects</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="status" class="hs-card" aria-labelledby="h-status" aria-busy="true">
-      <p class="hs-eyebrow">Uptime</p><h2 id="h-status">Status</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="heatmap" class="hs-card" aria-labelledby="h-heatmap" aria-busy="true">
-      <p class="hs-eyebrow">Activity</p><h2 id="h-heatmap">Commit heatmap</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="activity" class="hs-card" aria-labelledby="h-activity" aria-busy="true">
-      <p class="hs-eyebrow">Feed</p><h2 id="h-activity">Activity</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="languages" class="hs-card" aria-labelledby="h-languages" aria-busy="true">
-      <p class="hs-eyebrow">Stack</p><h2 id="h-languages">Languages</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="posts" class="hs-card" aria-labelledby="h-posts" aria-busy="true">
-      <p class="hs-eyebrow">Blog</p><h2 id="h-posts">Latest posts</h2>
-      <div class="skel body" aria-hidden="true"><i></i><i></i><i></i></div>
-    </section>
-    <section id="pp" class="hs-card" aria-label="Project" hidden></section>
+    <section id="pp" aria-label="Project" hidden></section>
     <section class="section span-12 creator" aria-labelledby="h-creator">
       <div class="card">
         <div class="card__head"><h2 id="h-creator">Credits</h2></div>

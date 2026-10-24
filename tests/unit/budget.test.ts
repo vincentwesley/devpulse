@@ -40,7 +40,7 @@ describe("per-slot subrequest budget", () => {
 
     const start = Date.parse("2026-10-05T00:00:00Z"); // a Monday
     let worstFetch = 0, worstDb = 0;
-    const seen = { loc: false, psi: false, hourly: false };
+    const seen = { loc: false, psi: false, hourly: false, check: false };
     for (let i = 0; i < 7 * 96; i++) {
       const t = start + i * 15 * 60_000;
       fetched.length = 0;
@@ -56,8 +56,10 @@ describe("per-slot subrequest budget", () => {
       if (d.getUTCHours() === 0 && d.getUTCMinutes() === 30) { seen.loc = true; expect(fetched.some((u) => u.includes("code_frequency"))).toBe(true); }
       if (d.getUTCDay() === 1 && d.getUTCHours() === 1 && d.getUTCMinutes() === 0) { seen.psi = true; expect(fetched.some((u) => u.includes("pagespeedonline"))).toBe(true); expect(fetched.length).toBe(30); }
       if (d.getUTCHours() === 3 && d.getUTCMinutes() === 0) { seen.hourly = true; expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(3 + 1); } // 3 repo pages + heatmap
+      // Worst case, fingerprint changed every slot (empty meta): 1 change check + 3 repo pages + heatmap, on top of <= 30 uptime fetches.
+      if (d.getUTCHours() === 3 && d.getUTCMinutes() === 15) { seen.check = true; expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(1 + 3 + 1); }
     }
-    expect(seen).toEqual({ loc: true, psi: true, hourly: true });
+    expect(seen).toEqual({ loc: true, psi: true, hourly: true, check: true });
     expect(worstFetch).toBeLessThanOrEqual(FREE_CAP);
     expect(worstDb).toBeLessThanOrEqual(FREE_CAP);
   }, 60_000);

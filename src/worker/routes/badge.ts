@@ -1,5 +1,6 @@
 import type { Env } from "../env";
-import { svg } from "../lib/http";
+import { canonicalName } from "../lib/alias";
+import { redirect, svg } from "../lib/http";
 
 export const NAME = /^[A-Za-z0-9._-]{1,100}$/;
 export const xml = (s: string) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]!);
@@ -24,6 +25,9 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const m = /^\/badge\/(.+)\.svg$/.exec(pathname);
   if (!m) return null;
   if (!NAME.test(m[1])) return notFoundSvg();
+  const canon = await canonicalName(env, m[1]);
+  if (!canon) return notFoundSvg();
+  if (canon !== m[1]) return redirect(`/badge/${canon}.svg`);
   const p = await env.DB.prepare(
     "SELECT p.repo, p.name, p.url, p.ci_state, u.up, u.uptime30d FROM projects p LEFT JOIN uptime_summary u ON u.project = p.repo WHERE p.name = ?",
   ).bind(m[1]).first<{ repo: string; name: string; url: string | null; ci_state: string | null; up: number | null; uptime30d: number | null }>();

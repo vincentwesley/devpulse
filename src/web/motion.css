@@ -1,7 +1,0 @@
-/* Scroll-driven reveal for section cards. Default (no support / reduced motion): fully visible. */
-@keyframes mo-reveal { from { opacity: 0; translate: 0 1.5rem; } to { opacity: 1; translate: 0 0; } }
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    main > .hs-card { animation: mo-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
-  }
-}

@@ -17,6 +17,10 @@ export const doc = (body: string, type: string, status = 200, cacheSeconds?: num
   new Response(body, { status, headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(cacheSeconds), "Cross-Origin-Resource-Policy": "cross-origin" } });
 export const svg = (body: string, status = 200, cacheSeconds = 300) => doc(body, "image/svg+xml; charset=utf-8", status, cacheSeconds);
 
+/** 301 to a canonical same-origin path (renamed repo / different case). Only reached for names that exist, so caching it is safe. */
+export const redirect = (location: string) =>
+  new Response(null, { status: 301, headers: { ...SEC, Location: location, "Cache-Control": cc(300), "Cross-Origin-Resource-Policy": "cross-origin" } });
+
 /** Declared cover image: same-origin only, long cache. */
 export const image = (body: Uint8Array | null, type: string) =>
   new Response(body as BodyInit | null, { headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(86400), "Cross-Origin-Resource-Policy": "same-origin" } });

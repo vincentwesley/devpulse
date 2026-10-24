@@ -1,6 +1,6 @@
 import "./showcase.css";
 import { add, el, link, NODATA, type Project } from "./api";
-import { ciFromState, initialOf, safeColor, sortFilter, tileBackground, tileColors } from "./hubutil";
+import { ciFromState, initialOf, safeColor, tileBackground, tileColors } from "./hubutil";
 import { navLink } from "./nav";
 import { toProjectPath } from "./urlstate";
 
@@ -58,7 +58,7 @@ export function actions(p: Project, view: boolean) {
   return acts;
 }
 
-function featuredCard(p: Project) {
+export function featuredCard(p: Project) {
   const c = el("article", "", "sc-card");
   const b = el("div", "", "sc-body");
   add(b, el("h3", p.name), pills(p));
@@ -78,19 +78,4 @@ function featuredCard(p: Project) {
   add(b, actions(p, true));
   add(c, cover(p, "lg"), b);
   return c;
-}
-
-/** Up to 3 featured projects after the hero; the section and its tab appear only when there is one. */
-export function renderFeatured(ps: Project[]) {
-  const sec = document.getElementById("featured")!;
-  if (sec.contains(document.activeElement)) return; // don't yank focus on a background refresh
-  const f = sortFilter(ps, "active", "", "all").filter((p) => p.featured).slice(0, 3);
-  const tab = document.querySelector<HTMLAnchorElement>('.tabs a[href="#featured"]')?.parentElement;
-  if (tab) tab.hidden = !f.length;
-  sec.hidden = !f.length;
-  sec.querySelector(":scope > .sc-grid")?.remove();
-  if (!f.length) return;
-  const grid = el("div", "", "sc-grid");
-  add(grid, ...f.map(featuredCard));
-  add(sec, grid);
 }

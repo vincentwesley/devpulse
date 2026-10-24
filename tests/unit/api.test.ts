@@ -5,10 +5,11 @@ import type { Env } from "../../src/worker/env";
 const call = (path: string) => handleApi(new Request("http://x" + path), {} as Env);
 
 describe("api router", () => {
-  it("health", async () => {
+  it("health: no-store, 503 without D1", async () => {
     const r = await call("/api/health");
-    expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true });
+    expect(r.status).toBe(503);
+    expect(r.headers.get("Cache-Control")).toBe("no-store");
+    expect(await r.json()).toEqual({ ok: false });
   });
   it("500 json on route error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});

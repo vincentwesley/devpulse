@@ -7,7 +7,7 @@ Continue work on **DevPulse**, the public project hub, now at https://devpulse.v
 2. Repo is already public (owner OK 2026-10-24). Never change visibility again without an OK; one push per milestone only.
 
 ## State after the token (2026-10-24, verified)
-New fine-grained `GITHUB_TOKEN` (Metadata, Contents, Commit statuses, Actions) works: 21:00 SGT sync gave 29 repos, `approx: true`, `ciState` populated for repos with Actions runs, no private repo names in any output (scanned api/projects, stats, languages, commits, heatmap, status, posts, feed, cards, badges). `INGEST_TOKEN` deleted and "include private contributions" enabled by the owner (heatmap picks it up at the 00:00 UTC refresh).
+New fine-grained `GITHUB_TOKEN` (read-only: Metadata, Contents, Commit statuses, Actions; there is no "Checks" permission) works: 21:00 SGT sync gave 29 repos, `approx: true`, `ciState` populated for repos with Actions runs, no private repo names in any output (scanned api/projects, stats, languages, commits, heatmap, status, posts, feed, cards, badges). `INGEST_TOKEN` deleted and "include private contributions" enabled by the owner (heatmap picks it up at the 00:00 UTC refresh).
 Still to confirm next session: `loc` fills after the first 00:30 UTC job (08:30 SGT); heatmap includes private contributions after 00:00 UTC; MetaLensVGC and access-ease CI show FAILURE (not investigated, other repos are hands-off unless the owner asks). Posts stay hidden until `PORTFOLIO_RSS_URL` is set. Optional showcase blocks go in repos' `.devpulse.json` (owner commits them).
 
 ## How to work here
@@ -21,14 +21,18 @@ Worker: GraphQL sync (`github.ts`, up to 50 repos), cron (`cron.ts`: uptime 15 m
 Showcase: `/p/<name>` (project page, per-project OG tags injected by `routes/page.ts`, trailing `/` tolerated, HEAD ok), `/img/<name>` (cover proxy from the repo, <=2 MB, never svg; exempt from the rate limit; `/api/projects` emits `cover` as `/img/<name>?v=<hash of cover_path+pushed_at>` to bust browser/SW caches, edge cache keys on pathname). Fields come from `.devpulse.json` (`tagline`, `featured`, `image`, `links`; parser `parseShowcase` in `lib/github-parse.ts`) plus a README excerpt (control/bidi chars stripped).
 Live check 2026-10-21: projects, stats, languages, badges return real data. LOC is 0 until the first 00:30 UTC run; posts empty (no RSS URL).
 
+Freshness (round 3, migration 0006, local only until deployed): 15-min GraphQL change check with fingerprint in `meta`, hourly safety-net sync, wipe guard, rename re-key by `repo_id` + `repo_alias` with 301s, 7-day orphan grace, `jobs` heartbeats (error codes only), token expiry from `GitHub-Authentication-Token-Expiration`, `/api/health` + `stats.health`, email alerts (`alerts.ts`, binding `ALERT`). Slot budget (tests/unit/budget.test.ts): hourly <= 43 fetches, change-check slot <= 35 (30 uptime + 1 check + 3 pages + 1 heatmap), 00:30 LOC 46, Mon 01:00 PSI 30; LOC/PSI slots skip the check.
+
 ## Deploy order
-1. **Migrate remote BEFORE deploying**: `npm run db:migrate:remote` (new code reads `uptime_summary`/`daily_uptime`/`incidents` and the 0005 showcase columns).
+1. **Migrate remote BEFORE deploying**: `npm run db:migrate:remote` (new code reads `uptime_summary`/`daily_uptime`/`incidents`, the 0005 showcase columns and the 0006 `jobs`/`meta`/`repo_alias`/`repo_id`). Back up D1 first (`wrangler d1 export`).
 2. `ratelimits` `namespace_id` "1001" in `wrangler.jsonc` must be unused on the Cloudflare account; change it if another Worker owns it.
 3. `npx wrangler deploy`. Rollback: previous version id above.
 
 ## Needs the owner (do last)
 1. DONE 2026-10-24: new `GITHUB_TOKEN`, private contributions setting, `INGEST_TOKEN` deleted.
-2. Optional: `PSI_KEY` secret, `PORTFOLIO_RSS_URL`, repo "Website" fields for uptime, `.devpulse.json` showcase/deps.
+2. Alerts: Cloudflare dashboard > Email > Email Routing for `vwesley.dev`: enable, add your address as a destination, click the verification link. Then `npx wrangler secret put ALERT_TO` (that address). `ALERT_FROM` var is `alerts@vwesley.dev` (change in `wrangler.jsonc` if the domain differs). Without them alerts stay off.
+3. Regenerate the GitHub token before it expires (banner and email appear at 14 days left).
+4. Optional: `PSI_KEY` secret, `PORTFOLIO_RSS_URL`, repo "Website" fields for uptime, `.devpulse.json` showcase/deps.
 
 ## Known gaps / ideas
 1. Repos beyond 50 are dropped; LOC covers 45 repos/day with rotation.

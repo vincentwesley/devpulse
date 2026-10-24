@@ -1,78 +1,45 @@
 import "./style.css";
-import "./motion.css";
-import "./hero.css";
-import "./layout.css";
-import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Res } from "./api";
+import "./shell.css";
+import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Res, type Stats } from "./api";
 import { renderActivity } from "./activity";
-import { renderHeatmap } from "./heatmap";
-import { renderHero } from "./hero";
-import { renderLanguages } from "./languages";
+import { renderContrib, renderFeatured, renderLangs, renderPulse, renderTotals } from "./bento";
+import { icon } from "./icons";
+import { openPalette, initPalette, setPaletteProjects } from "./palette";
 import { initMotion } from "./motion";
-import { initPalette, setPaletteProjects } from "./palette";
 import { renderPosts } from "./posts";
 import { renderProjects } from "./projects";
-import { renderStatus } from "./status";
 import { renderRoute, setProjects, setStatus } from "./projectpage";
-import { renderFeatured } from "./showcase";
+import { renderHealth } from "./shell";
+import { renderUptime } from "./status";
 import { settle, updatedAgo } from "./ui";
 
 const root = document.documentElement;
 const btn = document.querySelector<HTMLButtonElement>("#theme")!;
-const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function setTheme(t: "dark" | "light", save = false) {
   root.dataset.theme = t;
-  btn.textContent = t === "dark" ? "Light mode" : "Dark mode";
+  btn.replaceChildren(icon(t === "dark" ? "sun" : "moon", 20));
+  btn.setAttribute("aria-label", t === "dark" ? "Light mode" : "Dark mode");
   btn.setAttribute("aria-pressed", String(t === "light"));
   document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", t === "dark" ? "#11150e" : "#eef7f1");
   if (save) try { localStorage.setItem("theme", t); } catch {}
 }
 setTheme(root.dataset.theme === "light" ? "light" : "dark"); // theme-init.js already set it before paint
 btn.addEventListener("click", () => setTheme(root.dataset.theme === "light" ? "dark" : "light", true));
+const kbd = document.querySelector<HTMLButtonElement>("#kbd")!;
+kbd.insertBefore(icon("command", 20), kbd.firstChild);
+kbd.addEventListener("click", openPalette);
 
 if (!navigator.webdriver) root.dataset.reveal = ""; // scroll reveal for real users only
 
-// ---- section tabs: smooth scroll + scroll-spy ----
-const tabs = [...document.querySelectorAll<HTMLAnchorElement>(".tabs a")];
-const tabFor = (id: string) => tabs.find((a) => a.hash === `#${id}` || a.dataset.also === id);
-const strip = document.querySelector<HTMLElement>(".tabs ul")!;
-function current(id: string) {
-  const t = tabFor(id);
-  tabs.forEach((a) => (a === t ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current")));
-  if (t) strip.scrollTo({ left: t.offsetLeft - (strip.clientWidth - t.offsetWidth) / 2, behavior: reducedMotion() ? "auto" : "smooth" });
-}
-tabs.forEach((a) =>
-  a.addEventListener("click", (e) => {
-    e.preventDefault();
-    document.querySelector(a.hash)?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
-  }),
-);
-{
-  // Scroll-spy: the last section row whose top has passed the line; side-by-side cards resolve to the first in DOM order.
-  const secs = [...document.querySelectorAll("main > section[id]")];
-  let queued = false;
-  const spy = () => {
-    queued = false;
-    const line = innerHeight * 0.35;
-    let best: Element | undefined, bestTop = -Infinity;
-    for (const s of secs) {
-      if (!s.getClientRects().length) continue; // hidden (no featured / project page view)
-      const t = s.getBoundingClientRect().top;
-      if (t <= line && t > bestTop + 1) { best = s; bestTop = t; }
-    }
-    if (best) current(best.id);
-  };
-  addEventListener("scroll", () => { if (!queued) { queued = true; requestAnimationFrame(spy); } }, { passive: true });
-  addEventListener("resize", spy);
-  spy();
-}
-
-// ---- data: each endpoint fetched once per refresh, results shared ----
+// ---- data: each endpoint fetched once per refresh, results shared. Slow endpoints are cached between fast refreshes. ----
 const offline = document.getElementById("offline")!;
 const upd = document.getElementById("updated")!;
 let syncedAt: string | null = null;
 const tickUpdated = () => { upd.textContent = updatedAgo(syncedAt); };
-let lastCommits: Res<Commit[]> = { state: "empty" };
+const none = { state: "empty" } as const;
+const last: { commits: Res<Commit[]>; heat: Res<Heat>; langs: Res<Languages>; posts: Res<Post[]>; stats: Res<Stats> } =
+  { commits: none, heat: none, langs: none, posts: none, stats: none };
 let lastFast = 0, lastSlow = 0;
 
 const retry = () => refresh(true);
@@ -82,30 +49,31 @@ const done = <T>(id: string, p: Promise<T>, render: (r: T) => void) =>
 const run = async (slow: boolean) => {
   lastFast = Date.now();
   offline.hidden = navigator.onLine;
-  const commits = slow ? getCommits() : Promise.resolve(lastCommits);
+  const keep = <K extends keyof typeof last>(key: K, f: () => Promise<(typeof last)[K]>) =>
+    slow ? f().then((r) => (last[key] = r)) : Promise.resolve(last[key]);
+  // Projects, status and stats move every 15 min server-side; the rest hourly.
+  const projects = getProjects(), status = getStatus();
+  const stats = getStats().then((r) => (last.stats = r));
+  const commits = keep("commits", getCommits);
+  const heat = keep("heat", getHeatmap), langs = keep("langs", getLanguages), posts = keep("posts", getPosts);
   const jobs: Promise<unknown>[] = [
-    done("projects", Promise.all([getProjects(), commits]), ([p, c]) => {
-      renderProjects(p, c);
-      if (p.state === "ok") { setPaletteProjects(p.data); renderFeatured(p.data); }
+    Promise.all([projects, stats, status]).then(([p, s, st]) => renderHealth(p, s, st)).catch(() => {}),
+    done("ledger", Promise.all([projects, commits, status]), ([p, c, st]) => {
+      renderProjects(p, c, st);
+      if (p.state === "ok") setPaletteProjects(p.data);
       setProjects(p, c.state === "ok" ? c.data : []);
     }),
-    done("status", getStatus(), (s) => { renderStatus(s); setStatus(s); }),
+    done("tile-featured", projects, renderFeatured),
+    done("tile-pulse", Promise.all([projects, status]), ([p, st]) => renderPulse(p, st)),
+    done("tile-totals", Promise.all([stats, projects]), ([s, p]) => renderTotals(s, p)),
+    done("tile-contrib", Promise.all([heat, stats]), ([h, s]) => renderContrib(h, s)),
+    done("tile-langs", langs, renderLangs),
+    done("status", status, (s) => { renderUptime(s); setStatus(s); }),
+    done("activity", commits, renderActivity),
+    done("posts", posts, renderPosts),
+    stats.then((s) => { syncedAt = s.state === "ok" ? s.data.syncedAt : null; tickUpdated(); }).catch(() => {}),
   ];
-  if (slow) {
-    lastSlow = Date.now();
-    const stats = getStats();
-    jobs.push(
-      done("hero", stats, (s) => {
-        renderHero(s);
-        syncedAt = s.state === "ok" ? s.data.syncedAt : null;
-        tickUpdated();
-      }),
-      done("heatmap", Promise.all([getHeatmap(), stats]), ([h, s]) => renderHeatmap(h, s)),
-      done("activity", commits.then((c) => (lastCommits = c)), renderActivity),
-      done("languages", getLanguages(), renderLanguages),
-      done("posts", getPosts(), renderPosts),
-    );
-  }
+  if (slow) lastSlow = Date.now();
   await Promise.all(jobs);
 };
 // One refresh at a time. A call during a run is remembered (slow wins) and re-runs afterwards, so Retry is never dropped.
@@ -126,7 +94,7 @@ function refresh(slow: boolean): Promise<void> {
 renderRoute(); // /p/<name> direct load: show the page shell now, content once data arrives
 initPalette();
 refresh(true).then(() => { initMotion(document.querySelector("main")!); document.body.dataset.loaded = "1"; });
-// Projects/status change every 15 min server-side; the rest hourly. One timer decides which, from timestamps.
+// One timer decides fast vs slow refresh, from timestamps.
 setInterval(() => {
   tickUpdated();
   if (document.hidden) return;

@@ -90,7 +90,7 @@ export function readmeExcerpt(md: string | null | undefined): string | null {
 // ---- GraphQL `viewer.repositories` -> public project rows + private aggregates ----
 
 export interface GqlRepo {
-  nameWithOwner: string; name: string; isPrivate: boolean; isArchived?: boolean;
+  id?: string; updatedAt?: string; nameWithOwner: string; name: string; isPrivate: boolean; isArchived?: boolean;
   description?: string | null; homepageUrl?: string | null;
   repositoryTopics?: { nodes?: ({ topic: { name: string } } | null)[] } | null;
   stargazerCount?: number; forkCount?: number; createdAt?: string; pushedAt?: string | null;
@@ -99,7 +99,8 @@ export interface GqlRepo {
   latestRelease?: { tagName: string; publishedAt?: string | null } | null;
   licenseInfo?: { spdxId?: string | null; name?: string | null } | null;
   object?: { text?: string | null } | null;
-  readme?: { text?: string | null } | null;
+  readme?: { text?: string | null } | null;
+
   defaultBranchRef?: { target?: {
     statusCheckRollup?: { state?: string } | null;
     history?: { totalCount?: number; nodes?: ({ oid: string; messageHeadline?: string; committedDate?: string; url?: string; author?: { name?: string | null; user?: { login?: string } | null } | null } | null)[] };
@@ -109,7 +110,7 @@ export interface ReposResp { data?: { viewer?: { repositories: { pageInfo: { has
 
 export interface Lang { lang: string; bytes: number; color: string | null }
 export interface PubRepo extends Repo {
-  description: string | null; language: string | null; stars: number; forks: number; created_at: string | null;
+  repo_id: string | null; description: string | null; language: string | null; stars: number; forks: number; created_at: string | null;
   release_tag: string | null; release_at: string | null; license: string | null; commit_count: number; ci_state: string | null;
   deps: string[]; langs: Lang[]; showcase: Showcase; readme: string | null;
   commits: { repo: string; sha: string; message: string; author: string; ts: string; url: string }[];
@@ -130,6 +131,7 @@ function mapPublic(r: Repo, n: GqlRepo): PubRepo {
   const text = n.object?.text;
   return {
     ...r,
+    repo_id: n.id ?? null,
     description: n.description?.trim() || null, language: n.primaryLanguage?.name ?? null,
     stars: n.stargazerCount ?? 0, forks: n.forkCount ?? 0, created_at: n.createdAt ?? null,
     release_tag: n.latestRelease?.tagName ?? null, release_at: n.latestRelease?.publishedAt ?? null,

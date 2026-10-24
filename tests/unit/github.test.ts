@@ -92,7 +92,7 @@ describe("syncGithub", () => {
     expect(ins.args[2]).toBe("https://metalens.example.dev"); // site
     expect(ins.args[15]).toBe("SUCCESS"); // ci_state
     expect(log.find((q) => q.sql.startsWith("DELETE FROM projects"))?.args).toEqual(["2026-10-09T05:00:00.000Z"]);
-    expect(log.some((q) => q.sql.includes("ON CONFLICT(sha) DO NOTHING") && q.args.length === 12)).toBe(true);
+    expect(log.some((q) => q.sql.includes("ON CONFLICT(sha) DO UPDATE SET repo=excluded.repo") && q.args.length === 12)).toBe(true);
     expect(log.filter((q) => q.sql.startsWith("INSERT INTO languages")).length).toBe(1);
     expect(log.filter((q) => q.sql.startsWith("INSERT INTO totals_private")).map((q) => q.args)).toEqual([["Rust", 4000, "#dea584"], ["TypeScript", 1000, "#3178c6"]]);
     expect(log.find((q) => q.sql.includes("INTO private_agg"))?.args).toEqual([1, 33]);

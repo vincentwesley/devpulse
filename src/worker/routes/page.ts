@@ -1,5 +1,6 @@
 import type { Env } from "../env";
-import { json } from "../lib/http";
+import { canonicalName } from "../lib/alias";
+import { json, redirect } from "../lib/http";
 import { NAME } from "./badge";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -31,8 +32,10 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   // "/" not "/index.html": the assets binding redirects the latter.
   const shell = await env.ASSETS.fetch(new Request(new URL("/", origin)));
   if (!shell.ok) return json({ error: "not found" }, 404);
-  const p = NAME.test(name)
-    ? await env.DB.prepare("SELECT name, description, tagline, cover_path FROM projects WHERE name = ?").bind(name).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
+  const canon = NAME.test(name) ? await canonicalName(env, name) : null;
+  if (canon && canon !== name) return redirect(`/p/${canon}`);
+  const p = canon
+    ? await env.DB.prepare("SELECT name, description, tagline, cover_path FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
     : null;
   const headers = new Headers(shell.headers); // keeps the static CSP / HSTS from public/_headers
   headers.delete("Content-Length"); headers.delete("ETag");

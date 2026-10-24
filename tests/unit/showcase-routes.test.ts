@@ -43,8 +43,8 @@ describe("/p and /img", () => {
   });
   it("HEAD /img/name: headers, no body", async () => {
     vi.stubGlobal("fetch", async () => new Response(new Uint8Array([1, 2, 3]), { headers: { "Content-Type": "image/png" } }));
-    const e = env([{ repo: "o/alpha", cover_path: "c.png" }]);
-    const h = await handleApi(new Request("http://x/img/alpha?v=abc", { method: "HEAD" }), e);
+    const e = env([{ name: "alpha", repo: "o/alpha", cover_path: "c.png" }]);
+    const h =await handleApi(new Request("http://x/img/alpha?v=abc", { method: "HEAD" }), e);
     expect(h.status).toBe(200);
     expect(h.headers.get("Content-Type")).toBe("image/png");
     expect(await h.text()).toBe("");
@@ -60,7 +60,7 @@ describe("/p and /img", () => {
       expect(await r.text()).toContain("<svg");
     }
     vi.stubGlobal("fetch", async () => new Response("x", { status: 500 }));
-    const up = await handleApi(new Request("http://x/img/alpha"), env([{ repo: "o/alpha", cover_path: "c.png" }]));
+    const up = await handleApi(new Request("http://x/img/alpha"), env([{ name: "alpha", repo: "o/alpha", cover_path: "c.png" }]));
     expect([up.status, up.headers.get("Content-Type")]).toEqual([404, "image/svg+xml; charset=utf-8"]);
   });
   it("/img is exempt from the rate limiter", async () => {

@@ -1,0 +1,98 @@
+/* Page shell: sticky one-line header, banner, bento grid, ledger + detail pane, activity/status split, skeletons, reveal. Imported after style.css so it wins ties. */
+html { scroll-padding-top: calc(var(--header-h) + var(--s3)); }
+.skip { position: absolute; left: 0.5rem; top: -4rem; z-index: 20; padding: 0.7rem 1rem; min-height: 44px; box-sizing: border-box; background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.skip:focus { top: 0.5rem; }
+
+/* ---- header ---- */
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: var(--rule); }
+.top__row { display: flex; align-items: center; gap: var(--s3); max-width: 72rem; min-height: var(--header-h); margin: 0 auto; padding: 0 var(--s4); box-sizing: border-box; }
+.top__row h1 { margin: 0; font: 700 1.25rem/1 var(--font-head); letter-spacing: -0.01em; }
+.top__upd { display: none; white-space: nowrap; }
+.top__tools { display: flex; gap: var(--s2); margin-inline-start: auto; }
+#kbd { display: none; } /* phones: no keyboard, and the one-line header needs the room */
+.verdict { display: inline-flex; align-items: center; gap: var(--s2); min-width: 0; min-height: 32px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); border: var(--rule-strong); }
+.verdict__t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-glyph::before { content: var(--glyph-ok); color: var(--fg-muted); }
+.verdict[data-s="ok"] { border-color: var(--live); }
+.verdict[data-s="ok"] .dp-glyph::before { color: var(--live); }
+.verdict[data-s="attn"] { border-color: var(--attn); background: color-mix(in srgb, var(--attn) 16%, transparent); }
+.verdict[data-s="attn"] .dp-glyph::before { content: var(--glyph-attn); color: var(--attn-fg); }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-width: 44px; min-height: 44px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg); background: transparent; border: var(--rule-strong); border-radius: 0; cursor: pointer; }
+.kbd__k { display: none; }
+@media (hover: hover) { .iconbtn:hover { color: var(--accent); border-color: var(--accent); } }
+@media (min-width: 480px) { #kbd { display: inline-flex; } }
+@media (min-width: 640px) { .top__upd { display: block; } }
+@media (min-width: 720px) { .kbd__k { display: inline; } }
+
+.banner, .offline { margin: 0; padding: var(--s2) var(--s4); font-size: var(--fs-meta); border-top: var(--rule); background: color-mix(in srgb, var(--attn) 18%, var(--bg)); }
+.banner { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s1) var(--s5); }
+.banner__msg::before { content: var(--glyph-attn); margin-right: var(--s2); color: var(--attn-fg); }
+.offline { text-align: center; }
+.banner[hidden], .offline[hidden] { display: none; }
+
+/* ---- main ---- */
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s6); max-width: 72rem; margin: 0 auto; padding: var(--s5) var(--s4) var(--s6); outline: 0; }
+main > section, main > .split { min-width: 0; scroll-margin-top: calc(var(--header-h) + var(--s3)); }
+main > section[hidden] { display: none; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s6); }
+.split > section { min-width: 0; }
+@media (min-width: 960px) { .split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s5); } }
+
+/* ---- bento ---- */
+#bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+#tile-featured, #tile-pulse, #tile-contrib { grid-column: 1 / -1; }
+.tile { position: relative; min-width: 0; padding: var(--s4); box-sizing: border-box; background: var(--bg-elev); box-shadow: var(--pix); }
+.tile__t { margin: 0 0 var(--s3); font-weight: 400; }
+#tile-featured { min-height: 16rem; }
+#tile-pulse { min-height: 7rem; }
+#tile-contrib { min-height: 8rem; }
+#tile-totals, #tile-langs { min-height: 8rem; }
+#tile-featured .sc-card { background: transparent; box-shadow: none; }
+@media (min-width: 768px) {
+  #bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s4); }
+  #tile-featured { grid-column: 1 / 3; grid-row: 1 / 3; }
+  #tile-pulse { grid-column: 3 / 5; }
+  #tile-contrib { grid-column: 3 / 5; }
+  #tile-totals { grid-column: 1 / 3; }
+  #tile-langs { grid-column: 3 / 5; }
+}
+.pulse { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.pulse__cell { display: inline-grid; place-items: center; width: 28px; height: 28px; background: var(--bg); border: var(--rule-strong); }
+
+/* ---- projects: ledger + sticky detail pane ---- */
+.master { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+#ledger { min-width: 0; }
+#detail-pane { display: none; }
+@media (min-width: 1024px) {
+  .master:has(#detail-pane:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem); align-items: start; }
+  #detail-pane:not([hidden]) { display: block; position: sticky; top: calc(var(--header-h) + var(--s3)); max-height: calc(100dvh - var(--header-h) - var(--s5)); overflow: auto; overscroll-behavior: contain; padding: var(--s4); box-sizing: border-box; background: var(--bg-elev); box-shadow: var(--pix); }
+}
+
+/* ---- skeletons (aria-busy) with reserved heights so content swaps in without layout shift ---- */
+.skel { display: grid; gap: 0.6rem; margin-top: var(--s3); }
+.skel i { display: block; height: 1.1rem; background: var(--border); }
+.skel i:nth-child(2) { width: 80%; }
+.skel i:nth-child(3) { width: 55%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skel i { animation: skel 1.4s ease-in-out infinite alternate; }
+  @keyframes skel { from { opacity: 0.45; } to { opacity: 1; } }
+}
+.retry { margin-inline-start: 0.5rem; }
+#ledger .skel { min-height: 30rem; }
+#status .skel { min-height: 12rem; }
+#activity .skel { min-height: 18rem; }
+#posts .skel { min-height: 7rem; }
+.tile .skel { margin-top: 0; }
+
+/* ---- scroll reveal: opt-in (main.ts sets data-reveal for real users only) so screenshots, print and axe never see half-faded content ---- */
+@keyframes mo-reveal { from { opacity: 0; translate: 0 1.5rem; } to { opacity: 1; translate: 0 0; } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @media not print {
+      html[data-reveal] main > section:not(#pp), html[data-reveal] .split > section { animation: mo-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
+    }
+  }
+}
+
+/* ---- tap targets ---- */
+.top a, .creator__links a { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }

@@ -6,12 +6,13 @@ import * as feed from "./routes/feed";
 import * as img from "./routes/img";
 import * as page from "./routes/page";
 import * as github from "./routes/github";
+import * as health from "./routes/health";
 import * as posts from "./routes/posts";
 import * as projects from "./routes/projects";
 import * as stats from "./routes/stats";
 import * as status from "./routes/status";
 
-const API = [projects, github, posts, stats, status];
+const API = [projects, github, posts, stats, status, health];
 const CACHED = new Set(["/api/projects", "/api/heatmap", "/api/commits", "/api/posts", "/api/stats", "/api/languages", "/api/status", "/feed.xml"]);
 // Badges/cards: only 200s are stored (public Cache-Control); every 404 and error is no-store, so random names can't grow the cache.
 const isCached = (p: string) => CACHED.has(p) || p.startsWith("/badge/") || p.startsWith("/card/") || p.startsWith("/img/") || p.startsWith("/p/");
@@ -34,7 +35,6 @@ async function dispatch(req: Request, env: Env, pathname: string): Promise<Respo
   else if (pathname.startsWith("/img/")) res = await img.route(req, env, pathname);
   else if (pathname.startsWith("/p/")) res = await page.route(req, env, pathname);
   else if (pathname === "/feed.xml") res = await feed.route(req, env, pathname);
-  else if (pathname === "/api/health") res = req.method === "GET" ? json({ ok: true }) : null;
   else if (pathname.startsWith("/api/")) for (const m of API) if ((res = await m.route(req, env, pathname))) break;
   return res ?? json({ error: "not found" }, 404);
 }

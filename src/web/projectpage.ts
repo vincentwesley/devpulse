@@ -101,7 +101,7 @@ function build(p: Project) {
       b.addEventListener("click", () => {
         const search = showTopic(t);
         navigate(`/${search}`);
-        document.getElementById("projects")?.scrollIntoView();
+        document.getElementById("ledger")?.scrollIntoView();
       });
       add(li, b);
       add(ul, li);

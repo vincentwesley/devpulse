@@ -90,7 +90,7 @@ function incidents(list: Incident[]) {
   return box;
 }
 
-export function renderStatus(status: Res<Status>) {
+export function renderUptime(status: Res<Status>) {
   strips.clear();
   show("status", status, (d) => {
     const box = el("div");

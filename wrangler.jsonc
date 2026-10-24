@@ -1,12 +1,14 @@
-{
+﻿{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "devpulse",
   "main": "src/worker/index.ts",
-  "compatibility_date": "2026-10-09",
+  "compatibility_date": "2026-10-19",
   // No SPA fallback: unknown paths get a plain 404.
   "assets": { "directory": "dist", "binding": "ASSETS" },
   "triggers": { "crons": ["*/15 * * * *"] },
-  "vars": { "GITHUB_OWNER": "vincentwesley" },
+  // ALERT_FROM must be an address on a domain with Email Routing enabled. The recipient is the secret ALERT_TO (a verified destination), so no address lives in this file.
+  "vars": { "GITHUB_OWNER": "vincentwesley", "ALERT_FROM": "alerts@vwesley.dev" },
+  "send_email": [{ "name": "ALERT" }],
   // Per-IP limit (per Cloudflare location): 60 requests / 10s on /api, /badge, /card, /p, /feed.xml (not /img: cached 24h, covers would trip it). Worker routes: /img/<name> cover proxy, /p/<name> project page. namespace_id is an account-unique integer string.
   "ratelimits": [{ "name": "RL", "namespace_id": "1001", "simple": { "limit": 60, "period": 10 } }],
   "d1_databases": [

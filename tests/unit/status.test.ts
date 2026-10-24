@@ -53,6 +53,7 @@ describe("recordChecks (real SQL)", () => {
   });
   it("prune drops rollups older than 90 days", async () => {
     const { db, raw } = sqliteDb();
+    seed(raw);
     raw.exec("INSERT INTO daily_uptime VALUES ('o/a','2020-01-01',1,1), ('o/a','2999-01-01',1,1)");
     raw.exec("INSERT INTO incidents (project,start_ts,end_ts) VALUES ('o/a',1,2), ('o/a',3,NULL)");
     await pruneChecks({ DB: db } as Env);
@@ -132,12 +133,12 @@ describe("rate limiting", () => {
   });
   it("applies to badge, card and feed too; passes when allowed; absent binding => no limit", async () => {
     for (const p of ["/badge/a.svg", "/card/a.svg", "/feed.xml"]) expect((await call(p, { RL: rl(false) } as unknown as Env)).status).toBe(429);
-    expect((await call("/api/health", { RL: rl(true) } as unknown as Env)).status).toBe(200);
-    expect((await call("/api/health", {} as Env)).status).toBe(200);
+    expect((await call("/api/health", { RL: rl(true), DB: sqliteDb().db } as unknown as Env)).status).toBe(200);
+    expect((await call("/api/health", { DB: sqliteDb().db } as Env)).status).toBe(200);
   });
   it("limiter outage fails open", async () => {
     const RL = { limit: async () => { throw new Error("down"); } };
-    expect((await call("/api/health", { RL } as unknown as Env)).status).toBe(200);
+    expect((await call("/api/health", { RL, DB: sqliteDb().db } as unknown as Env)).status).toBe(200);
   });
 });
 
@@ -168,6 +169,7 @@ describe("headers", () => {
 describe("GET /card/:name.svg", () => {
   it("renders a 495x120 card with escaped text and validated colours", async () => {
     const f = fakeDb({
+      "SELECT name FROM projects": [{ name: "a" }],
       "SELECT name, description": [{ name: "a", description: "<script>x</script>", stars: 3, ci_state: "SUCCESS", url: "https://a.test" }],
       "FROM languages": [{ lang: "TS", bytes: 3, color: "#3178c6" }, { lang: "Evil", bytes: 1, color: 'red" onload="x' }],
       "FROM uptime_summary": [{ up: 1, uptime30d: 99.5 }],
@@ -182,7 +184,7 @@ describe("GET /card/:name.svg", () => {
     expect(t).not.toContain("<script");
     expect(t).not.toContain("onload");
     expect(t).toContain("#3178c6");
-    expect(f.ops.n).toBe(1);
+    expect(f.ops.n).toBe(2); // name lookup + one batch
   });
   it("renderCard strips control chars", () => expect(renderCard({ name: "n\x00\x1Fx", description: "d\x0B", stars: 1, ci_state: null, url: null }, [], null, null)).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F]/));
   it("renderCard copes with no languages", () => expect(renderCard({ name: "n", description: null, stars: null, ci_state: null, url: null }, [], null, null)).toContain("no CI"));

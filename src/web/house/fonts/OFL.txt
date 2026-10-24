@@ -2,7 +2,7 @@ Bundled fonts (each licensed under the SIL Open Font License 1.1, below):
 
 Space Grotesk - Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
 Inter - Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
-JetBrains Mono - Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+Departure Mono - Copyright 2022-2024 Helena Zhang (https://github.com/rektdeckard/departure-mono), full notice in OFL-DepartureMono.txt
 Silkscreen - Copyright 2001 The Silkscreen Project Authors (https://github.com/googlefonts/silkscreen)
 
 This license is also available with a FAQ at: https://openfontlicense.org

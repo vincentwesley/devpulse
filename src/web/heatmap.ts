@@ -79,17 +79,25 @@ function grid(all: Day[]) {
     summary.textContent = `${plural(total, "contribution")} in the last ${days.length} days.`;
     readout.textContent = "Tap or focus a day for details.";
     wrap.scrollLeft = wrap.scrollWidth; // start at the most recent week
+    fade();
   };
+  // Edge fade only on the side(s) with more content, so a scrollable year view is visibly scrollable.
+  const fade = () => {
+    wrap.toggleAttribute("data-fade-l", wrap.scrollLeft > 1);
+    wrap.toggleAttribute("data-fade-r", wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 1);
+  };
+  wrap.addEventListener("scroll", fade, { passive: true });
   toggle.addEventListener("click", () => {
     full = !full;
     toggle.setAttribute("aria-pressed", String(full));
+    toggle.textContent = full ? "Last 26 weeks" : "Full year";
     draw();
   });
   redraw = draw;
   if (!listening) { listening = true; listen(); }
   add(out, toggle, wrap, readout, legend, summary);
   draw();
-  requestAnimationFrame(() => { wrap.scrollLeft = wrap.scrollWidth; }); // layout isn't final until attached
+  requestAnimationFrame(() => { wrap.scrollLeft = wrap.scrollWidth; fade(); }); // layout isn't final until attached
   return out;
 }
 
@@ -97,7 +105,7 @@ function statRow(s: Stats) {
   const dl = el("dl", "", "stats");
   const items: [string, string][] = [
     ["Current streak", plural(s.streak.current, "day")], ["Longest streak", plural(s.streak.longest, "day")],
-    ["Busiest weekday", s.busiestWeekday ?? "-"], ["This year", plural(s.contributionsThisYear, "contribution")],
+    ["Busiest weekday", s.busiestWeekday ?? "-"], ["Contributions this year", s.contributionsThisYear.toLocaleString("en")],
   ];
   for (const [k, v] of items) {
     const d = el("div");
@@ -110,15 +118,15 @@ function statRow(s: Stats) {
 function weekdays(t: number[]) {
   const max = d3.max(t) ?? 0;
   if (t.length !== 7 || !max) return el("div");
-  const bw = 32, gap = 10, h = 64, w = 7 * (bw + gap) - gap;
+  const bw = 30, gap = 12, h = 64, w = 7 * (bw + gap); // each group's hit area is the full bw+gap tile (>=44px at 390)
   const y = d3.scaleLinear([0, max], [0, h]);
   const out = el("div");
   const readout = el("p", "Tap or focus a bar for details.", "readout", { "aria-live": "polite" });
   const svg = d3.create("svg").attr("class", "wk").attr("viewBox", `0 0 ${w} ${h + 16}`)
     .attr("role", "group").attr("aria-label", "Commits by weekday");
-  const g = svg.selectAll("g").data(t).join("g").attr("transform", (_, i) => `translate(${i * (bw + gap)},0)`)
+  const g = svg.selectAll("g").data(t).join("g").attr("transform", (_, i) => `translate(${i * (bw + gap) + gap / 2},0)`)
     .attr("role", "button").attr("tabindex", 0).attr("aria-label", (n, i) => `${WD[i]}: ${plural(n, "commit")}`);
-  g.append("rect").attr("class", "hit").attr("width", bw).attr("height", h + 16).attr("fill", "transparent");
+  g.append("rect").attr("class", "hit").attr("x", -gap / 2).attr("width", bw + gap).attr("height", h + 16).attr("fill", "transparent");
   g.append("rect").attr("class", "bar").attr("width", bw).attr("y", (n) => h - y(n)).attr("height", (n) => y(n));
   g.append("text").attr("x", bw / 2).attr("y", h + 13).attr("aria-hidden", "true").text((_, i) => WD[i]);
   const nodes = g.nodes() as unknown as SVGElement[];

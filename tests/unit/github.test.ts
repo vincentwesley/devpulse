@@ -164,8 +164,11 @@ describe("routes", () => {
   });
   it("commits: first line only", async () => {
     const row = { repo: "o/a", sha: "a1", message: "feat\n\nbody", author: "v", ts: "t", url: "u" };
-    const r = (await get("/api/commits", fakeDb({ commits_recent: [row] }).db))!;
+    const f = fakeDb({ commits_recent: [row] });
+    const r = (await get("/api/commits", f.db))!;
     expect(await r.json()).toEqual([{ ...row, message: "feat" }]);
+    expect(f.log[0].sql).toContain("PARTITION BY repo"); // newest few per repo, not a global top-N
+    expect(f.log[0].args).toEqual([5, 60]);
   });
   it("null for other paths", async () => {
     expect(await get("/api/nope", fakeDb().db)).toBeNull();

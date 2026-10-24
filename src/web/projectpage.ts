@@ -1,4 +1,4 @@
-import { add, el, fmtDate, link, NODATA, type Commit, type Project, type Res, type Status } from "./api";
+import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project, type Res, type Status } from "./api";
 import { commitList, copyRow, freqChart, timeline } from "./detail";
 import { plural, readmeBlocks, safeColor } from "./hubutil";
 import { navigate, navLink, setRouteHandler } from "./nav";
@@ -110,7 +110,7 @@ function build(p: Project) {
   }
   if (stack.children.length > 1) add(root, stack);
 
-  add(root, section("Code activity, last 26 weeks", p.codeFreq?.length ? freqChart(p) : el("p", NODATA, "muted")));
+  add(root, section("Code activity, last 26 weeks", p.codeFreq?.length ? freqChart(p) : el("p", COLLECTING, "muted")));
   add(root, section("Timeline", timeline(p)), section("Recent commits", commitList(p, commits)));
   if (p.links?.length) {
     const ul = el("ul", "", "list");

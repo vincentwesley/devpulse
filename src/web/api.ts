@@ -34,6 +34,7 @@ export interface Incident { name: string; start: string; end: string | null; sta
 export interface Status { sites: SiteStatus[]; incidents: Incident[] }
 export interface Commit { repo: string; sha: string; message: string; author: string; ts: string; url: string }
 export const NODATA = "no data yet";
+export const COLLECTING = "collecting data — updates daily"; // code frequency: the LOC job runs daily at 00:30 UTC
 /** ISO timestamp -> YYYY-MM-DD. */
 export const fmtDate = (s: string) => s.slice(0, 10);
 export interface Post { title: string; url: string; published: string }

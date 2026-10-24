@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { add, el, fmtDate, link, NODATA, type Commit, type Project } from "./api";
+import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project } from "./api";
 import { commitsFor, firstLine, plural, relTime, safeColor } from "./hubutil";
 import { toHash } from "./urlstate";
 
@@ -85,7 +85,7 @@ export function timeline(p: Project) {
 
 export function commitList(p: Project, commits: Commit[]) {
   const cs = commitsFor(p, commits).slice(0, 8);
-  if (!cs.length) return el("p", NODATA, "muted");
+  if (!cs.length) return el("p", "no commits yet", "muted");
   const ul = el("ul", "", "list");
   for (const c of cs) {
     const li = el("li");
@@ -134,7 +134,7 @@ function build(p: Project, commits: Commit[]) {
     const k = el("p", "", "muted");
     add(k, el("span", "added", "hub-key"), el("span", "deleted", "hub-key hub-key--del"));
     add(d, k);
-  } else add(d, el("p", NODATA, "muted"));
+  } else add(d, el("p", COLLECTING, "muted"));
 
   add(d, el("h3", "Languages"));
   if (p.languages?.length) {

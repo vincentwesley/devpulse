@@ -1,10 +1,12 @@
 import type { Env } from "../env";
-import { image, json, readBytes, TIMEOUT_MS } from "../lib/http";
+import { image, readBytes, svg, TIMEOUT_MS } from "../lib/http";
 import { NAME } from "./badge";
 
 const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]); // never svg
 const MAX_BYTES = 2 * 1024 * 1024;
-const notFound = () => json({ error: "not found" }, 404);
+// <img>/og:image consumers get a small grey placeholder instead of JSON; 404 + no-store so the page's onerror fallback still fires.
+const PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 21" width="40" height="21"><rect width="40" height="21" fill="#8a8f87"/></svg>';
+const notFound = () => svg(PLACEHOLDER, 404, 0);
 
 /** GET /img/:name -> the cover image a public project declared in .devpulse.json. Origin is built from GITHUB_OWNER + the stored repo, never from the request. */
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {

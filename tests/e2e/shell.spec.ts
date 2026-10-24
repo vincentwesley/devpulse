@@ -78,14 +78,14 @@ test("updated line shows age from stats.syncedAt", async ({ page }) => {
   await expect(page.locator("#updated")).toHaveText(/Updated [45]m ago/);
 });
 
-test("375px: no overflow, hero tiles scroll, tabs reachable", async ({ page }) => {
+test("375px: no overflow, hero tiles wrap (no carousel), tabs reachable", async ({ page }) => {
   await mock(page);
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/");
   await loaded(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const hero = page.locator("#hero .hero__stats");
-  expect(await hero.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true); // carousel with peek
+  expect(await hero.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true); // nothing scrolls off-screen
   for (const a of await page.locator(".tabs a").all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
 

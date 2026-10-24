@@ -34,7 +34,7 @@ let first = true;
 
 export function renderHero(stats: Res<Stats>) {
   const run = () => show("hero", stats, (s) => {
-    const dl = el("dl", "", "hero__stats", { tabindex: "0" }); // scrollable on mobile: keyboard reachable
+    const dl = el("dl", "", "hero__stats");
     const tile = (label: string, value: Node | string) => {
       const dd = el("dd", "", "hero__num");
       add(dd, value);

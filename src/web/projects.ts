@@ -40,8 +40,8 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
   if (pill) add(head, pill);
 
   const stats = el("dl", "", "proj__stats");
-  const row = (k: string, v: Node | string) => {
-    const g = el("div");
+  const row = (k: string, v: Node | string, cls = "") => {
+    const g = el("div", "", cls);
     const dd = el("dd");
     add(dd, v);
     add(g, el("dt", k), dd);
@@ -55,9 +55,9 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
   const st = ciFromState(p.ciState);
   row("CI", ci ? link(ci.conclusion ?? ci.status, ci.url, `hs-chip ci ci--${ci.conclusion ?? ci.status}`)
     : st ? el("span", st.label, `hs-chip ci ci--${st.cls}`) : NODATA);
-  if (p.loc != null) row("Lines changed (est.)", p.loc.toLocaleString("en"));
+  if (p.loc != null) row("Lines changed (est.)", p.loc.toLocaleString("en"), "proj__x");
 
-  const lh = el("div", "", "lh");
+  const lh = el("div", "", "lh proj__x"); // proj__x = secondary rows, hidden on phones (all still in the detail dialog / project page)
   if (p.lighthouse) {
     for (const [k, label] of LH) {
       const n = p.lighthouse[k] as number;
@@ -86,19 +86,24 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
     add(c, t);
   }
   if (p.languages?.length) {
-    add(c, langBar(p));
+    const lb = langBar(p);
+    lb.classList.add("proj__x");
+    add(c, lb);
   }
   const meta = el("p", "", "hub-meta");
   const bits = [p.language, p.stars > 0 ? plural(p.stars, "star") : null, p.forks > 0 ? plural(p.forks, "fork") : null, p.commitCount != null ? plural(p.commitCount, "commit") : null, p.license].filter(Boolean) as string[];
   add(meta, bits.join(" · "));
   if (p.release) add(meta, " · ", el("span", p.release.tag, "hs-chip hub-rel"));
   add(c, meta);
-  if (p.pushedAt) add(c, el("p", `updated ${relTime(p.pushedAt)}`, "hub-meta", { title: fmtDate(p.pushedAt) }));
+  if (p.pushedAt) add(c, el("p", `updated ${relTime(p.pushedAt)}`, "hub-meta proj__x", { title: fmtDate(p.pushedAt) }));
   add(c, stats);
-  if (p.codeFreq?.length)
-    add(c, spark(p.codeFreq.map((w) => w.add + w.del), `Lines changed per week, last ${p.codeFreq.length} weeks`));
+  if (p.codeFreq?.length) {
+    const s = spark(p.codeFreq.map((w) => w.add + w.del), `Lines changed per week, last ${p.codeFreq.length} weeks`);
+    s.classList.add("proj__x");
+    add(c, s);
+  }
   add(c, lh);
-  if (deps.children.length) add(c, deps);
+  if (deps.children.length) { deps.classList.add("proj__x"); add(c, deps); }
   const acts = el("div", "", "hub-actions");
   const more = el("button", "Details", "hs-btn hub-btn", { type: "button", "aria-label": `Details for ${p.name}` });
   more.addEventListener("click", () => openDetail(p, commits));

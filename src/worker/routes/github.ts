@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { COMMITS_RETURNED, HEATMAP_DAYS } from "../config";
+import { COMMITS_PER_REPO, COMMITS_RETURNED, HEATMAP_DAYS } from "../config";
 import { json } from "../lib/http";
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
@@ -10,7 +10,8 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     return json({ days: results }, 200, 300);
   }
   if (pathname === "/api/commits") {
-    const { results } = await env.DB.prepare("SELECT repo, sha, message, author, ts, url FROM commits_recent ORDER BY ts DESC LIMIT ?").bind(COMMITS_RETURNED).all<{ message: string }>();
+    const { results } = await env.DB.prepare("SELECT repo, sha, message, author, ts, url FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY repo ORDER BY ts DESC) AS rn FROM commits_recent) WHERE rn <= ? ORDER BY ts DESC LIMIT ?")
+      .bind(COMMITS_PER_REPO, COMMITS_RETURNED).all<{ message: string }>();
     return json(results.map((r) => ({ ...r, message: (r.message ?? "").split("\n")[0] })), 200, 300);
   }
   return null;

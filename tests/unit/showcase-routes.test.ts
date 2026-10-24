@@ -51,6 +51,18 @@ describe("/p and /img", () => {
     const g = await handleApi(new Request("http://x/img/alpha"), e);
     expect((await g.arrayBuffer()).byteLength).toBe(3);
   });
+  it("/img failure is a grey svg placeholder, 404, no-store", async () => {
+    for (const path of ["/img/nope", "/img/bad%20name"]) {
+      const r = await handleApi(new Request("http://x" + path), env([]));
+      expect(r.status).toBe(404);
+      expect(r.headers.get("Content-Type")).toContain("image/svg+xml");
+      expect(r.headers.get("Cache-Control")).toBe("no-store");
+      expect(await r.text()).toContain("<svg");
+    }
+    vi.stubGlobal("fetch", async () => new Response("x", { status: 500 }));
+    const up = await handleApi(new Request("http://x/img/alpha"), env([{ repo: "o/alpha", cover_path: "c.png" }]));
+    expect([up.status, up.headers.get("Content-Type")]).toEqual([404, "image/svg+xml; charset=utf-8"]);
+  });
   it("/img is exempt from the rate limiter", async () => {
     const limit = vi.fn(async () => ({ success: false }));
     const e = { ...env([]), RL: { limit } } as unknown as Env;

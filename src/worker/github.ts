@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import { COMMITS_KEPT, HEATMAP_DAYS, MAX_REPO_PAGES, MAX_REPOS, REPO_PAGE } from "./config";
+import { COMMITS_KEPT, COMMITS_PER_REPO, HEATMAP_DAYS, MAX_REPO_PAGES, MAX_REPOS, REPO_PAGE } from "./config";
 import { mapCalendar, mapRepos, siteUrl, type CalendarResp, type GqlRepo, type ReposResp } from "./lib/github-parse";
 import { TIMEOUT_MS } from "./lib/http";
 
@@ -61,7 +61,7 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
     ]),
     db.prepare("DELETE FROM projects WHERE updated_at <> ?").bind(ts),
     ...["ci", "commits_recent", "languages", "code_freq"].map((t) => db.prepare(`DELETE FROM ${t} WHERE repo NOT IN (SELECT repo FROM projects)`)),
-    db.prepare("DELETE FROM commits_recent WHERE sha NOT IN (SELECT sha FROM commits_recent ORDER BY ts DESC LIMIT ?)").bind(COMMITS_KEPT),
+    db.prepare("DELETE FROM commits_recent WHERE sha NOT IN (SELECT sha FROM commits_recent ORDER BY ts DESC LIMIT ?) AND sha NOT IN (SELECT sha FROM (SELECT sha, ROW_NUMBER() OVER (PARTITION BY repo ORDER BY ts DESC) AS rn FROM commits_recent) WHERE rn <= ?)").bind(COMMITS_KEPT, COMMITS_PER_REPO),
     // Truncated list = incomplete private totals: keep the previous ones.
     ...(more ? [] : [
       db.prepare("DELETE FROM totals_private"),

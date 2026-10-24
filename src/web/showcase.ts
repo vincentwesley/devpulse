@@ -18,6 +18,8 @@ export function cover(p: Project, size: "lg" | "sm"): HTMLElement {
   const [w, h] = size === "lg" ? [1200, 630] : [320, 140];
   const img = el("img", "", `sc-media sc-media--${size}`, { src: p.cover, alt: "", width: String(w), height: String(h), loading: "lazy", decoding: "async" });
   img.addEventListener("error", () => img.replaceWith(tile(p, size)), { once: true });
+  // The Worker answers a missing cover with a 404 SVG placeholder (intrinsic 40x21), which browsers still render: swap it for the tile too.
+  img.addEventListener("load", () => { if (img.naturalWidth === 40 && img.naturalHeight === 21) img.replaceWith(tile(p, size)); });
   return img;
 }
 

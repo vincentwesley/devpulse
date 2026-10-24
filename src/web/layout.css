@@ -27,10 +27,12 @@ main > .hs-card { container: card / inline-size; }
 @container card (min-width: 38rem) { .hero__stats { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); } }
 @container card (max-width: 26rem) { .proj__stats { font-size: 0.8rem; } }
 
-/* Hero tiles: swipeable carousel on phones with a peek of the next tile. */
+/* Hero tiles: 2-column grid on phones (nothing scrolls off-screen). */
 @media (max-width: 639px) {
-  #hero .hero__stats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 0.75rem; margin-inline: -1.25rem; padding: 0.3rem 1.25rem; scroll-padding-inline: 1.25rem; }
-  #hero .hero__stat { flex: 0 0 68%; scroll-snap-align: start; }
+  #hero .hero__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  #hero .hero__stat { padding: 0.5rem 0.6rem; }
+  #hero .hero__num { font-size: 1.3rem; }
+  #hero .hero__num--txt { font-size: 0.9rem; }
 }
 
 /* Skeletons shown while a section loads (aria-busy on the section). */

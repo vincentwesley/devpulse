@@ -17,7 +17,23 @@
 .hub-topic, .hub-rel { font-size: 0.8rem; padding: 0.2rem 0.6rem; }
 .hub-topic { min-height: 32px; cursor: pointer; font-family: var(--font-label); }
 .hub-topic[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); }
+.hub-topic { position: relative; }
+.hub-topic::after { content: ""; position: absolute; inset: -6px -3px; } /* 44px hit area, same look */
 @media (pointer: coarse) { .hub-topic { min-height: 44px; } }
+
+/* Phones: compact list cards (~half height). Cover tile stays on Featured cards and the project page. */
+@media (max-width: 639.98px) {
+  .grid { gap: 0.75rem; }
+  .proj { padding: 0.7rem; gap: 0.35rem; }
+  .proj > .sc-media, .proj__x { display: none; }
+  .proj .hub-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .proj .hub-topics li:nth-child(n+3) { display: none; } /* the rest are in the Topic filter and on the project page */
+  .proj .hub-topic { min-height: 44px; }
+  .proj__stats { grid-auto-flow: row; display: flex; flex-wrap: wrap; gap: 0.1rem 1rem; }
+  .proj__stats div { justify-content: flex-start; gap: 0.4rem; }
+  .proj .spark-line { width: 72px; height: 20px; }
+  .proj .hub-btn { padding-inline: 0.65rem; font-size: 0.9rem; }
+}
 .hub-langbar { display: flex; height: 8px; background: var(--border); overflow: hidden; }
 .hub-langbar span { display: block; height: 100%; }
 .hub-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }

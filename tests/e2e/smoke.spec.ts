@@ -55,7 +55,8 @@ test("empty state", async ({ page }) => {
   await mock(page, "empty");
   await page.goto("/");
   await loaded(page);
-  for (const id of SECTIONS) await expect(page.locator(`#${id} .empty`)).toContainText("no data yet");
+  for (const id of SECTIONS.filter((s) => s !== "posts")) await expect(page.locator(`#${id} .empty`)).toContainText("no data yet");
+  await expect(page.locator("#posts")).toBeHidden(); // no posts: section and tab are hidden, not a permanent "no data yet"
 });
 
 test("API failure state", async ({ page }) => {
@@ -200,9 +201,11 @@ test("heatmap: 26 weeks on mobile, toggle, readout", async ({ page }) => {
   const cells = page.locator("#heatmap .heat rect");
   expect(await cells.count()).toBeLessThanOrEqual(26 * 7);
   expect(await page.locator("#heatmap .heat-wrap").evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
-  const toggle = page.getByRole("button", { name: "Full year" });
+  const toggle = page.locator("#heatmap .heat-toggle");
+  await expect(toggle).toHaveText("Full year");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(toggle).toHaveText("Last 26 weeks");
   await expect(cells).toHaveCount(365);
   await cells.last().focus();
   await expect(page.locator("#heatmap .readout").first()).toContainText(/contributions? · \d+ \w+ \d{4}/);

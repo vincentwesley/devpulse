@@ -20,7 +20,7 @@ async function setup(page: Page, over: Record<string, unknown> = {}) {
     return r.fulfill({ json: over[name] ?? bodies[name] ?? [] });
   });
   await page.route("**/img/*", (r) =>
-    new URL(r.request().url()).pathname.endsWith("/alpha") ? r.fulfill({ body: PNG, contentType: "image/png" }) : r.fulfill({ status: 404, body: "no" }));
+    new URL(r.request().url()).pathname.endsWith("/alpha") ? r.fulfill({ body: PNG, contentType: "image/png" }) : r.fulfill({ status: 404, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 21" width="40" height="21"><rect width="40" height="21" fill="#888"/></svg>' })); // what the Worker sends for a missing cover
 }
 async function open(page: Page, url = "/", over: Record<string, unknown> = {}) {
   await setup(page, over);

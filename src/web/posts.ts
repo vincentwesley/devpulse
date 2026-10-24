@@ -1,6 +1,12 @@
 import { add, el, fmtDate, link, show, type Post, type Res } from "./api";
 
 export function renderPosts(res: Res<Post[]>) {
+  // No posts yet (empty, not an error): hide the section and its tab; both return as soon as data exists.
+  const none = res.state === "empty";
+  document.getElementById("posts")!.hidden = none;
+  const tab = document.querySelector<HTMLAnchorElement>('.tabs a[href="#posts"]')?.parentElement;
+  if (tab) tab.hidden = none;
+  if (none) return;
   show("posts", res, (ps) => {
     const ul = el("ul", "", "list");
     for (const p of ps) {

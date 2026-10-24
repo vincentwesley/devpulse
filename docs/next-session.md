@@ -1,6 +1,6 @@
 ﻿> Update at the end of any session that changed state. Keep it lean.
 
-Continue work on **DevPulse**, the public project hub. Deployed 2026-10-24 (version 60b97099; earlier rollback targets 96c1755f, 0d408649). Repo is PUBLIC and pushed. Migrations 0001-0005 applied remotely. Live smoke 2026-10-24: Lighthouse mobile perf 98, a11y/BP/SEO 100, CLS 0.045, axe clean, 390px page ~6.9k px. Only do what the owner asks.
+Continue work on **DevPulse**, the public project hub, now at https://devpulse.vwesley.workers.dev (owner renamed the account workers.dev subdomain from vincentwesleybiz to vwesley on 2026-10-24; the old host is gone; the vin-context MCP connector or other Workers may still point at the old host; Atom entry ids intentionally keep the `tag:devpulse.vincentwesleybiz.workers.dev` prefix). Deployed 2026-10-24 (version 60b97099; earlier rollback targets 96c1755f, 0d408649). Repo is PUBLIC and pushed. Migrations 0001-0005 applied remotely. Live smoke 2026-10-24: Lighthouse mobile perf 98, a11y/BP/SEO 100, CLS 0.045, axe clean, 390px page ~6.9k px. Only do what the owner asks.
 
 ## Before anything
 1. Work in the repo root. Read `docs/PLAN.md`.

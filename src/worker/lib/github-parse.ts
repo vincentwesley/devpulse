@@ -30,6 +30,62 @@ export function parseDeps(text: string): string[] {
   } catch { return []; }
 }
 
+export interface Showcase { featured: boolean; tagline: string | null; image: string | null; links: { label: string; url: string }[] }
+const IMAGE = /^[A-Za-z0-9._/-]{1,200}\.(png|jpe?g|webp|gif)$/;
+// eslint-disable-next-line no-control-regex
+const CTRL = /[\x00-\x1F\x7F]/;
+const str = (v: unknown, max: number): string | null => (typeof v === "string" && v.trim() && v.trim().length <= max && !CTRL.test(v.trim()) ? v.trim() : null);
+
+/** `.devpulse.json` `showcase` block. Strict: every invalid field is dropped, never coerced. */
+export function parseShowcase(text: string): Showcase {
+  const out: Showcase = { featured: false, tagline: null, image: null, links: [] };
+  try {
+    const s = (JSON.parse(text) as { showcase?: Record<string, unknown> } | null)?.showcase;
+    if (!s || typeof s !== "object" || Array.isArray(s)) return out;
+    out.featured = s.featured === true;
+    out.tagline = str(s.tagline, 140);
+    const img = typeof s.image === "string" ? s.image : "";
+    if (IMAGE.test(img) && !img.startsWith("/") && !img.split("/").some((p) => p === ".." || p === ".")) out.image = img;
+    if (Array.isArray(s.links) && s.links.length <= 5)
+      out.links = s.links.flatMap((l: { label?: unknown; url?: unknown } | null) => {
+        const label = str(l?.label, 30), url = typeof l?.url === "string" ? l.url.trim() : "";
+        if (!label || url.length > 300 || !isHttps(url) || CTRL.test(url)) return [];
+        const u = new URL(url);
+        return u.username || u.password ? [] : [{ label, url }];
+      });
+  } catch { /* invalid JSON -> defaults */ }
+  return out;
+}
+
+const MAX_README = 8 * 1024, EXCERPT = 1200, BULLETS = 6, PARAS = 2;
+/** README markdown -> plain-text excerpt (<=1200 chars): first paragraphs + up to 6 bullets, no markup, badges, images, HTML or code. Null if nothing usable. */
+export function readmeExcerpt(md: string | null | undefined): string | null {
+  if (!md) return null;
+  const lines = md.slice(0, MAX_README).replace(/<!--[\s\S]*?-->/g, "\n").replace(/<[^>]*>/g, "").split(/\r?\n/);
+  const blocks: string[] = [];
+  let para: string[] = [], paras = 0, bullets = 0, fence: string | null = null;
+  const flush = () => { if (para.length) { if (paras < PARAS) { blocks.push(para.join(" ")); paras++; } para = []; } };
+  for (const raw of lines) {
+    const f = /^\s*(```|~~~)/.exec(raw)?.[1];
+    if (f) { fence = fence ? (fence === f ? null : fence) : f; flush(); continue; }
+    if (fence) continue;
+    let l = raw.trim();
+    if (!l) { flush(); continue; }
+    if (/^(#{1,6}\s|[=-]{3,}$|[*_]{3,}$|\||\[[^\]]+\]:\s)/.test(l)) { flush(); continue; }
+    l = l.replace(/^>\s?/, "").replace(/!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]/g, "");
+    l = l.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\[([^\]]*)\]\[[^\]]*\]/g, "$1");
+    l = l.replace(/[`~]+|\*\*|__|(^|\s)[*_]+(?=\S)|(?<=\S)[*_]+(?=\s|$)/g, "$1").replace(/\s+/g, " ").trim();
+    if (!l || /^[\s\p{P}\p{S}]*$/u.test(l)) continue; // emptied by stripping (badge/image-only line)
+    const b = /^(?:[-*+]|\d+[.)])\s+(.*)$/.exec(raw.trim().replace(/^>\s?/, ""));
+    if (b) { flush(); if (bullets < BULLETS) { blocks.push("- " + l.replace(/^(?:[-*+]|\d+[.)])\s+/, "")); bullets++; } continue; }
+    para.push(l);
+  }
+  flush();
+  // Document order; bullets stay on adjacent lines, everything else is blank-line separated.
+  const text = blocks.reduce((a, b, i) => a + (i ? (b.startsWith("- ") && blocks[i - 1].startsWith("- ") ? "\n" : "\n\n") : "") + b, "");
+  return text ? (text.length > EXCERPT ? text.slice(0, EXCERPT - 1).trimEnd() + "…" : text) : null;
+}
+
 // ---- GraphQL `viewer.repositories` -> public project rows + private aggregates ----
 
 export interface GqlRepo {
@@ -42,6 +98,7 @@ export interface GqlRepo {
   latestRelease?: { tagName: string; publishedAt?: string | null } | null;
   licenseInfo?: { spdxId?: string | null; name?: string | null } | null;
   object?: { text?: string | null } | null;
+  readme?: { text?: string | null } | null;
   defaultBranchRef?: { target?: {
     statusCheckRollup?: { state?: string } | null;
     history?: { totalCount?: number; nodes?: ({ oid: string; messageHeadline?: string; committedDate?: string; url?: string; author?: { name?: string | null; user?: { login?: string } | null } | null } | null)[] };
@@ -53,7 +110,7 @@ export interface Lang { lang: string; bytes: number; color: string | null }
 export interface PubRepo extends Repo {
   description: string | null; language: string | null; stars: number; forks: number; created_at: string | null;
   release_tag: string | null; release_at: string | null; license: string | null; commit_count: number; ci_state: string | null;
-  deps: string[]; langs: Lang[];
+  deps: string[]; langs: Lang[]; showcase: Showcase; readme: string | null;
   commits: { repo: string; sha: string; message: string; author: string; ts: string; url: string }[];
 }
 /** Everything kept about private repos: counts and language bytes. No name, URL or message. */
@@ -79,6 +136,8 @@ function mapPublic(r: Repo, n: GqlRepo): PubRepo {
     commit_count: t?.history?.totalCount ?? 0, ci_state: t?.statusCheckRollup?.state ?? null,
     deps: text && text.length <= MAX_DEPS_FILE ? parseDeps(text) : [],
     langs: langsOf(n),
+    showcase: text && text.length <= MAX_DEPS_FILE ? parseShowcase(text) : parseShowcase(""),
+    readme: readmeExcerpt(n.readme?.text), // public repos only: mapPublic never runs for private ones
     commits: (t?.history?.nodes ?? []).flatMap((c) =>
       c ? [{ repo: n.nameWithOwner, sha: c.oid, message: (c.messageHeadline ?? "").split("\n")[0], url: c.url ?? "", author: c.author?.user?.login ?? c.author?.name ?? "unknown", ts: c.committedDate ?? "" }] : []),
   };

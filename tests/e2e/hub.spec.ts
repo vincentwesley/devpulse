@@ -111,8 +111,10 @@ test("command palette: keyboard open, fuzzy pick, help, ignored while typing", a
   await expect(pal.getByRole("option").first()).toContainText("Gamma");
   await page.keyboard.press("Enter");
   await expect(pal).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "Gamma" })).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/p\/Gamma$/);
+  await expect(page.locator("#pp h1")).toHaveText("Gamma");
+  await page.goBack();
+  await expect(page.locator("#pp")).toBeHidden();
   await page.keyboard.press("Control+k");
   await expect(pal).toBeVisible();
   await page.keyboard.press("ArrowDown");

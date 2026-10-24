@@ -22,7 +22,7 @@ main > section { scroll-margin-top: 7.5rem; min-width: 0; }
 main > .hs-card { container: card / inline-size; }
 @media (min-width: 960px) {
   main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #hero, #projects, #status, .creator { grid-column: 1 / -1; }
+  #hero, #featured, #projects, #status, #pp, .creator { grid-column: 1 / -1; }
 }
 @container card (min-width: 38rem) { .hero__stats { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); } }
 @container card (max-width: 26rem) { .proj__stats { font-size: 0.8rem; } }

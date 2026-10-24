@@ -35,7 +35,7 @@ const mobile = () => {
   return mq;
 };
 
-function site(s: SiteStatus) {
+export function site(s: SiteStatus) {
   const card = el("article", "", "st__site");
   const head = el("div", "", "st__head");
   const pill = el("span", "", `st__pill st__pill--${s.up === true ? "up" : s.up === false ? "down" : "unk"}`);

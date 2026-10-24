@@ -8,6 +8,7 @@ interface P {
   repo: string; name: string; url: string | null; deps: string | null; topics: string | null; description: string | null; language: string | null;
   stars: number | null; forks: number | null; created_at: string | null; pushed_at: string | null; release_tag: string | null; release_at: string | null;
   license: string | null; commit_count: number | null; loc: number | null; ci_state: string | null;
+  tagline: string | null; featured: number | null; cover_path: string | null; readme_excerpt: string | null; links_json: string | null;
 }
 
 /** statusCheckRollup state -> the {status, conclusion, url} chip shape the UI already renders. */
@@ -18,13 +19,14 @@ const ciOf = (repo: string, s: string | null) =>
     url: `https://github.com/${repo}/actions`,
   };
 const latencyOf = (j: string): number[] => { try { const a = JSON.parse(j); return Array.isArray(a) ? a.filter((x) => typeof x === "number") : []; } catch { return []; } };
+const linksOf = (t: string | null): { label: string; url: string }[] => { try { const a = JSON.parse(t ?? "[]"); return Array.isArray(a) ? a.filter((x) => typeof x?.label === "string" && typeof x?.url === "string") : []; } catch { return []; } };
 const topicsOf = (t: string | null): string[] => { try { const a = JSON.parse(t ?? "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } };
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET" || pathname !== "/api/projects") return null;
   const db = env.DB;
   const { results: projects } = await db.prepare(
-    "SELECT repo, name, url, deps, topics, description, language, stars, forks, created_at, pushed_at, release_tag, release_at, license, commit_count, loc, ci_state FROM projects ORDER BY name",
+    "SELECT repo, name, url, deps, topics, description, language, stars, forks, created_at, pushed_at, release_tag, release_at, license, commit_count, loc, ci_state, tagline, featured, cover_path, readme_excerpt, links_json FROM projects ORDER BY name",
   ).all<P>();
   // Constant statement count (D1 free tier: 50 queries/invocation), however many projects there are.
   const [lh, api, langs, freq, upt] = (await db.batch([
@@ -54,6 +56,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
       stars: p.stars ?? 0, forks: p.forks ?? 0, createdAt: p.created_at, pushedAt: p.pushed_at,
       release: p.release_tag ? { tag: p.release_tag, at: p.release_at } : null,
       license: p.license, commitCount: p.commit_count, loc: p.loc,
+      tagline: p.tagline ?? null, featured: !!p.featured, cover: p.cover_path ? `/img/${p.name}` : null, readme: p.readme_excerpt ?? null, links: linksOf(p.links_json),
       languages: withPct((langBy.get(p.repo) ?? []).map(({ lang, bytes, color }) => ({ lang, bytes, color }))),
       codeFreq: (freqBy.get(p.repo) ?? []).map((f) => ({ week: f.week, add: f.added, del: f.removed })), // public repos only: private repos have no rows here
     };

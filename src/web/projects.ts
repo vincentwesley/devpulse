@@ -4,7 +4,8 @@ import { add, el, fmtDate, link, NODATA, show, type Commit, type Project, type R
 import { closeDetail, openDetail, openName } from "./detail";
 import { ciFromState, commitsFor, firstLine, plural, relTime, safeColor, sortFilter, type Sort, type StatusFilter } from "./hubutil";
 import { setPaletteProjects } from "./palette";
-import { DEFAULT_VIEW, parseUrl, toSearch } from "./urlstate";
+import { cover, langBar, viewLink } from "./showcase";
+import { DEFAULT_VIEW, parseProjectPath, parseUrl, toSearch } from "./urlstate";
 
 const LH: [keyof NonNullable<Project["lighthouse"]>, string][] = [
   ["performance", "Perf"], ["accessibility", "A11y"], ["best_practices", "Best"], ["seo", "SEO"],
@@ -27,7 +28,7 @@ function spark(ms: number[], label = `Latency, last ${ms.length} checks: min ${d
 // Toolbar state, seeded from the URL, survives the periodic re-render.
 const { p: _p, ...seed } = parseUrl(location.search, "");
 const view: typeof DEFAULT_VIEW = seed;
-const saveUrl = () => history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
+const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
 
 function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
   const c = el("article", "", "proj");
@@ -71,7 +72,7 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
     add(li, link(`${d.name}: ${d.indicator}`, d.url, `hs-chip dep dep--${d.indicator}`));
     add(deps, li);
   }
-  add(c, head);
+  add(c, cover(p, "sm"), head);
   if (p.description) add(c, el("p", p.description, "hub-desc"));
   if (p.topics?.length) {
     const t = el("ul", "", "hub-topics", { "aria-label": "Topics (select to filter)" });
@@ -85,14 +86,7 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
     add(c, t);
   }
   if (p.languages?.length) {
-    const bar = el("div", "", "hub-langbar", { role: "img", "aria-label": `Languages: ${p.languages.map((l) => `${l.lang} ${Math.round(l.pct)}%`).join(", ")}` });
-    for (const l of p.languages) {
-      const seg = el("span");
-      seg.style.width = `${Math.max(0, l.pct)}%`;
-      seg.style.background = safeColor(l.color);
-      add(bar, seg);
-    }
-    add(c, bar);
+    add(c, langBar(p));
   }
   const meta = el("p", "", "hub-meta");
   const bits = [p.language, p.stars > 0 ? plural(p.stars, "star") : null, p.forks > 0 ? plural(p.forks, "fork") : null, p.commitCount != null ? plural(p.commitCount, "commit") : null, p.license].filter(Boolean) as string[];
@@ -108,7 +102,7 @@ function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
   const acts = el("div", "", "hub-actions");
   const more = el("button", "Details", "hs-btn hub-btn", { type: "button", "aria-label": `Details for ${p.name}` });
   more.addEventListener("click", () => openDetail(p, commits));
-  add(acts, more);
+  add(acts, viewLink(p), more);
   if (p.url) add(acts, link("Live", p.url, "hs-btn hub-btn hub-btn--alt"));
   add(acts, link("Repo", `https://github.com/${p.repo}`, "hs-btn hub-btn hub-btn--alt"));
   add(c, acts);
@@ -214,6 +208,14 @@ function hub(ps: Project[], commits: Commit[]) {
   add(wrap, bar, count, grid);
   draw();
   return wrap;
+}
+
+/** Filter the list by one topic; returns the new "?..." search string. */
+export function showTopic(t: string) {
+  view.topic = t;
+  held = null;
+  show("projects", { state: "ok", data: cur.ps }, (ps) => hub(ps, cur.commits));
+  return toSearch(view);
 }
 
 /** main.ts passes both fetches; no internal fetching here. */

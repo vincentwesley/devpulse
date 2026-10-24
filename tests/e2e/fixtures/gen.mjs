@@ -7,7 +7,7 @@ const s = Date.parse("2025-10-10T00:00:00Z");
 for (let i = 0; i < 365; i++) days.push({ date: new Date(s + i * 864e5).toISOString().slice(0, 10), count: (i * 7) % 11 > 6 ? (i % 5) + 1 : 0 });
 w("heatmap.json", { days });
 const wk = (n) => Array.from({ length: 26 }, (_, i) => ({ week: 1760000000 + i * 604800, add: ((i * 37 + n) % 90) + 5, del: ((i * 53 + n) % 40) }));
-const hub = (o) => ({ ciState: null, description: null, topics: [], language: null, stars: 0, forks: 0, createdAt: "2025-01-01T00:00:00Z", pushedAt: null, release: null, license: null, commitCount: null, loc: null, languages: [], codeFreq: [], ...o });
+const hub = (o) => ({ ciState: null, description: null, topics: [], language: null, stars: 0, forks: 0, createdAt: "2025-01-01T00:00:00Z", pushedAt: null, release: null, license: null, commitCount: null, loc: null, languages: [], codeFreq: [], tagline: null, featured: false, cover: null, readme: null, links: [], ...o });
 w("projects.json", [
   hub({ repo: "vincentwesley/alpha", name: "Alpha", url: "https://alpha.example.com", up: true, uptime30d: 99.87, latencyMs: [120, 140, 110, 300, 150, 130],
     ci: { status: "completed", conclusion: "success", url: "https://github.com/o/alpha/actions/runs/1" },
@@ -15,10 +15,14 @@ w("projects.json", [
     deps: [{ url: "https://www.cloudflarestatus.com", name: "Cloudflare", indicator: "none" }, { url: "https://www.githubstatus.com", name: "GitHub", indicator: "major" }],
     description: "Alpha <i>tool</i> for testing", topics: ["vite", "cloudflare"], language: "TypeScript", stars: 7, forks: 2, license: "MIT", pushedAt: "2026-10-18T10:00:00Z",
     release: { tag: "v1.2.0", at: "2026-10-01T00:00:00Z" }, loc: 12345, commitCount: 80,
-    languages: [{ lang: "TypeScript", bytes: 700, color: "#3178c6", pct: 70 }, { lang: "CSS", bytes: 300, color: "red; background:url(x)", pct: 30 }], codeFreq: wk(1) }),
+    languages: [{ lang: "TypeScript", bytes: 700, color: "#3178c6", pct: 70 }, { lang: "CSS", bytes: 300, color: "red; background:url(x)", pct: 30 }], codeFreq: wk(1),
+    tagline: "Alpha ships tiny tools fast", featured: true, cover: "/img/alpha",
+    readme: ["Alpha is a test project.", "- fast builds", "- <img src=x onerror=window.__pwn=1>", "Second paragraph with <b>markup</b>."].join("\n"),
+    links: [{ label: "Docs", url: "https://docs.example.com/alpha" }, { label: "Bad", url: "javascript:alert(1)" }] }),
   hub({ repo: "vincentwesley/beta", name: "Beta <b>x</b>", url: "https://beta.example.com", up: false, uptime30d: 80.5, latencyMs: [200],
     ci: { status: "completed", conclusion: "failure", url: "https://github.com/o/beta/actions/runs/2" }, lighthouse: null, deps: [],
-    language: "Go", stars: 20, pushedAt: "2026-10-10T10:00:00Z", languages: [{ lang: "Go", bytes: 10, color: "#00ADD8", pct: 100 }], codeFreq: wk(2) }),
+    language: "Go", stars: 20, pushedAt: "2026-10-10T10:00:00Z", languages: [{ lang: "Go", bytes: 10, color: "#00ADD8", pct: 100 }], codeFreq: wk(2),
+    tagline: "Beta has a broken cover", featured: true, cover: "/img/broken" }),
   hub({ repo: "vincentwesley/nosite", name: "NoSite", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, ciState: "PENDING", lighthouse: null, deps: [],
     language: "TypeScript", pushedAt: "2026-09-01T00:00:00Z" }),
   hub({ repo: "vincentwesley/gamma", name: "Gamma", url: "https://gamma.example.com", up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [] }),

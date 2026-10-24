@@ -164,6 +164,20 @@
     "del": 6
    }
   ],
+  "tagline": "Alpha ships tiny tools fast",
+  "featured": true,
+  "cover": "/img/alpha",
+  "readme": "Alpha is a test project.\n- fast builds\n- <img src=x onerror=window.__pwn=1>\nSecond paragraph with <b>markup</b>.",
+  "links": [
+   {
+    "label": "Docs",
+    "url": "https://docs.example.com/alpha"
+   },
+   {
+    "label": "Bad",
+    "url": "javascript:alert(1)"
+   }
+  ],
   "repo": "vincentwesley/alpha",
   "name": "Alpha",
   "url": "https://alpha.example.com",
@@ -355,6 +369,11 @@
     "del": 7
    }
   ],
+  "tagline": "Beta has a broken cover",
+  "featured": true,
+  "cover": "/img/broken",
+  "readme": null,
+  "links": [],
   "repo": "vincentwesley/beta",
   "name": "Beta <b>x</b>",
   "url": "https://beta.example.com",
@@ -386,6 +405,11 @@
   "loc": null,
   "languages": [],
   "codeFreq": [],
+  "tagline": null,
+  "featured": false,
+  "cover": null,
+  "readme": null,
+  "links": [],
   "repo": "vincentwesley/nosite",
   "name": "NoSite",
   "url": null,
@@ -411,6 +435,11 @@
   "loc": null,
   "languages": [],
   "codeFreq": [],
+  "tagline": null,
+  "featured": false,
+  "cover": null,
+  "readme": null,
+  "links": [],
   "repo": "vincentwesley/gamma",
   "name": "Gamma",
   "url": "https://gamma.example.com",

@@ -12,6 +12,8 @@ import { initPalette, setPaletteProjects } from "./palette";
 import { renderPosts } from "./posts";
 import { renderProjects } from "./projects";
 import { renderStatus } from "./status";
+import { renderRoute, setProjects, setStatus } from "./projectpage";
+import { renderFeatured } from "./showcase";
 import { settle, updatedAgo } from "./ui";
 
 const root = document.documentElement;
@@ -54,6 +56,7 @@ tabs.forEach((a) =>
     const line = innerHeight * 0.35;
     let best: Element | undefined, bestTop = -Infinity;
     for (const s of secs) {
+      if (!s.getClientRects().length) continue; // hidden (no featured / project page view)
       const t = s.getBoundingClientRect().top;
       if (t <= line && t > bestTop + 1) { best = s; bestTop = t; }
     }
@@ -83,9 +86,10 @@ const run = async (slow: boolean) => {
   const jobs: Promise<unknown>[] = [
     done("projects", Promise.all([getProjects(), commits]), ([p, c]) => {
       renderProjects(p, c);
-      if (p.state === "ok") setPaletteProjects(p.data);
+      if (p.state === "ok") { setPaletteProjects(p.data); renderFeatured(p.data); }
+      setProjects(p, c.state === "ok" ? c.data : []);
     }),
-    done("status", getStatus(), renderStatus),
+    done("status", getStatus(), (s) => { renderStatus(s); setStatus(s); }),
   ];
   if (slow) {
     lastSlow = Date.now();
@@ -119,6 +123,7 @@ function refresh(slow: boolean): Promise<void> {
   })();
   return running;
 }
+renderRoute(); // /p/<name> direct load: show the page shell now, content once data arrives
 initPalette();
 refresh(true).then(() => { initMotion(document.querySelector("main")!); document.body.dataset.loaded = "1"; });
 // Projects/status change every 15 min server-side; the rest hourly. One timer decides which, from timestamps.

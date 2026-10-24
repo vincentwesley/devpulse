@@ -8,7 +8,7 @@ let current = "";
 
 const wkLabel = (sec: number) => new Date(sec * 1000).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" });
 
-function freqChart(p: Project) {
+export function freqChart(p: Project) {
   const w = 520, h = 190, m = 6, data = p.codeFreq, axis = 28;
   const max = d3.max(data, (d) => Math.max(d.add, d.del)) || 1;
   const x = d3.scaleBand<number>(data.map((_, i) => i), [m, w - m]).padding(0.2);
@@ -53,7 +53,7 @@ function freqChart(p: Project) {
   return wrap;
 }
 
-function copyRow(label: string, text: string) {
+export function copyRow(label: string, text: string) {
   const row = el("div", "", "hub-copy");
   const note = el("span", "", "muted hub-note", { role: "status", "aria-live": "polite" });
   const btn = el("button", "Copy", "hs-btn hub-btn", { type: "button", "aria-label": `Copy ${label} snippet` });
@@ -71,7 +71,7 @@ function copyRow(label: string, text: string) {
   return row;
 }
 
-function timeline(p: Project) {
+export function timeline(p: Project) {
   const ev: [string, string, string][] = [];
   if (p.createdAt) ev.push([p.createdAt, "Created", ""]);
   if (p.release?.at) ev.push([p.release.at, "Latest release", p.release.tag]);
@@ -81,6 +81,18 @@ function timeline(p: Project) {
   for (const [at, what, extra] of ev) add(ol, el("li", `${what}${extra ? ` ${extra}` : ""}: ${fmtDate(at)} (${relTime(at)})`));
   add(ol, el("li", `Now: ${fmtDate(new Date().toISOString())}`));
   return ol;
+}
+
+export function commitList(p: Project, commits: Commit[]) {
+  const cs = commitsFor(p, commits).slice(0, 8);
+  if (!cs.length) return el("p", NODATA, "muted");
+  const ul = el("ul", "", "list");
+  for (const c of cs) {
+    const li = el("li");
+    add(li, link(firstLine(c.message), c.url), el("span", ` ${relTime(c.ts) || fmtDate(c.ts)}`, "muted"));
+    add(ul, li);
+  }
+  return ul;
 }
 
 function build(p: Project, commits: Commit[]) {
@@ -137,17 +149,7 @@ function build(p: Project, commits: Commit[]) {
     add(d, ul);
   } else add(d, el("p", NODATA, "muted"));
 
-  add(d, el("h3", "Recent commits"));
-  const cs = commitsFor(p, commits).slice(0, 8);
-  if (cs.length) {
-    const ul = el("ul", "", "list");
-    for (const c of cs) {
-      const li = el("li");
-      add(li, link(firstLine(c.message), c.url), el("span", ` ${relTime(c.ts) || fmtDate(c.ts)}`, "muted"));
-      add(ul, li);
-    }
-    add(d, ul);
-  } else add(d, el("p", NODATA, "muted"));
+  add(d, el("h3", "Recent commits"), commitList(p, commits));
 
   const n = encodeURIComponent(p.name);
   add(d, el("h3", "Status badge"), copyRow("badge", `![status](${location.origin}/badge/${n}.svg)`));

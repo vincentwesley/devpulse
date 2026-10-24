@@ -29,8 +29,9 @@ export function ciFromState(s: string | null): { cls: string; label: string } | 
 
 const pushed = (p: Project) => (p.pushedAt ? Date.parse(p.pushedAt) || 0 : 0);
 const rank = (p: Project) => (p.up === false ? 0 : p.up === true ? 1 : 2); // down first: needs attention
+const feat = (p: Project) => (p.featured ? 1 : 0);
 const cmp: Record<Sort, (a: Project, b: Project) => number> = {
-  active: (a, b) => pushed(b) - pushed(a),
+  active: (a, b) => feat(b) - feat(a) || pushed(b) - pushed(a), // featured first under the default sort
   stars: (a, b) => b.stars - a.stars,
   name: (a, b) => a.name.localeCompare(b.name),
   status: (a, b) => rank(a) - rank(b),
@@ -78,4 +79,29 @@ export function rankBy<T>(items: T[], q: string, key: (t: T) => string): T[] {
     .filter((x): x is { t: T; i: number; s: number } => x.s !== null)
     .sort((x, y) => y.s - x.s || x.i - y.i)
     .map((x) => x.t);
+}
+
+/** Two colours for a generated cover tile: the project's top two language colours (strict #rrggbb or accent). */
+export function tileColors(langs: { color: string | null }[] | undefined): [string, string] {
+  const a = safeColor(langs?.[0]?.color);
+  return [a, langs?.[1] ? safeColor(langs[1].color) : "var(--fx-2)"];
+}
+/** CSS background for a tile from `tileColors`. */
+export const tileBackground = ([a, b]: [string, string]) =>
+  `linear-gradient(135deg, color-mix(in srgb, ${a} 55%, var(--bg)), color-mix(in srgb, ${b} 30%, var(--bg)))`;
+/** First letter or digit of a name, upper-cased; "?" when there is none. */
+export const initialOf = (name: string) => (Array.from(name).find((c) => /[\p{L}\p{N}]/u.test(c)) ?? "?").toUpperCase();
+
+export interface ReadmeBlock { kind: "p" | "li"; text: string }
+const BULLET = /^(?:[-*•]|\d{1,3}[.)])\s+/;
+/** Plain-text README excerpt -> one block per non-empty line; bullet/numbered lines become list items. Capped. */
+export function readmeBlocks(text: string | null | undefined, max = 60): ReadmeBlock[] {
+  const out: ReadmeBlock[] = [];
+  for (const raw of (text ?? "").split(/\r?\n/)) {
+    const t = raw.trim();
+    if (!t) continue;
+    out.push(BULLET.test(t) ? { kind: "li", text: t.replace(BULLET, "") } : { kind: "p", text: t });
+    if (out.length >= max) break;
+  }
+  return out;
 }

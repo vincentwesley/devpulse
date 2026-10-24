@@ -17,12 +17,22 @@ export const doc = (body: string, type: string, status = 200, cacheSeconds?: num
   new Response(body, { status, headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(cacheSeconds), "Cross-Origin-Resource-Policy": "cross-origin" } });
 export const svg = (body: string, status = 200, cacheSeconds = 300) => doc(body, "image/svg+xml; charset=utf-8", status, cacheSeconds);
 
+/** Declared cover image: same-origin only, long cache. */
+export const image = (body: Uint8Array, type: string) =>
+  new Response(body as BodyInit, { headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(86400), "Cross-Origin-Resource-Policy": "same-origin" } });
+
 export const UA = "DevPulse/1.0 (uptime monitor for vincentwesley's own projects; +https://github.com/vincentwesley)";
 
-/** Body text, or null if it exceeds maxBytes (Content-Length first, then a streamed byte count that aborts early). */
+/** Body text, or null if it exceeds maxBytes. */
 export async function readBounded(src: Request | Response, maxBytes: number): Promise<string | null> {
+  const b = await readBytes(src, maxBytes);
+  return b && new TextDecoder().decode(b);
+}
+
+/** Body bytes, or null if they exceed maxBytes (Content-Length first, then a streamed byte count that aborts early). */
+export async function readBytes(src: Request | Response, maxBytes: number): Promise<Uint8Array | null> {
   if (Number(src.headers.get("Content-Length")) > maxBytes) return null;
-  if (!src.body) return "";
+  if (!src.body) return new Uint8Array();
   const reader = src.body.getReader();
   const chunks: Uint8Array[] = [];
   let n = 0;
@@ -34,7 +44,7 @@ export async function readBounded(src: Request | Response, maxBytes: number): Pr
   const all = new Uint8Array(n);
   let o = 0;
   for (const c of chunks) { all.set(c, o); o += c.byteLength; }
-  return new TextDecoder().decode(all);
+  return all;
 }
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));

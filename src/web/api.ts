@@ -15,6 +15,9 @@ export interface Project {
   commitCount: number | null; loc: number | null; // loc = additions + |deletions| churn, an estimate
   languages: Language[];
   codeFreq: { week: number; add: number; del: number }[]; // last 26 weeks, week = unix seconds
+  // Showcase (from .devpulse.json + README). cover = same-origin `/img/<name>` or null; readme = plain-text excerpt (render via textContent).
+  tagline: string | null; featured: boolean; cover: string | null; readme: string | null;
+  links: { label: string; url: string }[];
 }
 export interface Language { lang: string; bytes: number; color: string | null; pct: number }
 export interface Languages { all: Language[] }

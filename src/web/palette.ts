@@ -1,12 +1,13 @@
 import "./palette.css";
 import { add, el, type Project } from "./api";
 import { rankBy } from "./hubutil";
-import { toHash } from "./urlstate";
+import { navigate } from "./nav";
+import { toProjectPath } from "./urlstate";
 
 interface Item { label: string; group: "Project" | "Section" | "Action"; run: () => void }
 
 const SECTIONS: [string, string][] = [
-  ["hero", "Hub"], ["projects", "Projects"], ["status", "Status"], ["heatmap", "Commit heatmap"],
+  ["hero", "Hub"], ["featured", "Featured"], ["projects", "Projects"], ["status", "Status"], ["heatmap", "Commit heatmap"],
   ["activity", "Activity"], ["languages", "Languages"], ["posts", "Latest posts"],
 ];
 const SHORTCUTS: [string, string][] = [
@@ -28,10 +29,10 @@ export const setPaletteProjects = (p: Project[]) => { projects = p; };
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function items(): Item[] {
-  const out: Item[] = projects.map((p) => ({ label: p.name, group: "Project", run: () => { location.hash = toHash(p.name); } }));
+  const out: Item[] = projects.map((p) => ({ label: p.name, group: "Project", run: () => navigate(toProjectPath(p.name)) }));
   for (const [id, label] of SECTIONS)
-    if (document.getElementById(id))
-      out.push({ label, group: "Section", run: () => document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }) });
+    if (document.getElementById(id) && !document.getElementById(id)!.hidden)
+      out.push({ label, group: "Section", run: () => { if (document.body.dataset.view) navigate("/"); document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }); } });
   out.push(
     { label: "Toggle theme", group: "Action", run: () => document.querySelector<HTMLButtonElement>("#theme")?.click() },
     { label: "Copy feed URL", group: "Action", run: () => {

@@ -1,0 +1,94 @@
+import "./showcase.css";
+import { add, el, link, NODATA, type Project } from "./api";
+import { ciFromState, initialOf, safeColor, sortFilter, tileBackground, tileColors } from "./hubutil";
+import { navLink } from "./nav";
+import { toProjectPath } from "./urlstate";
+
+/** Generated cover: gradient from the project's language colours + its initial. Decorative. */
+export function tile(p: Project, size: "lg" | "sm") {
+  const t = el("div", "", `sc-media sc-tile sc-media--${size}`, { "aria-hidden": "true" });
+  t.style.background = tileBackground(tileColors(p.languages));
+  add(t, el("span", initialOf(p.name), "sc-initial"));
+  return t;
+}
+
+/** Same-origin cover image with reserved size, or the tile when there is none / it fails to load. */
+export function cover(p: Project, size: "lg" | "sm"): HTMLElement {
+  if (!p.cover?.startsWith("/img/")) return tile(p, size);
+  const [w, h] = size === "lg" ? [1200, 630] : [320, 140];
+  const img = el("img", "", `sc-media sc-media--${size}`, { src: p.cover, alt: "", width: String(w), height: String(h), loading: "lazy", decoding: "async" });
+  img.addEventListener("error", () => img.replaceWith(tile(p, size)), { once: true });
+  return img;
+}
+
+export function langBar(p: Project) {
+  const bar = el("div", "", "hub-langbar", { role: "img", "aria-label": `Languages: ${p.languages.map((l) => `${l.lang} ${Math.round(l.pct)}%`).join(", ")}` });
+  for (const l of p.languages) {
+    const seg = el("span");
+    seg.style.width = `${Math.max(0, l.pct)}%`;
+    seg.style.background = safeColor(l.color);
+    add(bar, seg);
+  }
+  return bar;
+}
+
+/** Up/Down + CI at a glance (text and icon, never colour alone). */
+export function pills(p: Project) {
+  const row = el("div", "", "sc-pills");
+  if (!p.url) add(row, el("span", "no live site", "hs-chip hub-nosite"));
+  else add(row, p.up === null ? el("span", NODATA, "pill pill--none") : el("span", p.up ? "▲ Up" : "▼ Down", `pill ${p.up ? "pill--up" : "pill--down"}`));
+  const st = p.ci ? { cls: p.ci.conclusion ?? p.ci.status, label: p.ci.conclusion ?? p.ci.status } : ciFromState(p.ciState);
+  if (st) add(row, el("span", `CI: ${st.label}`, `hs-chip ci ci--${st.cls}`));
+  return row;
+}
+
+export const viewLink = (p: Project) => {
+  const a = navLink("View project", toProjectPath(p.name), "hs-btn hub-btn", `View project ${p.name}`);
+  a.dataset.vp = p.name;
+  return a;
+};
+
+export function actions(p: Project, view: boolean) {
+  const acts = el("div", "", "hub-actions");
+  if (view) add(acts, viewLink(p));
+  if (p.url) add(acts, link("Live", p.url, "hs-btn hub-btn hub-btn--alt"));
+  add(acts, link("Repo", `https://github.com/${p.repo}`, "hs-btn hub-btn hub-btn--alt"));
+  return acts;
+}
+
+function featuredCard(p: Project) {
+  const c = el("article", "", "sc-card");
+  const b = el("div", "", "sc-body");
+  add(b, el("h3", p.name), pills(p));
+  const blurb = p.tagline ?? p.description;
+  if (blurb) add(b, el("p", blurb, "hub-desc"));
+  if (p.languages?.length) {
+    const ul = el("ul", "", "hub-langs", { "aria-label": "Languages" });
+    for (const l of p.languages.slice(0, 4)) {
+      const li = el("li");
+      const dot = el("i", "", "hub-dot", { "aria-hidden": "true" });
+      dot.style.background = safeColor(l.color);
+      add(li, dot, l.lang);
+      add(ul, li);
+    }
+    add(b, ul);
+  }
+  add(b, actions(p, true));
+  add(c, cover(p, "lg"), b);
+  return c;
+}
+
+/** Up to 3 featured projects after the hero; the section and its tab appear only when there is one. */
+export function renderFeatured(ps: Project[]) {
+  const sec = document.getElementById("featured")!;
+  if (sec.contains(document.activeElement)) return; // don't yank focus on a background refresh
+  const f = sortFilter(ps, "active", "", "all").filter((p) => p.featured).slice(0, 3);
+  const tab = document.querySelector<HTMLAnchorElement>('.tabs a[href="#featured"]')?.parentElement;
+  if (tab) tab.hidden = !f.length;
+  sec.hidden = !f.length;
+  sec.querySelector(":scope > .sc-grid")?.remove();
+  if (!f.length) return;
+  const grid = el("div", "", "sc-grid");
+  add(grid, ...f.map(featuredCard));
+  add(sec, grid);
+}

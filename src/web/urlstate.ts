@@ -35,3 +35,10 @@ export function toSearch(s: Omit<UrlState, "p">): string {
 }
 /** "#p/<name>" or "". */
 export const toHash = (name: string) => (name ? `#p/${encodeURIComponent(name)}` : "");
+
+/** "/p/<name>" -> decoded name; null for any other path (the list view). */
+export function parseProjectPath(pathname: string): string | null {
+  const m = /^\/p\/([^/]+)\/?$/.exec(pathname);
+  return m ? dec(m[1]).slice(0, 120) || null : null;
+}
+export const toProjectPath = (name: string) => `/p/${encodeURIComponent(name)}`;

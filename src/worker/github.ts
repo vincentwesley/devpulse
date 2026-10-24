@@ -19,7 +19,7 @@ const REPOS_QUERY = `query($after:String,$n:Int!){viewer{repositories(first:$n,a
 nameWithOwner name isPrivate isArchived description homepageUrl ${TOPICS} stargazerCount forkCount createdAt pushedAt
 primaryLanguage{name} languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{name color}}}
 latestRelease{tagName publishedAt} licenseInfo{spdxId name}
-object(expression:"HEAD:.devpulse.json"){...on Blob{text}}
+object(expression:"HEAD:.devpulse.json"){...on Blob{text}} readme:object(expression:"HEAD:README.md"){...on Blob{text}}
 defaultBranchRef{target{...on Commit{statusCheckRollup{state} history(first:10){totalCount nodes{oid messageHeadline committedDate url author{name user{login}}}}}}}
 }}}}`;
 const CAL_QUERY = "query($login:String!,$from:DateTime!,$to:DateTime!){user(login:$login){contributionsCollection(from:$from,to:$to){contributionCalendar{weeks{contributionDays{date contributionCount}}}}}}";
@@ -52,9 +52,9 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
   await db.batch([
     ...repos.flatMap((r) => [
       db.prepare(
-        "INSERT INTO projects (repo,name,url,topics,deps,description,language,stars,forks,created_at,pushed_at,release_tag,release_at,license,commit_count,ci_state,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) " +
-        "ON CONFLICT(repo) DO UPDATE SET name=excluded.name,url=excluded.url,topics=excluded.topics,deps=excluded.deps,description=excluded.description,language=excluded.language,stars=excluded.stars,forks=excluded.forks,created_at=excluded.created_at,pushed_at=excluded.pushed_at,release_tag=excluded.release_tag,release_at=excluded.release_at,license=excluded.license,commit_count=excluded.commit_count,ci_state=excluded.ci_state,updated_at=excluded.updated_at",
-      ).bind(r.full_name, r.name, siteUrl(r), JSON.stringify(r.topics), JSON.stringify(r.deps), r.description, r.language, r.stars, r.forks, r.created_at, r.pushed_at ?? null, r.release_tag, r.release_at, r.license, r.commit_count, r.ci_state, ts),
+        "INSERT INTO projects (repo,name,url,topics,deps,description,language,stars,forks,created_at,pushed_at,release_tag,release_at,license,commit_count,ci_state,tagline,featured,cover_path,readme_excerpt,links_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) " +
+        "ON CONFLICT(repo) DO UPDATE SET name=excluded.name,url=excluded.url,topics=excluded.topics,deps=excluded.deps,description=excluded.description,language=excluded.language,stars=excluded.stars,forks=excluded.forks,created_at=excluded.created_at,pushed_at=excluded.pushed_at,release_tag=excluded.release_tag,release_at=excluded.release_at,license=excluded.license,commit_count=excluded.commit_count,ci_state=excluded.ci_state,tagline=excluded.tagline,featured=excluded.featured,cover_path=excluded.cover_path,readme_excerpt=excluded.readme_excerpt,links_json=excluded.links_json,updated_at=excluded.updated_at",
+      ).bind(r.full_name, r.name, siteUrl(r), JSON.stringify(r.topics), JSON.stringify(r.deps), r.description, r.language, r.stars, r.forks, r.created_at, r.pushed_at ?? null, r.release_tag, r.release_at, r.license, r.commit_count, r.ci_state, r.showcase.tagline, r.showcase.featured ? 1 : 0, r.showcase.image, r.readme, JSON.stringify(r.showcase.links), ts),
       db.prepare("DELETE FROM languages WHERE repo=?").bind(r.full_name),
       ...(r.langs.length ? [db.prepare(`INSERT INTO languages (repo,lang,bytes,color) VALUES ${rows(r.langs.length, 4)}`).bind(...r.langs.flatMap((l) => [r.full_name, l.lang, l.bytes, l.color]))] : []),
       ...(r.commits.length ? [db.prepare(`INSERT INTO commits_recent (repo,sha,message,author,ts,url) VALUES ${rows(r.commits.length, 6)} ON CONFLICT(sha) DO NOTHING`).bind(...r.commits.flatMap((c) => [c.repo, c.sha, c.message, c.author, c.ts, c.url]))] : []),

@@ -166,7 +166,7 @@
   ],
   "tagline": "Alpha ships tiny tools fast",
   "featured": true,
-  "cover": "/img/alpha",
+  "cover": "/img/alpha?v=0a1b2c3d",
   "readme": "Alpha is a test project.\n- fast builds\n- <img src=x onerror=window.__pwn=1>\nSecond paragraph with <b>markup</b>.",
   "links": [
    {
@@ -371,7 +371,7 @@
   ],
   "tagline": "Beta has a broken cover",
   "featured": true,
-  "cover": "/img/broken",
+  "cover": "/img/broken?v=deadbeef",
   "readme": null,
   "links": [],
   "repo": "vincentwesley/beta",

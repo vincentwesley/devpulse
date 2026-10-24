@@ -83,7 +83,8 @@ export function readmeExcerpt(md: string | null | undefined): string | null {
   flush();
   // Document order; bullets stay on adjacent lines, everything else is blank-line separated.
   const text = blocks.reduce((a, b, i) => a + (i ? (b.startsWith("- ") && blocks[i - 1].startsWith("- ") ? "\n" : "\n\n") : "") + b, "");
-  return text ? (text.length > EXCERPT ? text.slice(0, EXCERPT - 1).trimEnd() + "…" : text) : null;
+  const out = text.replace(/[\x00-\x08\x0B-\x1F\x7F\u202A-\u202E\u2066-\u2069]/g, "").trim();
+  return out ? (out.length > EXCERPT ? out.slice(0, EXCERPT - 1).trimEnd() + "…" : out) : null;
 }
 
 // ---- GraphQL `viewer.repositories` -> public project rows + private aggregates ----
@@ -98,7 +99,7 @@ export interface GqlRepo {
   latestRelease?: { tagName: string; publishedAt?: string | null } | null;
   licenseInfo?: { spdxId?: string | null; name?: string | null } | null;
   object?: { text?: string | null } | null;
-  readme?: { text?: string | null } | null;
+  readme?: { text?: string | null } | null;
   defaultBranchRef?: { target?: {
     statusCheckRollup?: { state?: string } | null;
     history?: { totalCount?: number; nodes?: ({ oid: string; messageHeadline?: string; committedDate?: string; url?: string; author?: { name?: string | null; user?: { login?: string } | null } | null } | null)[] };

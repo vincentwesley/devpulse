@@ -18,8 +18,8 @@ export const doc = (body: string, type: string, status = 200, cacheSeconds?: num
 export const svg = (body: string, status = 200, cacheSeconds = 300) => doc(body, "image/svg+xml; charset=utf-8", status, cacheSeconds);
 
 /** Declared cover image: same-origin only, long cache. */
-export const image = (body: Uint8Array, type: string) =>
-  new Response(body as BodyInit, { headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(86400), "Cross-Origin-Resource-Policy": "same-origin" } });
+export const image = (body: Uint8Array | null, type: string) =>
+  new Response(body as BodyInit | null, { headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(86400), "Cross-Origin-Resource-Policy": "same-origin" } });
 
 export const UA = "DevPulse/1.0 (uptime monitor for vincentwesley's own projects; +https://github.com/vincentwesley)";
 

@@ -22,6 +22,9 @@ const latencyOf = (j: string): number[] => { try { const a = JSON.parse(j); retu
 const linksOf = (t: string | null): { label: string; url: string }[] => { try { const a = JSON.parse(t ?? "[]"); return Array.isArray(a) ? a.filter((x) => typeof x?.label === "string" && typeof x?.url === "string") : []; } catch { return []; } };
 const topicsOf = (t: string | null): string[] => { try { const a = JSON.parse(t ?? "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } };
 
+/** 8-hex FNV-1a: a cache-busting tag, not security. */
+const tag = (s: string) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193); return (h >>> 0).toString(16).padStart(8, "0"); };
+
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET" || pathname !== "/api/projects") return null;
   const db = env.DB;
@@ -56,7 +59,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
       stars: p.stars ?? 0, forks: p.forks ?? 0, createdAt: p.created_at, pushedAt: p.pushed_at,
       release: p.release_tag ? { tag: p.release_tag, at: p.release_at } : null,
       license: p.license, commitCount: p.commit_count, loc: p.loc,
-      tagline: p.tagline ?? null, featured: !!p.featured, cover: p.cover_path ? `/img/${p.name}` : null, readme: p.readme_excerpt ?? null, links: linksOf(p.links_json),
+      tagline: p.tagline ?? null, featured: !!p.featured, cover: p.cover_path ? `/img/${p.name}?v=${tag(p.cover_path + "|" + (p.pushed_at ?? ""))}` : null, readme: p.readme_excerpt ?? null, links: linksOf(p.links_json),
       languages: withPct((langBy.get(p.repo) ?? []).map(({ lang, bytes, color }) => ({ lang, bytes, color }))),
       codeFreq: (freqBy.get(p.repo) ?? []).map((f) => ({ week: f.week, add: f.added, del: f.removed })), // public repos only: private repos have no rows here
     };

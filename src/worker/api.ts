@@ -43,7 +43,8 @@ async function dispatch(req: Request, env: Env, pathname: string): Promise<Respo
 export async function handleApi(req: Request, env: Env): Promise<Response> {
   const { pathname, origin } = new URL(req.url);
   try {
-    const rl = await limited(req, env);
+    // /img/* is exempt: name-validated, 2 MB cap, cached 24h at the edge and in the browser/SW; a page of covers must not trip 60/10s.
+    const rl = pathname.startsWith("/img/") ? null : await limited(req, env);
     if (rl) return rl;
     const cache = typeof caches === "undefined" || req.method !== "GET" || !isCached(pathname) ? undefined : (caches as unknown as { default: Cache }).default;
     const key = new Request(new URL(pathname, origin));

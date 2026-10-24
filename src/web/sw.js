@@ -28,7 +28,7 @@ async function networkFirst(e, req, cacheName, key = req) {
   }
 }
 
-// Cover images: cache-first, only 200s, newest 30 kept.
+// Cover images (/img/<name>?v=hash): cache-first keyed on the full URL incl. query, so a new ?v= misses and refetches; only only 200s, newest 30 kept.
 async function imgFirst(e, r) {
   const c = await caches.open(IMG);
   const hit = await c.match(r);

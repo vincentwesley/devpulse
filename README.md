@@ -12,7 +12,7 @@ npm run typecheck && npm test && npm run build
 ```
 
 ## Deploy
-Run `npx wrangler d1 migrations apply DB --remote` **before** `npx wrangler deploy`.
+**Migrate remote BEFORE deploy**: `npm run db:migrate:remote`, then `npx wrangler deploy`. New code reads columns/tables that only exist after the migration (e.g. 0005 showcase columns); deploying first breaks `/api/projects`.
 
 ## Secrets and network calls
 Worker secrets (never committed; see `.dev.vars.example`):
@@ -45,7 +45,7 @@ A public repo can add an optional `showcase` block next to `deps` in its root `.
 - Privacy: the sync also reads `README.md` and stores a plain-text excerpt (<=1200 chars: first paragraphs and up to 6 bullets; badges, images, HTML and code stripped) for **public repos only**. Private repos' README, showcase and images are never stored or served.
 
 ## Rate limiting and headers
-Cloudflare Workers Rate Limiting binding `RL` (`wrangler.jsonc`): 60 requests / 10 s per client IP (per location) across `/api/*`, `/badge/*`, `/card/*`, `/img/*`, `/p/*`, `/feed.xml`; over the limit returns 429 `no-store` with `Retry-After`. Without the binding (tests, local dev) there is no limit. Every Worker response carries HSTS, `Referrer-Policy: no-referrer`, `nosniff` and `frame-ancestors 'none'`; JSON without a TTL is `no-store`. Deploys are local (`wrangler deploy`); CI only tests.
+Cloudflare Workers Rate Limiting binding `RL` (`wrangler.jsonc`): 60 requests / 10 s per client IP (per location) across `/api/*`, `/badge/*`, `/card/*`, `/p/*`, `/feed.xml` (`/img/*` is exempt: name-validated, 2 MB cap, cached 24h at the edge and in the browser, so a page of covers cannot trip it); over the limit returns 429 `no-store` with `Retry-After`. Without the binding (tests, local dev) there is no limit. Every Worker response carries HSTS, `Referrer-Policy: no-referrer`, `nosniff` and `frame-ancestors 'none'`; JSON without a TTL is `no-store`. Deploys are local (`wrangler deploy`); CI only tests.
 
 ## Data
 Stored in Cloudflare D1: project metadata, languages, uptime checks, Lighthouse scores, daily contribution counts and recent public commits. Lines of code are an estimate (additions + deletions summed from GitHub's weekly stats).

@@ -25,8 +25,8 @@ export function injectMeta(html: string, m: Meta): string {
 
 /** GET /p/:name -> the SPA shell with per-project social tags. Unknown name: same shell, status 404 (the client shows its own not-found). */
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
-  if (req.method !== "GET" || !pathname.startsWith("/p/")) return null;
-  const name = pathname.slice(3);
+  if ((req.method !== "GET" && req.method !== "HEAD") || !pathname.startsWith("/p/")) return null;
+  const name = pathname.slice(3).replace(/\/$/, "");
   const origin = new URL(req.url).origin;
   // "/" not "/index.html": the assets binding redirects the latter.
   const shell = await env.ASSETS.fetch(new Request(new URL("/", origin)));
@@ -38,7 +38,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   headers.delete("Content-Length"); headers.delete("ETag");
   if (!p) {
     headers.set("Cache-Control", "no-store");
-    return new Response(shell.body, { status: 404, headers });
+    return new Response(req.method === "HEAD" ? null : shell.body, { status: 404, headers });
   }
   const html = injectMeta(await shell.text(), {
     title: `${p.name} · DevPulse`,
@@ -47,5 +47,5 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     image: `${origin}${p.cover_path ? `/img/${p.name}` : "/og.png"}`,
   });
   headers.set("Cache-Control", "public, max-age=300");
-  return new Response(html, { status: 200, headers });
+  return new Response(req.method === "HEAD" ? null : html, { status: 200, headers });
 }

@@ -1,6 +1,6 @@
-> Update at the end of any session that changed state. Keep it lean.
+﻿> Update at the end of any session that changed state. Keep it lean.
 
-Continue work on **DevPulse**, the public project hub. Deployed 2026-10-21 (version 0d408649, rollback 108468fb) at devpulse.vincentwesleybiz.workers.dev. Repo is still private; 4 local commits are unpushed. Only do what the owner asks.
+Continue work on **DevPulse**, the public project hub. Deployed 2026-10-24 (version 60b97099; earlier rollback targets 96c1755f, 0d408649). Repo is PUBLIC and pushed. Migrations 0001-0005 applied remotely. Live smoke 2026-10-24: Lighthouse mobile perf 98, a11y/BP/SEO 100, CLS 0.045, axe clean, 390px page ~6.9k px. Only do what the owner asks.
 
 ## Before anything
 1. Work in the repo root. Read `docs/PLAN.md`.
@@ -36,3 +36,4 @@ Live check 2026-10-21: projects, stats, languages, badges return real data. LOC 
 4. No screenshots taken for the new UI (needs owner OK for visual checks).
 
 Report outcomes tersely.
+

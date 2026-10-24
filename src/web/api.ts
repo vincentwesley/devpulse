@@ -74,6 +74,7 @@ export const link = (text: string, href: string, cls = "") =>
 /** Replace the section body (everything after the h2) with the built node, or the empty/error message. */
 export function show<T>(sectionId: string, res: Res<T>, build: (d: T) => HTMLElement) {
   const sec = document.getElementById(sectionId)!;
+  if (res.state === "error" && sec.querySelector(":scope > .body:not(.skel)")) return; // a failed background refresh keeps the good data
   sec.querySelectorAll(":scope > .body, :scope > .empty").forEach((e) => e.remove());
   if (res.state === "ok") {
     const b = build(res.data);

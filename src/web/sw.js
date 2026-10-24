@@ -11,11 +11,11 @@ self.addEventListener("activate", (e) =>
   ),
 );
 
-async function networkFirst(req, cacheName, key = req) {
+async function networkFirst(e, req, cacheName, key = req) {
   const cache = await caches.open(cacheName);
   try {
     const res = await fetch(req);
-    if (res.ok) cache.put(key, res.clone());
+    if (res.ok) e.waitUntil(cache.put(key, res.clone()).catch(() => {}));
     else if (res.status >= 500 || res.status === 429) return (await cache.match(key)) ?? res;
     return res;
   } catch {
@@ -32,8 +32,8 @@ self.addEventListener("fetch", (e) => {
   const r = e.request;
   const u = new URL(r.url);
   if (r.method !== "GET" || u.origin !== location.origin) return;
-  if (u.pathname.startsWith("/api/")) e.respondWith(networkFirst(r, API));
+  if (u.pathname.startsWith("/api/")) e.respondWith(networkFirst(e, r, API));
   else if (u.pathname.startsWith("/assets/"))
-    e.respondWith(caches.open(ASSETS).then(async (c) => (await c.match(r)) ?? fetch(r).then((res) => { if (res.ok) c.put(r, res.clone()); return res; })));
-  else if (r.mode === "navigate" && u.pathname === "/") e.respondWith(networkFirst(r, PAGE, "/"));
+    e.respondWith(caches.open(ASSETS).then(async (c) => (await c.match(r)) ?? fetch(r).then((res) => { if (res.ok) e.waitUntil(c.put(r, res.clone()).catch(() => {})); return res; })));
+  else if (r.mode === "navigate" && u.pathname === "/") e.respondWith(networkFirst(e, r, PAGE, "/"));
 });

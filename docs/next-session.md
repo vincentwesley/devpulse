@@ -13,8 +13,13 @@ Continue work on **DevPulse**, the public project hub. Deployed 2026-10-21 (vers
 - GitHub token only as a Worker secret. Real data only; fixtures in tests only. Free tiers only. No Actions minutes: verify locally, deploy with `npx wrangler deploy` (migrate first: `npx wrangler d1 migrations apply DB --remote`).
 
 ## Current state
-Worker: GraphQL sync (`github.ts`, up to 50 repos), cron (`cron.ts`: uptime 15 min; hourly sync + RSS; 00:00 prune; 00:30 LOC `loc.ts`; Mon 01:00 PageSpeed `psi.ts`), routes projects/github/posts/stats/badge, migrations 0001-0002 applied remotely. Private repos count only in aggregates (`totals_private`, `private_agg`). Frontend: hero counters, languages bar, hub cards with sort/filter + detail dialog, activity feed, heatmap + streak/weekday stats, motion. 74 unit + 14 e2e green.
+Worker: GraphQL sync (`github.ts`, up to 50 repos), cron (`cron.ts`: uptime 15 min; hourly sync + RSS + statuspages; 00:00 prune; 00:30 LOC `loc.ts`; Mon 01:00 PageSpeed `psi.ts`). Routes: projects/github/posts/stats, `/api/status` (90d strips + incidents), `/feed.xml` (Atom), `/badge/:name.svg`, `/card/:name.svg` (unknown names are `no-store`). Per-IP rate limit via binding `RL` (60 req/10s). Migrations 0001-0004 (0003 = rollup tables, 0004 = backfill from `checks`, idempotent); 0001-0002 applied remotely, 0003-0004 NOT yet. Frontend: hero counters, languages bar, hub cards with sort/filter + detail dialog, status section, activity feed, heatmap, command palette, service worker (`src/web/sw.js`, network-first API + offline banner), motion. 113 unit + 20 e2e green (local, headless).
 Live check 2026-10-21: projects, stats, languages, badges return real data. LOC is 0 until the first 00:30 UTC run; posts empty (no RSS URL).
+
+## Deploy order
+1. `npx wrangler d1 migrations apply DB --remote` BEFORE deploying (the new code reads `uptime_summary`/`daily_uptime`/`incidents`).
+2. `ratelimits` `namespace_id` "1001" in `wrangler.jsonc` must be unused on the Cloudflare account; change it if another Worker owns it.
+3. `npx wrangler deploy`. Rollback: previous version id above.
 
 ## Needs the owner (do last)
 1. Regenerate `GITHUB_TOKEN`: fine-grained, All repositories, read-only Metadata, Contents, Commit statuses, Checks; `npx wrangler secret put GITHUB_TOKEN`. Until then only public repos are counted.

@@ -2,7 +2,7 @@ import type { Env } from "../env";
 import { svg } from "../lib/http";
 
 export const NAME = /^[A-Za-z0-9._-]{1,100}$/;
-export const xml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]!);
+export const xml = (s: string) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]!);
 const COLORS = { ok: "#1f7a4d", warn: "#9a6700", bad: "#b3261e", none: "#6e7781" } as const;
 // ponytail: width = chars * 6.6 (Verdana 11px average); long-tail glyphs can clip a pixel or two.
 const w = (s: string) => Math.ceil(s.length * 6.6) + 12;
@@ -16,14 +16,14 @@ export function renderBadge(label: string, message: string, tone: keyof typeof C
     `<g fill="#fff" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle"><text x="${lw / 2}" y="14">${l}</text><text x="${lw + mw / 2}" y="14">${m}</text></g></svg>`;
 }
 
-/** Grey "unknown" image with a 404 status. Unknown names are cached 300s; invalid names are not (bounded key space). */
-export const notFoundSvg = (cache = true) => svg(renderBadge("devpulse", "unknown", "none"), 404, cache ? 300 : 0);
+/** Grey "unknown" image with a 404 status. Never cached: arbitrary names must not grow the edge-cache key space. */
+export const notFoundSvg = () => svg(renderBadge("devpulse", "unknown", "none"), 404, 0);
 
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
   if (req.method !== "GET") return null;
   const m = /^\/badge\/(.+)\.svg$/.exec(pathname);
   if (!m) return null;
-  if (!NAME.test(m[1])) return notFoundSvg(false);
+  if (!NAME.test(m[1])) return notFoundSvg();
   const p = await env.DB.prepare(
     "SELECT p.repo, p.name, p.url, p.ci_state, u.up, u.uptime30d FROM projects p LEFT JOIN uptime_summary u ON u.project = p.repo WHERE p.name = ?",
   ).bind(m[1]).first<{ repo: string; name: string; url: string | null; ci_state: string | null; up: number | null; uptime30d: number | null }>();

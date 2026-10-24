@@ -36,7 +36,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   if (req.method !== "GET") return null;
   const m = /^\/card\/(.+)\.svg$/.exec(pathname);
   if (!m) return null;
-  if (!NAME.test(m[1])) return notFoundSvg(false);
+  if (!NAME.test(m[1])) return notFoundSvg();
   const n = m[1];
   const [proj, langs, upt] = (await env.DB.batch([
     env.DB.prepare("SELECT name, description, stars, ci_state, url FROM projects WHERE name = ?").bind(n),

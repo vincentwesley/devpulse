@@ -37,11 +37,12 @@ describe("GET /badge/:repo.svg", () => {
     expect(await (await get("metalens", env(rows("FAILURE")))).text()).toContain("CI failing");
     expect(await (await get("metalens", env(rows(null)))).text()).toContain("no CI | up 90%");
   });
-  it("unknown name -> 404 grey svg cached 300s", async () => {
+  it("strips control chars", () => expect(xml("a\x00b\x0Bc\x1Fd\uFFFEe\n")).toBe("abcde\n"));
+  it("unknown name -> 404 grey svg, never cached", async () => {
     const r = await get("nope", env({}));
     expect(r.status).toBe(404);
     expect(r.headers.get("Content-Type")).toBe("image/svg+xml; charset=utf-8");
-    expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(r.headers.get("Cache-Control")).toBe("no-store");
     expect(await r.text()).toContain("unknown");
   });
   it("404 for invalid or hostile names (no DB lookup, not cached)", async () => {

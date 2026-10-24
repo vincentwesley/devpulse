@@ -7,7 +7,7 @@ type Day = SiteStatus["days"][number];
 export const lastBars = (days: Day[], n: number) => [...days].sort((a, b) => a.date.localeCompare(b.date)).slice(-n);
 /** Percent of checks that passed, null with no checks. */
 export const dayPct = (d: Day) => (d.total > 0 ? (d.up / d.total) * 100 : null);
-export const fmtPct = (n: number) => `${(Math.floor(n * 100) / 100).toString()}%`;
+export const fmtPct = (n: number) => `${(Math.floor(n * 100 + 1e-9) / 100).toString()}%`;
 /** Aggregate uptime over a window of days. */
 export function windowPct(days: Day[]) {
   const t = days.reduce((s, d) => s + d.total, 0);

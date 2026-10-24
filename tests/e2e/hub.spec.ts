@@ -53,7 +53,7 @@ test("deep link opens the dialog; Esc clears the hash and returns focus sanely",
   await expect(dlg).toContainText("Beta");
   await page.keyboard.press("Escape");
   await expect(dlg).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe("");
+  await expect.poll(() => new URL(page.url()).hash).toBe(""); // close event (and replaceState) is async
 });
 
 test("Back closes the dialog, Forward reopens it, one history entry", async ({ page }) => {

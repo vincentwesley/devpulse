@@ -1,5 +1,6 @@
 @import "./house/tokens.css";
 @import "./house/credits/credits.css";
+@import "./credits-fx.css";
 
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--font-body); }
 h1, h2, h3 { text-wrap: balance; }

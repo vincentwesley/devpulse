@@ -11,7 +11,7 @@ import * as status from "./routes/status";
 
 const API = [projects, github, posts, stats, status];
 const CACHED = new Set(["/api/projects", "/api/heatmap", "/api/commits", "/api/posts", "/api/stats", "/api/languages", "/api/status", "/feed.xml"]);
-// Badges/cards: 200s and unknown-name 404s are stored (both carry a public Cache-Control); invalid names and errors are no-store.
+// Badges/cards: only 200s are stored (public Cache-Control); every 404 and error is no-store, so random names can't grow the cache.
 const isCached = (p: string) => CACHED.has(p) || p.startsWith("/badge/") || p.startsWith("/card/");
 
 /** Rate limit per client IP. No binding (unit tests, local dev) => no limit. A limiter outage fails open. */

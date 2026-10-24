@@ -65,15 +65,6 @@ tabs.forEach((a) =>
 }
 
 // ---- data: each endpoint fetched once per refresh, results shared ----
-// In-flight guard: a call while the previous is still running is a no-op.
-const once = <A extends unknown[]>(fn: (...a: A) => Promise<unknown>) => {
-  let busy = false;
-  return async (...a: A) => {
-    if (busy) return;
-    busy = true;
-    try { await fn(...a); } finally { busy = false; }
-  };
-};
 const offline = document.getElementById("offline")!;
 const upd = document.getElementById("updated")!;
 let syncedAt: string | null = null;
@@ -81,11 +72,11 @@ const tickUpdated = () => { upd.textContent = updatedAgo(syncedAt); };
 let lastCommits: Res<Commit[]> = { state: "empty" };
 let lastFast = 0, lastSlow = 0;
 
-const retry = () => void refresh(true);
+const retry = () => refresh(true);
 const done = <T>(id: string, p: Promise<T>, render: (r: T) => void) =>
   p.then(render).catch(() => {}).finally(() => settle(id, retry));
 
-const refresh = once(async (slow: boolean) => {
+const run = async (slow: boolean) => {
   lastFast = Date.now();
   offline.hidden = navigator.onLine;
   const commits = slow ? getCommits() : Promise.resolve(lastCommits);
@@ -112,13 +103,32 @@ const refresh = once(async (slow: boolean) => {
     );
   }
   await Promise.all(jobs);
-});
+};
+// One refresh at a time. A call during a run is remembered (slow wins) and re-runs afterwards, so Retry is never dropped.
+let running: Promise<void> | null = null, queued: boolean | null = null;
+function refresh(slow: boolean): Promise<void> {
+  if (running) { queued = !!queued || slow; return running; }
+  running = (async () => {
+    let next: boolean | null = slow;
+    while (next !== null) {
+      queued = null;
+      await run(next).catch(() => {});
+      next = queued as boolean | null;
+    }
+    running = null;
+  })();
+  return running;
+}
 initPalette();
 refresh(true).then(() => { initMotion(document.querySelector("main")!); document.body.dataset.loaded = "1"; });
-// Projects/status change every 15 min server-side; the rest hourly.
-setInterval(() => { if (!document.hidden) refresh(false); }, 5 * 60_000);
-setInterval(() => { if (!document.hidden) refresh(true); }, 60 * 60_000);
-setInterval(tickUpdated, 60_000);
+// Projects/status change every 15 min server-side; the rest hourly. One timer decides which, from timestamps.
+setInterval(() => {
+  tickUpdated();
+  if (document.hidden) return;
+  const now = Date.now();
+  if (now - lastSlow >= 60 * 60_000 - 5000) refresh(true);
+  else if (now - lastFast >= 5 * 60_000 - 5000) refresh(false);
+}, 60_000);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   const now = Date.now();

@@ -217,12 +217,19 @@ function hub(ps: Project[], commits: Commit[]) {
 }
 
 /** main.ts passes both fetches; no internal fetching here. */
+let held: [Res<Project[]>, Res<Commit[]>] | null = null;
+document.addEventListener("focusout", () => setTimeout(() => {
+  if (held && !document.getElementById("projects")?.contains(document.activeElement)) renderProjects(...held);
+}));
 export function renderProjects(projects: Res<Project[]>, commits: Res<Commit[]>) {
   const cs = commits.state === "ok" ? commits.data : [];
   if (projects.state === "ok") {
     cur = { ps: projects.data, commits: cs };
     setPaletteProjects(projects.data);
   }
+  const sec = document.getElementById("projects")!;
+  if (sec.contains(document.activeElement) && sec.querySelector(":scope > .body:not(.skel)")) { held = [projects, commits]; return; } // don't yank the search box mid-typing
+  held = null;
   show("projects", projects, (ps) => hub(ps, cs));
   if (projects.state === "ok") syncDialog();
 }

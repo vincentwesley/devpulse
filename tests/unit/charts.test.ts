@@ -28,6 +28,8 @@ describe("charts helpers", () => {
     expect(windowPct([{ date: "a", up: 1, total: 2 }, { date: "b", up: 1, total: 2 }])).toBe(50);
     expect(windowPct([])).toBeNull();
     expect(fmtPct(100)).toBe("100%");
+    expect(fmtPct(29)).toBe("29%");
+    expect(fmtPct((29 / 100) * 100)).toBe("29%");
     expect(fmtPct(99.999)).toBe("99.99%");
   });
   it("incident duration", () => {

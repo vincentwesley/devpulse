@@ -31,7 +31,7 @@ export function loading(id: string) {
 }
 
 /** Call after a section rendered: clears aria-busy, adds Retry to an error message. */
-export function settle(id: string, retry: () => void) {
+export function settle(id: string, retry: () => unknown) {
   const s = sec(id);
   if (!s) return;
   s.removeAttribute("aria-busy");
@@ -39,7 +39,7 @@ export function settle(id: string, retry: () => void) {
   const err = s.querySelector(":scope > .empty--err");
   if (err && !err.querySelector("button")) {
     const b = el("button", "Retry", "hs-btn retry", { type: "button" });
-    b.addEventListener("click", () => { loading(id); retry(); });
+    b.addEventListener("click", () => { loading(id); void Promise.resolve(retry()).finally(() => s.removeAttribute("aria-busy")); }); // always ends settled
     add(err, " ", b);
   }
 }

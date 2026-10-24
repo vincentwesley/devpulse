@@ -18,6 +18,9 @@ let projects: Project[] = [];
 let dlg: HTMLDialogElement | null = null;
 let input: HTMLInputElement, list: HTMLUListElement, help: HTMLElement, hint: HTMLElement;
 let shown: Item[] = [], sel = 0;
+// Visible + announced (aria-live) feedback for actions, shown briefly.
+const toast = el("p", "", "pal__toast", { role: "status", "aria-live": "polite", hidden: "" });
+document.body.appendChild(toast);
 
 /** Projects offered by the palette; called by renderProjects on each load. */
 export const setPaletteProjects = (p: Project[]) => { projects = p; };
@@ -31,7 +34,10 @@ function items(): Item[] {
       out.push({ label, group: "Section", run: () => document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }) });
   out.push(
     { label: "Toggle theme", group: "Action", run: () => document.querySelector<HTMLButtonElement>("#theme")?.click() },
-    { label: "Copy feed URL", group: "Action", run: () => { navigator.clipboard?.writeText(`${location.origin}/feed.xml`).catch(() => {}); } },
+    { label: "Copy feed URL", group: "Action", run: () => {
+      const say = (m: string) => { toast.textContent = m; toast.hidden = false; setTimeout(() => { toast.hidden = true; toast.textContent = ""; }, 2500); };
+      navigator.clipboard?.writeText(`${location.origin}/feed.xml`).then(() => say("Feed URL copied"), () => say("Couldn't copy the feed URL")) ?? say("Couldn't copy the feed URL");
+    } },
     { label: "Show keyboard shortcuts", group: "Action", run: () => open(true) },
   );
   return out;
@@ -98,7 +104,8 @@ function open(showHelp = false) {
   (showHelp ? help.querySelector("button")! : input).focus();
 }
 
-const typing = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]");
+// A just-closed dialog's input can keep focus for a frame; that is not typing.
+const typing = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]") && !t.closest("dialog:not([open])");
 
 /** Wire the global shortcuts: `/` or Ctrl/Cmd+K opens the palette, `?` the shortcut help. */
 export function initPalette() {

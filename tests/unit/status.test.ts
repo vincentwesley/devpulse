@@ -1,3 +1,5 @@
+// @ts-ignore no @types/node
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleApi } from "../../src/worker/api";
 import { pruneChecks } from "../../src/worker/prune";
@@ -56,6 +58,35 @@ describe("recordChecks (real SQL)", () => {
     await pruneChecks({ DB: db } as Env);
     expect(raw.prepare("SELECT date FROM daily_uptime").all().map((r: any) => r.date)).toEqual(["2999-01-01"]);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM incidents").get().n).toBe(1);
+  });
+  it("prune closes open incidents of unmonitored or stale projects", async () => {
+    const { db, raw } = sqliteDb();
+    const t = Math.floor(Date.now() / 1000);
+    raw.exec(`INSERT INTO uptime_summary VALUES ('o/live',1,100,'[]',${t}), ('o/stale',1,100,'[]',${t - 3 * 86400})`);
+    raw.exec("INSERT INTO incidents (project,start_ts) VALUES ('o/live',1), ('o/stale',1), ('o/gone',1)");
+    await pruneChecks({ DB: db } as Env);
+    const open = raw.prepare("SELECT project FROM incidents WHERE end_ts IS NULL").all().map((r: any) => r.project);
+    expect(open).toEqual(["o/live", "o/stale"]);
+  });
+  it("0004 backfill builds rollups, summary and incidents from checks; idempotent", async () => {
+    const { raw } = sqliteDb();
+    const t = Math.floor(Date.now() / 1000);
+    // oldest-first: ok, fail, fail, ok, ok (+ one null-ms row)
+    const rows = [[1, 1, 200, 10], [2, 0, 500, 20], [3, 0, 500, 30], [4, 1, 200, 40], [5, 1, 200, null]];
+    for (const [i, ok, s, ms] of rows) raw.prepare("INSERT INTO checks VALUES ('o/a',?,?,?,?)").run(t - 600 + (i as number) * 60, ok, s, ms);
+    raw.prepare("INSERT INTO checks VALUES ('o/b',?,0,NULL,5)").run(t - 100);
+    const sql = readFileSync(new URL("../../migrations/0004_backfill.sql", import.meta.url), "utf8");
+    raw.exec(sql);
+    raw.exec(sql);
+    expect(raw.prepare("SELECT SUM(up) AS up, SUM(total) AS total FROM daily_uptime WHERE project='o/a'").get()).toMatchObject({ up: 3, total: 5 });
+    const s = raw.prepare("SELECT * FROM uptime_summary WHERE project='o/a'").get() as any;
+    expect(s).toMatchObject({ up: 1, uptime30d: 60, updated_at: t - 600 + 300 });
+    expect(JSON.parse(s.latency_json)).toEqual([10, 20, 30, 40]);
+    expect(raw.prepare("SELECT up FROM uptime_summary WHERE project='o/b'").get()).toMatchObject({ up: 0 });
+    const inc = raw.prepare("SELECT project, start_ts, end_ts FROM incidents ORDER BY project").all() as any[];
+    expect(inc).toHaveLength(2);
+    expect(inc[0]).toMatchObject({ project: "o/a", start_ts: t - 600 + 120, end_ts: t - 600 + 240 });
+    expect(inc[1]).toMatchObject({ project: "o/b", end_ts: null });
   });
   it("checkProject returns a plain row", async () => {
     vi.stubGlobal("fetch", async () => new Response("x", { status: 500 }));
@@ -153,8 +184,9 @@ describe("GET /card/:name.svg", () => {
     expect(t).toContain("#3178c6");
     expect(f.ops.n).toBe(1);
   });
+  it("renderCard strips control chars", () => expect(renderCard({ name: "n\x00\x1Fx", description: "d\x0B", stars: 1, ci_state: null, url: null }, [], null, null)).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F]/));
   it("renderCard copes with no languages", () => expect(renderCard({ name: "n", description: null, stars: null, ci_state: null, url: null }, [], null, null)).toContain("no CI"));
-  it("rejects bad names without a DB lookup, unknown -> 404 svg cached", async () => {
+  it("rejects bad names without a DB lookup, unknown -> 404 svg never cached", async () => {
     for (const bad of ["a%20b", "..%2Fx", "x".repeat(101), "a%3Cb"]) {
       const f = fakeDb({});
       const r = await call(`/card/${bad}.svg`, { DB: f.db } as Env);
@@ -164,13 +196,13 @@ describe("GET /card/:name.svg", () => {
     const r = await call("/card/nope.svg", { DB: fakeDb({}).db } as Env);
     expect(r.status).toBe(404);
     expect(r.headers.get("Content-Type")).toBe("image/svg+xml; charset=utf-8");
-    expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(r.headers.get("Cache-Control")).toBe("no-store");
   });
 });
 
 describe("GET /feed.xml", () => {
   it("valid Atom: escaped, https only, <=50 entries, sorted", async () => {
-    const commits = Array.from({ length: 60 }, (_, i) => ({ repo: "o/a", sha: `s${i}`, message: `m<${i}>&\nbody`, ts: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(), url: `https://github.com/o/a/commit/s${i}` }));
+    const commits = Array.from({ length: 60 }, (_, i) => ({ repo: "o/a", sha: `s${i}`, message: `m<${i}>&\x00\x1Fbody\nx`, ts: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(), url: `https://github.com/o/a/commit/s${i}` }));
     commits.push({ repo: "o/a", sha: "bad", message: "js", ts: "2026-10-09T00:00:00Z", url: "javascript:alert(1)" }, { repo: "o/a", sha: "baddate", message: "d", ts: "nope", url: "https://x.test/" });
     const f = fakeDb({
       "FROM commits_recent": commits,
@@ -188,11 +220,12 @@ describe("GET /feed.xml", () => {
     expect(t).not.toContain("javascript:");
     expect(t).not.toContain("http://insecure");
     expect(t).not.toContain("m<0>");
+    expect(t).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F]/);
     expect(t).toContain("A&amp;B v1 2");
     expect(t).toContain("releases/tag/v1%202");
     expect(t).not.toMatch(/&(?!amp;|lt;|gt;|quot;|apos;)/); // no bare ampersands
     expect(t.match(/<updated>([^<]+)<\/updated>/g)!.every((u) => !isNaN(Date.parse(u.replace(/<\/?updated>/g, ""))))).toBe(true);
-    expect(t.indexOf("<id>tag:devpulse,2026:release:o/a:v1 2</id>")).toBeGreaterThan(-1);
+    expect(t.indexOf("<id>tag:devpulse.vincentwesleybiz.workers.dev,2026-10-24:release:o/a:v1%202</id>")).toBeGreaterThan(-1);
     expect(t.endsWith("</feed>")).toBe(true);
   });
   it("empty feed still valid", async () => {

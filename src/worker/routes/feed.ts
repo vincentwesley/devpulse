@@ -28,7 +28,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const updated = all[0]?.at ?? new Date().toISOString();
   const body = `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><title>DevPulse</title><id>${xml(origin)}/feed.xml</id><updated>${updated}</updated>` +
     `<link rel="self" type="application/atom+xml" href="${xml(origin)}/feed.xml"/><link rel="alternate" href="${xml(origin)}/"/><author><name>vincentwesley</name></author>` +
-    all.map((e) => `<entry><id>${xml(`tag:devpulse,2026:${e.id}`)}</id><title>${xml(e.title)}</title><link rel="alternate" href="${xml(e.url)}"/><updated>${e.at}</updated></entry>`).join("") +
+    all.map((e) => `<entry><id>${xml(`tag:devpulse.vincentwesleybiz.workers.dev,2026-10-24:${encodeURI(e.id)}`)}</id><title>${xml(e.title)}</title><link rel="alternate" href="${xml(e.url)}"/><updated>${e.at}</updated></entry>`).join("") +
     `</feed>`;
   return doc(body, "application/atom+xml; charset=utf-8", 200, 300);
 }

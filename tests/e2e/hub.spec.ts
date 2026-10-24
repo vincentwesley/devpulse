@@ -66,12 +66,12 @@ test("Back closes the dialog, Forward reopens it, one history entry", async ({ p
   expect(page.url()).toContain("#p/Alpha");
   await page.goBack();
   await expect(dlg).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe("");
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
   await page.goForward();
   await expect(dlg).toBeVisible();
   await page.getByRole("button", { name: "Close" }).click(); // pops its own entry
   await expect(dlg).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe("");
+  await expect.poll(() => new URL(page.url()).hash).toBe("");
   expect(await page.evaluate(() => history.length)).toBe(before + 1);
 });
 

@@ -124,6 +124,6 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
       const from = new Date(now.getTime() - HEATMAP_DAYS * 864e5).toISOString();
       const days = mapCalendar(await gql<CalendarResp>(env, CAL_QUERY, { login: env.GITHUB_OWNER, from, to: ts }));
       if (days.length) await db.batch(days.map((d) => db.prepare("INSERT INTO commits_daily (date,count) VALUES (?,?) ON CONFLICT(date) DO UPDATE SET count=excluded.count").bind(d.date, d.count)));
-    } catch (e) { console.warn("heatmap sync failed", e); }
+    } catch (e) { console.warn("heatmap sync failed", (e as Error)?.name); }
   }
 }

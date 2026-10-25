@@ -8,7 +8,7 @@ async function send(env: Env, subject: string): Promise<boolean> {
   if (!env.ALERT || !to || !from || /[\r\n<>]/.test(to + from)) return false; // missing binding / secret = silent no-op
   const raw = [`From: DevPulse <${from}>`, `To: ${to}`, `Subject: ${subject}`, `Date: ${new Date().toUTCString()}`, `Message-ID: <${crypto.randomUUID()}@${from.split("@")[1]}>`,
     "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "", subject, ""].join("\r\n");
-  try { await env.ALERT.send(new EmailMessage(from, to, raw)); return true; } catch { return false; }
+  try { await env.ALERT.send(new EmailMessage(from, to, raw)); return true; } catch (e) { console.warn("alert send failed", (e as Error)?.name); return false; }
 }
 
 const hhmm = (s: number) => new Date(s * 1000).toISOString().slice(11, 16);

@@ -113,7 +113,7 @@ function pulse(ps: Project[], open: Set<string>) {
   const n = pulseCounts(ps, open);
   const sum = el("p", `${n.ok} ok · ${n.attn} need attention${n.wip ? ` · ${n.wip} in progress` : ""}`, "pulse__sum");
   const ul = el("ul", "", "pulse__grid", { "aria-label": "Repository status" });
-  const readout = el("p", "Select a repo to open it.", "tile-readout", { "aria-live": "polite" });
+  const readout = el("p", "Hover or focus a square for details.", "tile-readout", { "aria-live": "polite" });
   const cells = ps.map((p, i) => {
     const s = pulseState(p, open);
     const b = el("button", "", "pulse__cell", { type: "button", "data-s": s, tabindex: i ? "-1" : "0", "aria-label": `${p.name}: ${LABEL[s].toLowerCase()}` });
@@ -140,7 +140,19 @@ function pulse(ps: Project[], open: Set<string>) {
     cells[next].tabIndex = 0;
     cells[next].focus();
   });
-  add(out, sum, ul, readout);
+  add(out, sum, ul);
+  const bad = ps.filter((p) => pulseState(p, open) === "attn");
+  if (bad.length) {
+    const names = el("ul", "", "pulse__attn", { "aria-label": "Needs attention" });
+    for (const p of bad.slice(0, 3)) {
+      const li = el("li");
+      add(li, navLink(p.name, toProjectPath(p.name), "pulse__chip"));
+      add(names, li);
+    }
+    if (bad.length > 3) add(names, el("li", `+${bad.length - 3}`, "pulse__more"));
+    add(out, names);
+  }
+  add(out, readout);
   return out;
 }
 

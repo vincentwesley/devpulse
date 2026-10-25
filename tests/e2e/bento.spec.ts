@@ -82,41 +82,41 @@ test("pulse: attention state has a name and a glyph, not just colour", async ({ 
   expect(glyph).toContain("▲");
 });
 
-test("contrib: 26 weeks on phones, toggle label follows state, readout, streaks", async ({ page }) => {
+test("contrib: 26 weeks on phones, range buttons follow state, readout, streaks", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await open(page);
   const cells = page.locator("#tile-contrib .heat rect");
   expect(await cells.count()).toBeLessThanOrEqual(26 * 7);
   expect(await page.locator("#tile-contrib .heat-wrap").evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
-  const toggle = page.locator("#tile-contrib .heat-toggle");
-  await expect(toggle).toHaveText("Full year");
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await toggle.click();
-  await expect(toggle).toHaveText("Last 26 weeks");
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  const weeks = page.locator("#tile-contrib").getByRole("button", { name: "26 weeks" }), year = page.locator("#tile-contrib").getByRole("button", { name: "Full year" });
+  await expect(weeks).toHaveAttribute("aria-pressed", "true");
+  await expect(year).toHaveAttribute("aria-pressed", "false");
+  await year.click();
+  await expect(year).toHaveAttribute("aria-pressed", "true");
+  await expect(weeks).toHaveAttribute("aria-pressed", "false");
   await expect(cells).toHaveCount(365);
   await cells.last().focus();
   await expect(page.locator("#tile-contrib .tile-readout").first()).toContainText(/contributions? · \d+ \w+/);
   await expect(page.locator("#tile-contrib .ct__streaks")).toContainText("12 days");
   await expect(page.locator("#tile-contrib .ct__streaks")).toContainText("40 days");
-  await toggle.click();
-  await expect(toggle).toHaveText("Full year");
+  await weeks.click();
+  await expect(weeks).toHaveAttribute("aria-pressed", "true");
 });
 
 test("contrib: desktop defaults to the full year and toggles to 26 weeks", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await open(page);
   await expect(page.locator("#tile-contrib .heat rect")).toHaveCount(365);
-  const toggle = page.locator("#tile-contrib .heat-toggle");
-  await expect(toggle).toHaveText("Last 26 weeks");
-  await toggle.click();
+  const c = page.locator("#tile-contrib");
+  await expect(c.getByRole("button", { name: "Full year" })).toHaveAttribute("aria-pressed", "true");
+  await c.getByRole("button", { name: "26 weeks" }).click();
   expect(await page.locator("#tile-contrib .heat rect").count()).toBeLessThanOrEqual(26 * 7);
 });
 
 test("contrib: year view fades on its scrollable edges only", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await open(page);
-  await page.locator("#tile-contrib .heat-toggle").click();
+  await page.locator("#tile-contrib").getByRole("button", { name: "Full year" }).click();
   const wrap = page.locator("#tile-contrib .heat-wrap");
   await expect(wrap).toHaveAttribute("data-fade-l", "");
   await wrap.evaluate((e) => { e.scrollLeft = 0; });

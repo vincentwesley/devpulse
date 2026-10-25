@@ -7,9 +7,9 @@ import { icon } from "./icons";
 import { openPalette, initPalette, setPaletteProjects } from "./palette";
 import { initMotion } from "./motion";
 import { renderPosts } from "./posts";
-import { renderProjects } from "./projects";
+import { renderProjects, showFailing } from "./projects";
 import { renderRoute, setProjects, setStatus } from "./projectpage";
-import { renderHealth } from "./shell";
+import { renderHealth, setAttnHandler } from "./shell";
 import { renderUptime } from "./status";
 import { settle, updatedAgo } from "./ui";
 
@@ -35,8 +35,9 @@ if (!navigator.webdriver) root.dataset.reveal = ""; // scroll reveal for real us
 // ---- data: each endpoint fetched once per refresh, results shared. Slow endpoints are cached between fast refreshes. ----
 const offline = document.getElementById("offline")!;
 const upd = document.getElementById("updated")!;
+const updM = document.getElementById("updated-m")!;
 let syncedAt: string | null = null;
-const tickUpdated = () => { upd.textContent = updatedAgo(syncedAt); };
+const tickUpdated = () => { upd.textContent = updatedAgo(syncedAt); updM.textContent = upd.textContent.replace(/ ago$/, ""); };
 const none = { state: "empty" } as const;
 const last: { commits: Res<Commit[]>; heat: Res<Heat>; langs: Res<Languages>; posts: Res<Post[]>; stats: Res<Stats> } =
   { commits: none, heat: none, langs: none, posts: none, stats: none };
@@ -91,6 +92,7 @@ function refresh(slow: boolean): Promise<void> {
   })();
   return running;
 }
+setAttnHandler(showFailing);
 renderRoute(); // /p/<name> direct load: show the page shell now, content once data arrives
 initPalette();
 refresh(true).then(() => { initMotion(document.querySelector("main")!); document.body.dataset.loaded = "1"; });

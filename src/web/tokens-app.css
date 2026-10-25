@@ -41,6 +41,7 @@
   --row-min: 44px;
   --header-h: 56px;
 }
+@media (max-width: 639.98px) { :root { --header-h: 80px; } } /* header gains an "Updated" row on phones */
 :root[data-theme="light"] {
   --attn-fg: #9a4a1f;
   --wip-fg: #5b43b0;
@@ -61,3 +62,7 @@
 .micro { font: 400 var(--fs-micro)/1.2 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
 .icon { display: inline-block; flex: none; vertical-align: middle; fill: currentColor; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* One ring only: fields and custom widgets get a single 2px outline, no offset shadow stacked on top of the house ring. */
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; box-shadow: none; }
+.pulse__cell:focus-visible, .st__bar:focus-visible, .heat rect:focus-visible, .wk-col:focus-visible, .dt-title:focus-visible, .lg-sort:focus-visible { box-shadow: none; }

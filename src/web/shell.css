@@ -5,9 +5,11 @@ html { scroll-padding-top: calc(var(--header-h) + var(--s3)); }
 
 /* ---- header ---- */
 .top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: var(--rule); }
-.top__row { display: flex; align-items: center; gap: var(--s3); max-width: 72rem; min-height: var(--header-h); margin: 0 auto; padding: 0 var(--s4); box-sizing: border-box; }
+.top__row { display: flex; align-items: center; gap: var(--s3); max-width: 72rem; min-height: 56px; margin: 0 auto; padding: 0 var(--s4); box-sizing: border-box; }
 .top__row h1 { margin: 0; font: 700 1.25rem/1 var(--font-head); letter-spacing: -0.01em; }
 .top__upd { display: none; white-space: nowrap; }
+.top__upd2 { margin: 0 auto; padding: 0 var(--s4) var(--s2); max-width: 72rem; box-sizing: border-box; }
+.top__upd2:empty { display: none; }
 .top__tools { display: flex; gap: var(--s2); margin-inline-start: auto; }
 #kbd { display: none; } /* phones: no keyboard, and the one-line header needs the room */
 .verdict { display: inline-flex; align-items: center; gap: var(--s2); min-width: 0; min-height: 32px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); border: var(--rule-strong); }
@@ -21,7 +23,10 @@ html { scroll-padding-top: calc(var(--header-h) + var(--s3)); }
 .kbd__k { display: none; }
 @media (hover: hover) { .iconbtn:hover { color: var(--accent); border-color: var(--accent); } }
 @media (min-width: 480px) { #kbd { display: inline-flex; } }
-@media (min-width: 640px) { .top__upd { display: block; } }
+@media (min-width: 640px) { .top__upd { display: block; } .top__upd2 { display: none; } }
+.verdict__btn { position: relative; padding: 0; font: inherit; color: inherit; background: none; border: 0; border-radius: 0; cursor: pointer; }
+.verdict__btn::after { content: ""; position: absolute; inset: -8px -12px; } /* 44px hit area, same look */
+@media (hover: hover) { .verdict__btn:hover { text-decoration: underline; } }
 @media (min-width: 720px) { .kbd__k { display: inline; } }
 
 .banner, .offline { margin: 0; padding: var(--s2) var(--s4); font-size: var(--fs-meta); border-top: var(--rule); background: color-mix(in srgb, var(--attn) 18%, var(--bg)); }

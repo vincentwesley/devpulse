@@ -281,8 +281,10 @@ test("phone: two-line rows, >= 44px, no overflow at 375", async ({ page }) => {
   }
   const first = page.locator(".proj").first();
   const link = (await first.locator("a.lg-name").boundingBox())!;
-  const spark = (await first.locator(".lg-spark").boundingBox())!;
-  expect(spark.y).toBeGreaterThan(link.y + link.height - 4); // sparkline sits on the second line
+  const chip = (await first.locator(".ci").boundingBox())!;
+  expect(chip.y).toBeGreaterThan(link.y + link.height - 4); // CI chip sits on the second line
+  await expect(first.locator(".lg-spark")).toBeHidden();
+  expect(link.height).toBeGreaterThanOrEqual(43.5);
   await expect(first.locator(".lg-tag")).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

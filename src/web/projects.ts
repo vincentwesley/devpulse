@@ -4,6 +4,7 @@ import { add, el, fmtDate, NODATA, show, type Commit, type Project, type Res, ty
 import { openDetail, wide } from "./detail";
 import { icon } from "./icons";
 import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StatusFilter } from "./hubutil";
+import { navigate } from "./nav";
 import { setPaletteProjects } from "./palette";
 import { lastBars, windowPct } from "./status";
 import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
@@ -50,11 +51,14 @@ const COLS: Col[] = [
   { key: "active", label: "Last push", cls: "c-push" },
   { key: "uptime", label: "Uptime 30d", cls: "c-up" },
 ];
-const sortAria = (k: Sort): "ascending" | "descending" => (k === "active" ? "descending" : "ascending");
+const SORTS: [Sort, string][] = [["active", "Last push"], ["name", "Name"], ["status", "Status"], ["lang", "Language"], ["ci", "CI"], ["uptime", "Uptime"]];
+const sortAria =(k: Sort): "ascending" | "descending" => (k === "active" ? "descending" : "ascending");
 
 function row(p: Project, st: Status | null, bad: Set<string>) {
   const tr = el("tr", "", "proj", { role: "row" });
+  // "is-empty" cells are hidden on phones: no orphan dashes
   const td = (cls: string, ...kids: (Node | string)[]) => { const c = el("td", "", cls, { role: "cell" }); add(c, ...kids); add(tr, c); return c; };
+  const empty = (cls: string) => td(`${cls} is-empty`, dash());
   const rs = rowState(p, bad);
   td("c-st", el("span", "", "dp-status", { "data-s": rs }), el("span", STATE_TEXT[rs], "sr-only"));
 
@@ -68,18 +72,23 @@ function row(p: Project, st: Status | null, bad: Set<string>) {
     const dot = el("i", "", "lg-dot", { "aria-hidden": "true" });
     dot.style.background = safeColor(lc);
     td("c-lang", dot, el("span", p.language, "meta"));
-  } else td("c-lang", dash());
+  } else empty("c-lang");
 
   const freq = p.codeFreq ?? [];
-  td("c-spark", freq.length ? spark(freq.map((w) => w.add + w.del), `Lines changed per week, last ${freq.length} weeks`) : dash());
+  if (freq.length) td("c-spark", spark(freq.map((w) => w.add + w.del), `Lines changed per week, last ${freq.length} weeks`));
+  else empty("c-spark");
 
   const ci = ciOf(p);
-  td("c-ci", ci ? el("span", ci.label, `hs-chip ci ci--${ci.cls}`) : dash());
+  if (ci) td("c-ci", el("span", ci.label, `hs-chip ci ci--${ci.cls}`));
+  else empty("c-ci");
 
-  td("c-push", p.pushedAt ? el("span", relTime(p.pushedAt), "meta", { title: fmtDate(p.pushedAt) }) : dash());
+  if (p.pushedAt) td("c-push", el("span", relTime(p.pushedAt), "meta", { title: fmtDate(p.pushedAt) }));
+  else empty("c-push");
 
   const up = uptimeCell(p, st);
-  td("c-up", up ?? (p.url ? el("span", NODATA, "meta") : dash()));
+  if (up) td("c-up", up);
+  else if (p.url) td("c-up is-empty", el("span", NODATA, "meta"));
+  else empty("c-up");
   return tr;
 }
 
@@ -101,6 +110,14 @@ export function markSelected(name: string | null, scroll = false) {
   }
 }
 export const topicNow = () => view.topic;
+/** Header verdict pill: show only the failing projects and jump to the ledger. */
+export function showFailing() {
+  view.status = "failing";
+  if (document.body.dataset.view) navigate("/");
+  draw?.();
+  document.getElementById("projects")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  document.querySelector<HTMLElement>("#ledger .lg-chip[aria-pressed='true']")?.focus({ preventScroll: true });
+}
 /** Toggle a topic filter from the detail pane; returns the active topic. */
 export function toggleTopic(t: string) {
   view.topic = view.topic === t ? "" : t;
@@ -138,7 +155,12 @@ function build(ps: Project[]) {
   const topicBtn = el("button", "", "lg-chip lg-topic", { type: "button" });
   const clear = el("button", "Clear filters", "lg-clear", { type: "button" });
   const count = el("p", "", "meta lg-count", { role: "status" });
-  add(bar, sw, chips, lsel, topicBtn, clear, count);
+  // Phones: the column headers are hidden, this select sorts instead.
+  const ssel = el("select", "", "", { id: "hub-sort", name: "sort" });
+  for (const [k, label] of SORTS) add(ssel, el("option", label, "", { value: k }));
+  const sortBox = el("div", "", "lg-sortsel");
+  add(sortBox, el("label", "Sort", "meta", { for: "hub-sort" }), ssel);
+  add(bar, sw, sortBox, chips, lsel, topicBtn, clear, count);
 
   const table = el("table", "", "lg-table", { role: "table" });
   add(table, el("caption", "Projects: status, activity, CI and uptime. Column headers sort the list.", "sr-only"));
@@ -189,6 +211,10 @@ function build(ps: Project[]) {
     const list = sortFilter(all, view.sort, view.lang, view.status, view.q, view.topic, bad);
     const focused = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("lg-name") ? document.activeElement.dataset.vp : null;
     tbody.replaceChildren();
+    // A column nobody has data for is dropped instead of showing a dash on every row.
+    table.classList.toggle("no-spark", !all.some((p) => p.codeFreq?.length));
+    table.classList.toggle("no-up", !all.some((p) => uptimeCell(p, status)));
+    ssel.value = SORTS.some(([k]) => k === view.sort) ? view.sort : "active";
     for (const p of list) {
       const tr = row(p, status, bad);
       tr.dataset.name = p.name;
@@ -220,6 +246,7 @@ function build(ps: Project[]) {
   };
   search.addEventListener("input", () => { view.q = search.value; paint(); });
   lsel.addEventListener("change", () => { view.lang = lsel.value; redraw(); });
+  ssel.addEventListener("change", () => { view.sort = ssel.value as Sort; paint(); });
   topicBtn.addEventListener("click", () => { view.topic = ""; syncPressed(); redraw(); });
   clear.addEventListener("click", () => {
     Object.assign(view, DEFAULT_VIEW);

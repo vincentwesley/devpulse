@@ -172,7 +172,19 @@ export function buildDetail(p: Project, o: DetailOpts): HTMLElement {
       if (b.kind === "li") { if (!ul) add(box, (ul = el("ul"))); add(ul, el("li", b.text)); } // textContent only
       else { ul = null; add(box, el("p", b.text)); }
     }
-    add(root, sec("README", box));
+    const kids: Node[] = [box];
+    if (box.textContent!.length > 280 || box.children.length > 4) {
+      box.id = `readme-${page ? "page" : "pane"}`;
+      box.dataset.clamped = "";
+      const more = el("button", "Read more", "hs-btn hub-btn pp-more", { type: "button", "aria-expanded": "false", "aria-controls": box.id });
+      more.addEventListener("click", () => {
+        const open = box.toggleAttribute("data-clamped") === false; // removed = expanded
+        more.setAttribute("aria-expanded", String(open));
+        more.textContent = open ? "Show less" : "Read more";
+      });
+      kids.push(more);
+    }
+    add(root, sec("README", ...kids));
   }
 
   if (p.languages?.length) {

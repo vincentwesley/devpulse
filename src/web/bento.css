@@ -1,7 +1,7 @@
 /* Bento strip: tiles of different sizes. Frames live only here (and on the detail pane). Tokens from tokens-app.css. */
 #bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
 #tile-featured, #tile-pulse, #tile-contrib { grid-column: 1 / -1; }
-#tile-featured { min-height: 27rem; }
+#tile-featured { min-height: 22rem; }
 #tile-pulse { min-height: 12.5rem; }
 #tile-contrib { min-height: 21rem; }
 #tile-totals, #tile-langs { min-height: 13rem; }
@@ -30,8 +30,10 @@
 /* ---- Featured ---- */
 .ft { display: flex; flex-direction: column; gap: var(--s4); height: 100%; }
 .ft__media { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 630; object-fit: cover; background: var(--border); }
-.ft__tile { display: grid; place-items: center; }
-.ft__initial { font: 700 3.5rem/1 var(--font-head); color: var(--fg); opacity: 0.85; }
+.ft__media { max-height: 11rem; }
+.ft__tile { display: grid; place-items: center; aspect-ratio: auto; height: 7.5rem; }
+.ft__initial { font: 700 2.5rem/1 var(--font-head); color: var(--fg); opacity: 0.85; }
+@media (min-width: 900px) { .ft__media { max-height: 16rem; } .ft__tile { height: 10rem; } }
 .ft__body { display: flex; flex-direction: column; gap: var(--s3); flex: 1; min-width: 0; }
 .ft__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
 .ft__head h3 { font-size: var(--fs-h2); }
@@ -54,6 +56,11 @@
 .pulse__cell[data-s="attn"] .pulse__pix::before { content: var(--glyph-attn); color: var(--attn-fg); }
 .pulse__cell[data-s="wip"] .pulse__pix { border-color: var(--wip); background: color-mix(in srgb, var(--wip) 16%, var(--bg)); }
 .pulse__cell[data-s="wip"] .pulse__pix::before { content: var(--glyph-wip); color: var(--wip-fg); }
+.pulse__attn { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); margin: var(--s2) 0 0; padding: 0; list-style: none; font: 400 var(--fs-meta)/1.3 var(--font-data); }
+.pulse__chip { position: relative; display: inline-block; padding: 2px var(--s2); color: var(--fg); text-decoration: none; border: 1px solid var(--attn); background: color-mix(in srgb, var(--attn) 14%, transparent); }
+.pulse__chip::after { content: ""; position: absolute; inset: -9px -2px; } /* 44px hit area, same look */
+.pulse__more { color: var(--fg-muted); }
+@media (hover: hover) { .pulse__chip:hover { color: var(--accent); } }
 .pulse__cell:focus-visible { outline: var(--ring); outline-offset: -2px; }
 @media (hover: hover) { .pulse__cell:hover .pulse__pix { transform: translateY(-2px); } }
 @media (prefers-reduced-motion: no-preference) { .pulse__pix { transition: transform 0.2s var(--fx-ease); } }
@@ -61,8 +68,11 @@
 /* ---- Contributions ---- */
 .ct { display: grid; gap: var(--s4); min-width: 0; }
 .ct__heat { min-width: 0; display: flex; flex-direction: column; }
-.heat-toggle { align-self: flex-start; font-size: var(--fs-meta); }
-.heat-toggle[aria-pressed="true"] { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1px var(--live); }
+.heat-seg { display: inline-flex; align-self: flex-start; }
+.heat-toggle { min-height: 44px; padding: 0 var(--s3); font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg); background: transparent; border: var(--rule-strong); border-radius: 0; cursor: pointer; }
+.heat-toggle + .heat-toggle { margin-left: -1px; }
+.heat-toggle[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+@media (pointer: fine) { .heat-toggle { min-height: 36px; } }
 .heat-wrap { overflow-x: auto; padding: var(--s1); margin-top: var(--s2); --fl: 0px; --fr: 0px; mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
 .heat-wrap[data-fade-l] { --fl: 2rem; }
 .heat-wrap[data-fade-r] { --fr: 2rem; }
@@ -96,7 +106,8 @@
 .tot__row dt { font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); }
 .tot__v { margin: 0; font: 400 1.25rem/1.3 var(--font-data); font-variant-numeric: tabular-nums; color: var(--fg); overflow-wrap: anywhere; }
 .tot__v--txt { flex-basis: 100%; font-size: var(--fs-meta); }
-.tot__v--txt a { overflow-wrap: anywhere; }
+.tot__v--txt a { position: relative; overflow-wrap: anywhere; }
+.tot__v--txt a::after { content: ""; position: absolute; inset: -12px -4px; } /* 44px hit area, same look */
 .tot__sub { color: var(--fg-muted); }
 
 /* ---- Languages ---- */

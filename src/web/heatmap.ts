@@ -23,7 +23,10 @@ let listening = false;
 
 function grid(all: Day[]) {
   const out = el("div", "", "ct__heat");
-  const toggle = el("button", "", "hs-btn heat-toggle", { type: "button" });
+  const seg = el("div", "", "heat-seg", { role: "group", "aria-label": "Heatmap range" });
+  const bWeeks = el("button", "26 weeks", "heat-toggle", { type: "button" });
+  const bYear = el("button", "Full year", "heat-toggle", { type: "button" });
+  add(seg, bWeeks, bYear);
   const wrap = el("div", "", "heat-wrap", { tabindex: "0", role: "region", "aria-label": "Contribution heatmap, scrollable" });
   const readout = el("p", "", "tile-readout", { "aria-live": "polite" });
   const legend = el("div", "", "heat-legend", { "aria-hidden": "true" });
@@ -36,8 +39,8 @@ function grid(all: Day[]) {
 
   const draw = () => {
     const year = full ?? !phone().matches;
-    toggle.textContent = year ? "Last 26 weeks" : "Full year";
-    toggle.setAttribute("aria-pressed", String(year));
+    bYear.setAttribute("aria-pressed", String(year));
+    bWeeks.setAttribute("aria-pressed", String(!year));
     const days = year ? all : windowDays(all, 26);
     const cell = 12, step = 14, top = 18;
     const first = new Date(days[0].date + "T00:00:00Z").getUTCDay();
@@ -49,12 +52,17 @@ function grid(all: Day[]) {
     const svg = d3.create("svg").attr("class", "heat").attr("viewBox", `0 0 ${w} ${h}`).attr("width", w).attr("height", h)
       .attr("role", "group").attr("aria-label", `Daily contributions, ${days.length} days`);
     let prev = "";
+    const marks: { x: number; d: Day }[] = [];
     days.forEach((d, i) => {
       const m = d.date.slice(0, 7);
       if (m === prev) return;
       prev = m;
-      const x = Math.floor((first + i) / 7) * step;
-      if (x + 30 <= w) svg.append("text").attr("class", "months").attr("x", x).attr("y", 12).attr("aria-hidden", "true")
+      marks.push({ x: Math.floor((first + i) / 7) * step, d });
+    });
+    // A label needs ~28px; when two months start closer than that (a partial first month), the earlier one is dropped.
+    marks.forEach(({ x, d }, i) => {
+      if (x + 30 > w || (marks[i + 1] && marks[i + 1].x - x < 28)) return;
+      svg.append("text").attr("class", "months").attr("x", x).attr("y", 12).attr("aria-hidden", "true")
         .text(new Date(d.date + "T00:00:00Z").toLocaleString("en", { month: "short", timeZone: "UTC" }));
     });
     const cells = svg.selectAll("rect").data(days).join("rect")
@@ -90,13 +98,11 @@ function grid(all: Day[]) {
     wrap.toggleAttribute("data-fade-r", wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 1);
   };
   wrap.addEventListener("scroll", fade, { passive: true });
-  toggle.addEventListener("click", () => {
-    full = !(full ?? !phone().matches);
-    draw();
-  });
+  bWeeks.addEventListener("click", () => { full = false; draw(); });
+  bYear.addEventListener("click", () => { full = true; draw(); });
   redraw = draw;
   if (!listening) { listening = true; phone().addEventListener("change", () => full === null && redraw?.()); }
-  add(out, toggle, wrap, readout, foot);
+  add(out, seg, wrap, readout, foot);
   draw();
   requestAnimationFrame(() => { wrap.scrollLeft = wrap.scrollWidth; fade(); }); // layout isn't final until attached
   return out;

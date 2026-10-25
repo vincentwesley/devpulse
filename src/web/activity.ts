@@ -39,7 +39,7 @@ export function renderActivity(commits: Res<Commit[]>) {
           a.title = line;
           if (n++ === focusFrom) target = a;
           const sha = link(c.sha.slice(0, 7), c.url, "act__sha");
-          add(li, el("span", c.repo, "act__repo"), a, sha, el("span", relTime(c.ts), "act__meta"));
+          add(li, el("span", c.repo.split("/").pop()!, "act__repo", { title: c.repo }), a, sha, el("span", relTime(c.ts), "act__meta"));
           add(ul, li);
         }
         add(sec, ul);

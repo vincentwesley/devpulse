@@ -21,7 +21,7 @@ async function mock(page: Page, mode: Mode) {
     return route.fulfill({ json: mode === "empty" ? empties[name] : bodies[name] });
   });
 }
-const SECTIONS = ["hero", "projects", "status", "heatmap", "activity", "languages", "posts"];
+const SECTIONS = ["projects", "status", "activity", "posts"];
 const loaded = (page: Page) => expect(page.locator("body")).toHaveAttribute("data-loaded", "1");
 
 test("populated state", async ({ page }) => {
@@ -30,25 +30,13 @@ test("populated state", async ({ page }) => {
   await loaded(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".proj")).toHaveCount(4);
-  await expect(page.locator(".proj h3 a").first()).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(page.locator(".proj").first()).toContainText("99.87%");
-  await expect(page.locator(".proj").first()).toContainText("Best 72 needs work");
-  await expect(page.locator(".proj").first()).toContainText("SEO 40 poor");
+  await expect(page.locator(".proj a.lg-name").first()).toHaveAttribute("href", "/p/Alpha");
   await expect(page.locator(".proj").nth(1)).toContainText("Beta <b>x</b>"); // escaped, not parsed
-  await expect(page.locator(".proj", { hasText: "NoSite" })).toContainText("no live site");
-  await expect(page.locator(".proj", { hasText: "NoSite" }).locator("h3 a")).toHaveAttribute("href", "https://github.com/vincentwesley/nosite");
-  await expect(page.locator(".proj").nth(1)).toContainText("Lighthouse: no data yet");
+  await expect(page.locator(".proj", { hasText: "NoSite" }).locator(".up-bar")).toHaveCount(0);
   await expect(page.locator(".proj").nth(3)).toContainText("no data yet");
-  await expect(page.locator(".heat rect")).toHaveCount(365);
   await expect(page.locator("#activity")).toContainText("Fix thing");
   await expect(page.locator("#posts a")).toHaveText("Hello world");
   await expect(page.locator(".creator")).toBeVisible();
-  await expect(page.locator("#hero")).toContainText("lines changed (est.)");
-  await expect(page.locator("#hero .hero__num").nth(1)).toHaveText("3.5K");
-  await expect(page.locator("#hero .hero__num").nth(3)).toHaveText("12");
-  await expect(page.locator("#languages .lang__bar")).toHaveAttribute("aria-label", /TypeScript 55%/);
-  await expect(page.locator("#languages .lang__legend li")).toHaveCount(4);
-  await expect(page.locator("#languages .lang__seg").nth(3)).toHaveCSS("background-color", /rgb/); // null colour falls back to accent
 });
 
 test("empty state", async ({ page }) => {
@@ -112,56 +100,47 @@ for (const theme of ["dark", "light"]) {
   }
 }
 
-test("project hub: cards, spotlight, sort and filter", async ({ page }) => {
+test("project ledger: columns, sort and filter", async ({ page }) => {
   await mock(page, "full");
   await page.goto("/");
   await loaded(page);
   const first = page.locator(".proj").first();
-  await expect(first).toContainText("Alpha <i>tool</i> for testing"); // escaped
-  await expect(first.locator(".hub-topic")).toHaveCount(2);
-  await expect(first).toContainText("v1.2.0");
-  await expect(first).toContainText("12,345");
-  await expect(first).toContainText("7 stars");
-  await expect(first.locator("[title='2026-10-18']")).toContainText("updated");
-  await expect(first.locator(".hub-langbar span").nth(1)).toHaveCSS("background-color", /rgb/); // bad colour -> accent
-  await expect(first.locator("a", { hasText: "Live" })).toHaveAttribute("href", "https://alpha.example.com");
+  await expect(first).toContainText("Alpha ships tiny tools fast");
+  await expect(first).toContainText("TypeScript");
+  await expect(first).toContainText(/ago|just now/);
+  await expect(first.locator("[title='2026-10-18']")).toHaveCount(1);
   await expect(page.locator(".proj", { hasText: "NoSite" })).toContainText("pending"); // ciState fallback
-  await expect(page.locator(".hub-spot")).toContainText("Alpha");
-  await expect(page.locator(".hub-spot")).toContainText("Fix thing");
-  await page.locator(".hub-filters summary").click();
-  await page.locator(".hub-bar select").nth(0).selectOption("stars");
-  await expect(page.locator(".proj h3").first()).toContainText("Beta");
-  await page.locator(".hub-bar select").nth(0).selectOption("name");
-  await expect(page.locator(".proj h3").first()).toContainText("Alpha");
-  await page.locator(".hub-bar select").nth(1).selectOption("TypeScript");
+  await page.getByRole("columnheader", { name: "Project" }).getByRole("button").click();
+  await expect(page.locator(".proj a.lg-name").first()).toHaveText("Alpha");
+  await page.locator(".lg-lang").selectOption("TypeScript");
   await expect(page.locator(".proj")).toHaveCount(2);
-  await page.locator(".hub-bar select").nth(2).selectOption("up");
+  await page.getByRole("button", { name: /^Live/ }).click();
   await expect(page.locator(".proj")).toHaveCount(1);
-  await page.locator(".hub-bar select").nth(2).selectOption("down");
+  await page.getByRole("button", { name: /^Failing/ }).click();
   await expect(page.locator("#projects")).toContainText("no projects match");
 });
 
 for (const theme of ["dark", "light"]) {
-  test(`detail dialog ${theme}: open, content, axe, Esc`, async ({ page }) => {
+  test(`detail pane ${theme}: open, content, axe, Esc`, async ({ page }) => {
     await mock(page, "full");
-    await page.emulateMedia({ reducedMotion: "reduce" }); // no slide-in mid-axe
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
     await page.goto("/");
     await loaded(page);
-    const opener = page.getByRole("button", { name: "Details for Beta <b>x</b>" });
+    const opener = page.locator("a.lg-name", { hasText: "Beta" });
     await opener.focus();
     await page.keyboard.press("Enter");
-    const dlg = page.getByRole("dialog");
-    await expect(dlg).toBeVisible();
-    await expect(dlg).toContainText("Beta only");
-    await expect(dlg).not.toContainText("Fix thing");
-    await expect(dlg.locator(".hub-chart rect.add, .hub-chart rect.del")).toHaveCount(52);
-    await expect(dlg).toContainText("Go 100.0%");
-    await expect(dlg.locator(".hub-snippet").first()).toHaveText(`![status](${new URL(page.url()).origin}/badge/Beta%20%3Cb%3Ex%3C%2Fb%3E.svg)`);
+    const pane = page.locator("#detail-pane");
+    await expect(pane).toBeVisible();
+    await expect(pane).toContainText("Beta has a broken cover");
+    await expect(pane.locator(".hub-chart rect.add, .hub-chart rect.del")).toHaveCount(52);
+    await expect(pane).toContainText("Go 100.0%");
+    await expect(pane.locator(".hub-snippet").first()).toHaveText(`![status](${new URL(page.url()).origin}/badge/Beta%20%3Cb%3Ex%3C%2Fb%3E.svg)`);
     const r = await new AxeBuilder({ page }).analyze();
     expect(r.violations).toEqual([]);
     await page.keyboard.press("Escape");
-    await expect(dlg).toHaveCount(0);
+    await expect(pane).toBeHidden();
     await expect(opener).toBeFocused();
   });
 }
@@ -193,24 +172,6 @@ test("status: no incidents empty state", async ({ page }) => {
   await expect(page.locator("#status .st__inc")).toContainText("no incidents in 90 days");
 });
 
-test("heatmap: 26 weeks on mobile, toggle, readout", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 800 });
-  await mock(page, "full");
-  await page.goto("/");
-  await loaded(page);
-  const cells = page.locator("#heatmap .heat rect");
-  expect(await cells.count()).toBeLessThanOrEqual(26 * 7);
-  expect(await page.locator("#heatmap .heat-wrap").evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
-  const toggle = page.locator("#heatmap .heat-toggle");
-  await expect(toggle).toHaveText("Full year");
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await expect(toggle).toHaveText("Last 26 weeks");
-  await expect(cells).toHaveCount(365);
-  await cells.last().focus();
-  await expect(page.locator("#heatmap .readout").first()).toContainText(/contributions? · \d+ \w+ \d{4}/);
-});
-
 test("activity: show more", async ({ page }) => {
   const many = Array.from({ length: 14 }, (_, i) => ({ repo: "alpha", sha: `abcdef${i}`, message: `Commit ${i}`, author: "v", ts: new Date(Date.parse("2026-10-08T10:00:00Z") - i * 36e5 * 7).toISOString(), url: "https://github.com/o/alpha/commit/x" }));
   await mock(page, "full");
@@ -228,5 +189,5 @@ test("reduced motion keeps content visible", async ({ page }) => {
   await page.goto("/");
   await loaded(page);
   await expect(page.locator("#activity .act li").first()).toHaveCSS("opacity", "1");
-  await expect(page.locator("#hero .hero__num").nth(1)).toHaveText("3.5K");
+  await expect(page.locator("#tile-totals .tot__v").nth(1)).toHaveText("3.5K");
 });

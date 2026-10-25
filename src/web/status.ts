@@ -1,5 +1,7 @@
-import "./status.css";
-import { add, el, link, show, type Incident, type Res, type SiteStatus, type Status } from "./api";
+import "./feed.css";
+import { add, el, show, type Incident, type Res, type SiteStatus, type Status } from "./api";
+import { navLink } from "./nav";
+import { toProjectPath } from "./urlstate";
 
 type Day = SiteStatus["days"][number];
 
@@ -23,7 +25,14 @@ export function fmtDuration(start: string, end: string | null, now = Date.now())
 }
 const fmtDay = (date: string) => new Date(date + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC";
-const barCls = (p: number | null) => (p === null ? "none" : p >= 99.9 ? "ok" : p >= 95 ? "warn" : "bad");
+export const barCls = (p: number | null) => (p === null ? "none" : p >= 99.9 ? "ok" : p >= 95 ? "warn" : "bad");
+/** Readout line for one day; down days carry a glyph so colour is never the only signal. */
+export function dayText(d: Day) {
+  const p = dayPct(d);
+  if (p === null) return `${fmtDay(d.date)} · no checks`;
+  const c = barCls(p);
+  return `${fmtDay(d.date)} · ${fmtPct(p)} (${d.up}/${d.total} checks)${c === "bad" ? " ▲ outage" : c === "warn" ? " ▲ degraded" : ""}`;
+}
 
 const strips = new Set<() => void>();
 let mq: MediaQueryList | undefined;
@@ -38,22 +47,21 @@ const mobile = () => {
 export function site(s: SiteStatus) {
   const card = el("article", "", "st__site");
   const head = el("div", "", "st__head");
-  const pill = el("span", "", `st__pill st__pill--${s.up === true ? "up" : s.up === false ? "down" : "unk"}`);
-  add(pill, el("span", s.up === true ? "▲" : s.up === false ? "▼" : "?", "", { "aria-hidden": "true" }), s.up === true ? " Up" : s.up === false ? " Down" : " Unknown");
+  const pill = el("span", s.up === true ? "Up" : s.up === false ? "Down" : "Unknown", `st__pill st__pill--${s.up === true ? "up" : s.up === false ? "down" : "unk"}`);
   const pct = s.uptime90d ?? windowPct(s.days);
-  add(head, el("h3", ""), pill, el("span", pct === null ? "no data yet" : `${fmtPct(pct)} uptime`, "st__pct"));
-  add(head.firstElementChild!, link(s.name, s.url));
+  const h = el("h3");
+  add(h, navLink(s.name, toProjectPath(s.name), "st__name"));
+  add(head, h, pill, el("span", pct === null ? "no data yet" : `${fmtPct(pct)} uptime`, "st__pct"));
 
   const strip = el("div", "", "st__bars", { role: "group", "aria-label": `Daily uptime for ${s.name}` });
-  const readout = el("p", "", "readout", { "aria-live": "polite" });
+  const readout = el("p", "", "readout st__readout", { "aria-live": "polite" });
   const draw = () => {
     const bars = lastBars(s.days, mobile().matches ? 30 : 90);
     strip.replaceChildren();
     readout.textContent = bars.length ? `Last ${bars.length} days. Tap or focus a bar for details.` : "no data yet";
     const btns = bars.map((d, i) => {
-      const p = dayPct(d);
-      const txt = p === null ? `${fmtDay(d.date)} · no checks` : `${fmtDay(d.date)} · ${fmtPct(p)} (${d.up}/${d.total} checks)`;
-      const b = el("button", "", `st__bar st__bar--${barCls(p)}`, { type: "button", "aria-label": txt, tabindex: i === bars.length - 1 ? "0" : "-1" });
+      const txt = dayText(d);
+      const b = el("button", "", `st__bar st__bar--${barCls(dayPct(d))}`, { type: "button", "aria-label": txt, tabindex: i === bars.length - 1 ? "0" : "-1" });
       const say = () => { readout.textContent = txt; };
       b.addEventListener("focus", say);
       b.addEventListener("click", say);
@@ -80,10 +88,10 @@ function incidents(list: Incident[]) {
   const box = el("div", "", "st__inc");
   add(box, el("h3", "Incidents (90 days)"));
   if (!list.length) return add(box, el("p", "no incidents in 90 days", "muted")), box;
-  const ul = el("ul", "", "list");
+  const ul = el("ul", "", "st__incs");
   for (const i of [...list].sort((a, b) => b.start.localeCompare(a.start))) {
     const li = el("li");
-    add(li, el("strong", i.name), el("span", ` · ${fmtWhen(i.start)} · ${fmtDuration(i.start, i.end)} · ${i.status ? `HTTP ${i.status}` : "no response"}`, "muted"));
+    add(li, el("strong", i.name), el("span", fmtWhen(i.start), "meta"), el("span", fmtDuration(i.start, i.end), "meta"), el("span", i.status ? `HTTP ${i.status}` : "no response", "meta"));
     add(ul, li);
   }
   add(box, ul);
@@ -94,7 +102,7 @@ export function renderUptime(status: Res<Status>) {
   strips.clear();
   show("status", status, (d) => {
     const box = el("div");
-    add(box, ...d.sites.map(site), incidents(d.incidents ?? []));
+    add(box, ...d.sites.filter((s) => /^https:\/\//.test(s.url)).map(site), incidents(d.incidents ?? []));
     return box;
   });
 }

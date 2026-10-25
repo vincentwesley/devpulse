@@ -84,7 +84,7 @@ test("375px: no overflow, hero tiles wrap (no carousel), tabs reachable", async 
   await page.goto("/");
   await loaded(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const hero = page.locator("#hero .hero__stats");
+  const hero = page.locator("#tile-totals .tot");
   expect(await hero.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true); // nothing scrolls off-screen
   for (const a of await page.locator(".tabs a").all()) expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });

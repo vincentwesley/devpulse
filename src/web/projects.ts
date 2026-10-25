@@ -1,243 +1,268 @@
 import * as d3 from "d3";
-import "./hub.css";
-import { add, el, fmtDate, link, NODATA, show, type Commit, type Project, type Res, type Status } from "./api";
-import { closeDetail, openDetail, openName } from "./detail";
-import { ciFromState, commitsFor, firstLine, plural, relTime, safeColor, sortFilter, type Sort, type StatusFilter } from "./hubutil";
+import "./ledger.css";
+import { add, el, fmtDate, NODATA, show, type Commit, type Project, type Res, type Status } from "./api";
+import { openDetail, wide } from "./detail";
+import { icon } from "./icons";
+import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StatusFilter } from "./hubutil";
 import { setPaletteProjects } from "./palette";
-import { cover, langBar, viewLink } from "./showcase";
-import { DEFAULT_VIEW, parseProjectPath, parseUrl, toSearch } from "./urlstate";
-
-const LH: [keyof NonNullable<Project["lighthouse"]>, string][] = [
-  ["performance", "Perf"], ["accessibility", "A11y"], ["best_practices", "Best"], ["seo", "SEO"],
-];
-const grade = (n: number) => (n >= 90 ? "good" : n >= 50 ? "ok" : "poor");
-const gradeWord: Record<string, string> = { good: "good", ok: "needs work", poor: "poor" };
-
-function spark(ms: number[], label = `Latency, last ${ms.length} checks: min ${d3.min(ms)} ms, max ${d3.max(ms)} ms`) {
-  const w = 120, h = 28;
-  const [lo, hi] = d3.extent(ms) as [number, number];
-  const svg = d3.create("svg").attr("class", "spark-line").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "img")
-    .attr("aria-label", label);
-  const x = d3.scaleLinear([0, Math.max(1, ms.length - 1)], [2, w - 2]);
-  const y = d3.scaleLinear([lo, hi], [h - 3, 3]);
-  svg.append("path").attr("fill", "none").attr("stroke", "currentColor").attr("stroke-width", 1.5)
-    .attr("d", d3.line<number>().x((_, i) => x(i)).y((d) => (lo === hi ? h / 2 : y(d)))(ms));
-  return svg.node() as unknown as SVGElement;
-}
+import { lastBars, windowPct } from "./status";
+import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
 
 // Toolbar state, seeded from the URL, survives the periodic re-render.
 const { p: _p, ...seed } = parseUrl(location.search, "");
 const view: typeof DEFAULT_VIEW = seed;
 const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
 
-function card(p: Project, commits: Commit[], onTopic: (t: string) => void) {
-  const c = el("article", "", "proj");
-  const head = el("div", "", "proj__head");
-  const h3 = el("h3");
-  add(h3, link(p.name, p.url ?? `https://github.com/${p.repo}`));
-  const pill = !p.url ? null : p.up === null ? el("span", NODATA, "pill pill--none") : el("span", p.up ? "▲ Up" : "▼ Down", `pill ${p.up ? "pill--up" : "pill--down"}`);
-  add(head, h3);
-  if (pill) add(head, pill);
-
-  const stats = el("dl", "", "proj__stats");
-  const row = (k: string, v: Node | string, cls = "") => {
-    const g = el("div", "", cls);
-    const dd = el("dd");
-    add(dd, v);
-    add(g, el("dt", k), dd);
-    add(stats, g);
-  };
-  if (p.url) {
-    row("Uptime 30d", p.uptime30d == null ? NODATA : `${p.uptime30d.toFixed(2)}%`);
-    row("Latency", p.latencyMs?.length ? spark(p.latencyMs) : NODATA);
-  }
-  const ci = p.ci;
-  const st = ciFromState(p.ciState);
-  row("CI", ci ? link(ci.conclusion ?? ci.status, ci.url, `hs-chip ci ci--${ci.conclusion ?? ci.status}`)
-    : st ? el("span", st.label, `hs-chip ci ci--${st.cls}`) : NODATA);
-  if (p.loc != null) row("Lines changed (est.)", p.loc.toLocaleString("en"), "proj__x");
-
-  const lh = el("div", "", "lh proj__x"); // proj__x = secondary rows, hidden on phones (all still in the detail dialog / project page)
-  if (p.lighthouse) {
-    for (const [k, label] of LH) {
-      const n = p.lighthouse[k] as number;
-      const g = grade(n);
-      add(lh, el("span", `${label} ${n} ${gradeWord[g]}`, `score score--${g}`));
-    }
-  } else add(lh, p.url ? el("span", `Lighthouse: ${NODATA}`, "muted") : el("span", "no live site", "hs-chip hub-nosite"));
-
-  const deps = el("ul", "", "deps", { "aria-label": "Dependency status" });
-  for (const d of p.deps ?? []) {
-    const li = el("li");
-    add(li, link(`${d.name}: ${d.indicator}`, d.url, `hs-chip dep dep--${d.indicator}`));
-    add(deps, li);
-  }
-  add(c, cover(p, "sm"), head);
-  if (p.description) add(c, el("p", p.description, "hub-desc"));
-  if (p.topics?.length) {
-    const t = el("ul", "", "hub-topics", { "aria-label": "Topics (select to filter)" });
-    for (const x of p.topics) {
-      const li = el("li");
-      const b = el("button", x, "hs-chip hub-topic", { type: "button", "aria-pressed": String(view.topic === x) });
-      b.addEventListener("click", () => onTopic(x));
-      add(li, b);
-      add(t, li);
-    }
-    add(c, t);
-  }
-  if (p.languages?.length) {
-    const lb = langBar(p);
-    lb.classList.add("proj__x");
-    add(c, lb);
-  }
-  const meta = el("p", "", "hub-meta");
-  const bits = [p.language, p.stars > 0 ? plural(p.stars, "star") : null, p.forks > 0 ? plural(p.forks, "fork") : null, p.commitCount != null ? plural(p.commitCount, "commit") : null, p.license].filter(Boolean) as string[];
-  add(meta, bits.join(" · "));
-  if (p.release) add(meta, " · ", el("span", p.release.tag, "hs-chip hub-rel"));
-  add(c, meta);
-  if (p.pushedAt) add(c, el("p", `updated ${relTime(p.pushedAt)}`, "hub-meta proj__x", { title: fmtDate(p.pushedAt) }));
-  add(c, stats);
-  if (p.codeFreq?.length) {
-    const s = spark(p.codeFreq.map((w) => w.add + w.del), `Lines changed per week, last ${p.codeFreq.length} weeks`);
-    s.classList.add("proj__x");
-    add(c, s);
-  }
-  add(c, lh);
-  if (deps.children.length) { deps.classList.add("proj__x"); add(c, deps); }
-  const acts = el("div", "", "hub-actions");
-  const more = el("button", "Details", "hs-btn hub-btn", { type: "button", "aria-label": `Details for ${p.name}` });
-  more.addEventListener("click", () => openDetail(p, commits));
-  add(acts, viewLink(p), more);
-  if (p.url) add(acts, link("Live", p.url, "hs-btn hub-btn hub-btn--alt"));
-  add(acts, link("Repo", `https://github.com/${p.repo}`, "hs-btn hub-btn hub-btn--alt"));
-  add(c, acts);
-  return c;
+/** Sparkline of weekly churn; role=img so the cell has a text alternative. */
+function spark(vals: number[], label: string) {
+  const w = 120, h = 24;
+  const [lo, hi] = d3.extent(vals) as [number, number];
+  const svg = d3.create("svg").attr("class", "lg-spark").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "img").attr("aria-label", label);
+  const x = d3.scaleLinear([0, Math.max(1, vals.length - 1)], [2, w - 2]);
+  const y = d3.scaleLinear([0, hi || 1], [h - 3, 3]);
+  svg.append("path").attr("fill", "none").attr("stroke", "currentColor").attr("stroke-width", 1.5)
+    .attr("d", d3.line<number>().x((_, i) => x(i)).y((v) => (lo === hi ? h / 2 : y(v)))(vals));
+  return svg.node() as unknown as SVGElement;
 }
 
-function spotlight(ps: Project[], commits: Commit[]) {
-  const p = [...ps].filter((x) => x.pushedAt).sort((a, b) => b.pushedAt!.localeCompare(a.pushedAt!))[0];
-  if (!p) return null;
-  const s = el("aside", "", "hub-spot hs-card", { "aria-label": "Now building" });
-  add(s, el("p", "Now building", "hs-eyebrow"));
-  const h = el("h3");
-  add(h, link(p.name, `https://github.com/${p.repo}`));
-  add(s, h);
-  if (p.description) add(s, el("p", p.description, "hub-desc"));
-  const last = commitsFor(p, commits)[0];
-  add(s, el("p", `pushed ${relTime(p.pushedAt)}${last ? ` · ${firstLine(last.message)}` : ""}`, "muted", { title: fmtDate(p.pushedAt!) }));
-  return s;
+/** Last-30-days uptime: tiny day cells + the percentage. Null without a live site / data. */
+function uptimeCell(p: Project, st: Status | null) {
+  const s = siteFor(p, st);
+  const bars = s ? lastBars(s.days, 30) : [];
+  const pct = s ? windowPct(bars) : null;
+  if (!bars.length || pct === null) return null;
+  const box = el("span", "", "lg-up");
+  const strip = el("span", "", "up-bar", { role: "img", "aria-label": `Uptime, last ${bars.length} days: ${fmtPct(pct)}` });
+  for (const d of bars) add(strip, el("i", "", "", { "data-c": dayClass(d).cls }));
+  add(box, strip, el("span", fmtPct(pct), "lg-pct"));
+  return box;
 }
 
-function pick(label: string, opts: [string, string][], value: string, onChange: (v: string) => void) {
-  const l = el("label", "", "hub-pick");
-  const sel = el("select");
-  for (const [v, t] of opts) add(sel, el("option", t, "", { value: v }));
-  sel.value = value;
-  sel.addEventListener("change", () => onChange(sel.value));
-  add(l, el("span", label), sel);
-  return l;
+const dash = () => { const f = document.createDocumentFragment(); add(f, el("span", "—", "meta", { "aria-hidden": "true" }), el("span", "no data", "sr-only")); return f; };
+
+interface Col { key: Sort | null; label: string; cls: string }
+const COLS: Col[] = [
+  { key: "status", label: "Status", cls: "c-st" },
+  { key: "name", label: "Project", cls: "c-name" },
+  { key: "lang", label: "Language", cls: "c-lang" },
+  { key: null, label: "Activity", cls: "c-spark" },
+  { key: "ci", label: "CI", cls: "c-ci" },
+  { key: "active", label: "Last push", cls: "c-push" },
+  { key: "uptime", label: "Uptime 30d", cls: "c-up" },
+];
+const sortAria = (k: Sort): "ascending" | "descending" => (k === "active" ? "descending" : "ascending");
+
+function row(p: Project, st: Status | null, bad: Set<string>) {
+  const tr = el("tr", "", "proj", { role: "row" });
+  const td = (cls: string, ...kids: (Node | string)[]) => { const c = el("td", "", cls, { role: "cell" }); add(c, ...kids); add(tr, c); return c; };
+  const rs = rowState(p, bad);
+  td("c-st", el("span", "", "dp-status", { "data-s": rs }), el("span", STATE_TEXT[rs], "sr-only"));
+
+  const a = el("a", p.name, "lg-name", { href: toProjectPath(p.name) });
+  a.dataset.vp = p.name;
+  const blurb = p.tagline ?? p.description;
+  td("c-name", a, ...(blurb ? [el("span", blurb, "lg-tag")] : []));
+
+  const lc = p.languages?.find((l) => l.lang === p.language)?.color;
+  if (p.language) {
+    const dot = el("i", "", "lg-dot", { "aria-hidden": "true" });
+    dot.style.background = safeColor(lc);
+    td("c-lang", dot, el("span", p.language, "meta"));
+  } else td("c-lang", dash());
+
+  const freq = p.codeFreq ?? [];
+  td("c-spark", freq.length ? spark(freq.map((w) => w.add + w.del), `Lines changed per week, last ${freq.length} weeks`) : dash());
+
+  const ci = ciOf(p);
+  td("c-ci", ci ? el("span", ci.label, `hs-chip ci ci--${ci.cls}`) : dash());
+
+  td("c-push", p.pushedAt ? el("span", relTime(p.pushedAt), "meta", { title: fmtDate(p.pushedAt) }) : dash());
+
+  const up = uptimeCell(p, st);
+  td("c-up", up ?? (p.url ? el("span", NODATA, "meta") : dash()));
+  return tr;
 }
 
-// Latest data, so popstate / hashchange can open the dialog for #p/<name>.
-let cur: { ps: Project[]; commits: Commit[] } = { ps: [], commits: [] };
-function syncDialog() {
-  const name = parseUrl("", location.hash).p;
-  if (!name) return closeDetail();
-  if (name === openName()) return;
-  const p = cur.ps.find((x) => x.name === name);
-  if (p) openDetail(p, cur.commits);
-}
-addEventListener("popstate", syncDialog);
-addEventListener("hashchange", syncDialog);
+let cur: { ps: Project[]; status: Status | null } = { ps: [], status: null };
+let selected: string | null = null;
+let draw: (() => void) | null = null; // redraw the ledger shell, once built
 
-function hub(ps: Project[], commits: Commit[]) {
-  const wrap = el("div");
-  const grid = el("div", "", "grid");
-  const count = el("p", "", "muted hub-count", { role: "status" });
-  const langs = [...new Set(ps.map((p) => p.language).filter(Boolean) as string[])].sort();
-  const topics = [...new Set(ps.flatMap((p) => p.topics ?? []))].sort();
-  const bar = el("div", "", "hub-bar", { role: "group", "aria-label": "Project controls" });
-  const search = el("input", "", "", { type: "search", id: "hub-q", name: "q", placeholder: "Search projects", autocomplete: "off", maxlength: "100" });
-  search.value = view.q;
-  const sl = el("label", "", "hub-search");
-  add(sl, el("span", "Search", "hub-lbl"), search);
-  const filters = el("details", "", "hub-filters");
-  const sum = el("summary", "Filters", "hs-btn hub-btn hub-btn--alt");
-  const fbody = el("div", "", "hub-fbody");
-  const clear = el("button", "Clear filters", "hs-btn hub-btn hub-btn--alt", { type: "button" });
-  const active = () => [view.q, view.lang, view.topic, view.status !== "all" ? "x" : "", view.sort !== "active" ? "x" : ""].filter(Boolean).length;
+const links = () => [...document.querySelectorAll<HTMLAnchorElement>("#ledger a.lg-name")];
 
-  const draw = () => {
-    grid.textContent = "";
-    const list = sortFilter(ps, view.sort, view.lang, view.status, view.q, view.topic);
-    if (list.length) add(grid, ...list.map((p) => card(p, commits, setTopic)));
-    else add(grid, el("p", "no projects match", "muted", { role: "status" }));
-    count.textContent = `${list.length} of ${plural(ps.length, "project")}`;
-    const n = active();
-    sum.textContent = n ? `Filters (${n})` : "Filters";
-    clear.hidden = !n;
-    saveUrl();
-  };
-  const redraw = () => {
-    if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(draw);
-    else draw();
-  };
-  const selects: Record<string, HTMLSelectElement> = {};
-  const mk = (key: "sort" | "lang" | "status" | "topic", label: string, opts: [string, string][]) => {
-    const l = pick(label, opts, view[key], (v) => { (view as Record<string, string>)[key] = v; redraw(); });
-    selects[key] = l.querySelector("select")!;
-    return l;
-  };
-  function setTopic(t: string) {
-    view.topic = view.topic === t ? "" : t;
-    selects.topic.value = view.topic;
-    redraw();
+/** Mark the open project's row (pane open on desktop); scroll it into view when asked. */
+export function markSelected(name: string | null, scroll = false) {
+  selected = name;
+  for (const a of links()) {
+    const on = a.dataset.vp === name;
+    if (on) a.setAttribute("aria-current", "true");
+    else a.removeAttribute("aria-current");
+    a.closest("tr")!.toggleAttribute("data-sel", on);
+    if (on && scroll) a.scrollIntoView({ block: "nearest" });
   }
-  add(fbody,
-    mk("sort", "Sort", [["active", "Recently active"], ["stars", "Stars"], ["name", "Name"], ["status", "Status"]]),
-    mk("lang", "Language", [["", "All"], ...langs.map((l): [string, string] => [l, l])]),
-    mk("status", "Status", [["all", "All"], ["up", "Up"], ["down", "Down"]]),
-    mk("topic", "Topic", [["", "All"], ...topics.map((t): [string, string] => [t, t])]));
-  clear.addEventListener("click", () => {
-    Object.assign(view, DEFAULT_VIEW);
-    search.value = "";
-    for (const [k, s] of Object.entries(selects)) s.value = (view as Record<string, string>)[k];
-    redraw();
-  });
-  search.addEventListener("input", () => { view.q = search.value; draw(); });
-  filters.open = Boolean(view.lang || view.topic || view.status !== "all" || view.sort !== "active");
-  add(filters, sum, fbody);
-  add(bar, sl, filters, clear);
-  const spot = spotlight(ps, commits);
-  if (spot) add(wrap, spot);
-  add(wrap, bar, count, grid);
-  draw();
-  return wrap;
 }
-
+export const topicNow = () => view.topic;
+/** Toggle a topic filter from the detail pane; returns the active topic. */
+export function toggleTopic(t: string) {
+  view.topic = view.topic === t ? "" : t;
+  draw?.();
+  return view.topic;
+}
 /** Filter the list by one topic; returns the new "?..." search string. */
 export function showTopic(t: string) {
   view.topic = t;
-  held = null;
-  show("ledger", { state: "ok", data: cur.ps }, (ps) => hub(ps, cur.commits));
+  draw?.();
   return toSearch(view);
 }
 
-/** main.ts passes both fetches; no internal fetching here. */
-let held: [Res<Project[]>, Res<Commit[]>, Res<Status>] | null = null;
-document.addEventListener("focusout", () => setTimeout(() => {
-  if (held && !document.getElementById("ledger")?.contains(document.activeElement)) renderProjects(...held);
-}));
-// STUB ledger: still the old card grid (Builder L replaces the body, keeps the signature). `_status` feeds the mini uptime bar later.
-export function renderProjects(projects: Res<Project[]>, commits: Res<Commit[]>, _status: Res<Status>) {
-  const cs = commits.state === "ok" ? commits.data : [];
+function build(ps: Project[]) {
+  const wrap = el("div", "", "lg");
+  const bar = el("div", "", "lg-bar", { role: "group", "aria-label": "Project controls" });
+  const search = el("input", "", "lg-q", { type: "search", id: "hub-q", name: "q", placeholder: "Search projects", autocomplete: "off", maxlength: "100", "aria-label": "Search projects" });
+  search.value = view.q;
+  const sw = el("div", "", "lg-search");
+  add(sw, icon("search", 16), search);
+
+  const chips = el("div", "", "lg-chips", { role: "group", "aria-label": "Show" });
+  const CHIPS: [StatusFilter, string][] = [["all", "All"], ["live", "Live"], ["failing", "Failing"], ["wip", "WIP"]];
+  const chipEls = new Map<StatusFilter, { b: HTMLButtonElement; n: HTMLElement }>();
+  for (const [k, label] of CHIPS) {
+    const b = el("button", "", "lg-chip", { type: "button", "aria-pressed": "false" });
+    const n = el("span", "", "lg-n");
+    add(b, label, " ", n);
+    b.addEventListener("click", () => { view.status = k; paint(); });
+    chipEls.set(k, { b, n });
+    add(chips, b);
+  }
+
+  const lsel = el("select", "", "lg-lang", { "aria-label": "Language", name: "lang" });
+  const topicBtn = el("button", "", "lg-chip lg-topic", { type: "button" });
+  const clear = el("button", "Clear filters", "lg-clear", { type: "button" });
+  const count = el("p", "", "meta lg-count", { role: "status" });
+  add(bar, sw, chips, lsel, topicBtn, clear, count);
+
+  const table = el("table", "", "lg-table", { role: "table" });
+  add(table, el("caption", "Projects: status, activity, CI and uptime. Column headers sort the list.", "sr-only"));
+  const thead = el("thead", "", "", { role: "rowgroup" });
+  const hr = el("tr", "", "", { role: "row" });
+  const ths = new Map<Sort, HTMLElement>();
+  for (const c of COLS) {
+    const th = el("th", "", c.cls, { role: "columnheader", scope: "col" });
+    if (c.key) {
+      const k = c.key;
+      const b = el("button", "", "lg-sort", { type: "button" });
+      add(b, el("span", c.label), icon("sort", 12));
+      b.addEventListener("click", () => { view.sort = view.sort === k ? "active" : k; paint(); });
+      add(th, b);
+      ths.set(k, th);
+    } else add(th, c.label);
+    add(hr, th);
+  }
+  add(thead, hr);
+  const tbody = el("tbody", "", "", { role: "rowgroup" });
+  add(table, thead, tbody);
+  add(wrap, bar, table);
+
+  const open = (e: MouseEvent, name: string) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    openDetail(name);
+    if (e.detail === 0 && wide()) document.querySelector<HTMLElement>("#detail-pane .dt-title")?.focus(); // keyboard: move into the pane
+  };
+  tbody.addEventListener("click", (e) => {
+    const t = e.target as Element;
+    const tr = t.closest<HTMLElement>("tr.proj");
+    if (!tr?.dataset.name) return;
+    if (t.closest("a, button") && !t.closest("a.lg-name")) return;
+    open(e, tr.dataset.name);
+  });
+
+  const active = () => Boolean(view.q || view.lang || view.topic || view.status !== "all" || view.sort !== "active");
+  const syncLangs = () => {
+    const langs = [...new Set(cur.ps.map((p) => p.language).filter(Boolean) as string[])].sort();
+    if (view.lang && !langs.includes(view.lang)) langs.push(view.lang);
+    lsel.replaceChildren(el("option", "All languages", "", { value: "" }), ...langs.map((l) => el("option", l, "", { value: l })));
+    lsel.value = view.lang;
+  };
+  function paint() {
+    const { ps: all, status } = cur;
+    const bad = openIncidentRepos(status);
+    const list = sortFilter(all, view.sort, view.lang, view.status, view.q, view.topic, bad);
+    const focused = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("lg-name") ? document.activeElement.dataset.vp : null;
+    tbody.replaceChildren();
+    for (const p of list) {
+      const tr = row(p, status, bad);
+      tr.dataset.name = p.name;
+      add(tbody, tr);
+    }
+    if (!list.length) {
+      const tr = el("tr", "", "", { role: "row" });
+      const c = el("td", "no projects match", "lg-none", { colspan: String(COLS.length), role: "cell" });
+      add(tr, c);
+      add(tbody, tr);
+    }
+    if (selected) markSelected(selected);
+    if (focused) links().find((a) => a.dataset.vp === focused)?.focus();
+    for (const [k, th] of ths) th.setAttribute("aria-sort", view.sort === k ? sortAria(k) : "none");
+    for (const [k, { b, n }] of chipEls) {
+      b.setAttribute("aria-pressed", String(view.status === k));
+      n.textContent = String(sortFilter(all, "active", view.lang, k, view.q, view.topic, bad).length);
+    }
+    topicBtn.hidden = !view.topic;
+    topicBtn.textContent = `Topic: ${view.topic} ✕`;
+    topicBtn.setAttribute("aria-label", `Clear topic filter ${view.topic}`);
+    clear.hidden = !active();
+    count.textContent = `${list.length} of ${plural(all.length, "project")}`;
+    saveUrl();
+  }
+  const redraw = () => {
+    if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(paint);
+    else paint();
+  };
+  search.addEventListener("input", () => { view.q = search.value; paint(); });
+  lsel.addEventListener("change", () => { view.lang = lsel.value; redraw(); });
+  topicBtn.addEventListener("click", () => { view.topic = ""; syncPressed(); redraw(); });
+  clear.addEventListener("click", () => {
+    Object.assign(view, DEFAULT_VIEW);
+    search.value = "";
+    lsel.value = "";
+    syncPressed();
+    redraw();
+  });
+  const syncPressed = () => document.querySelectorAll<HTMLElement>(".dt .hub-topic").forEach((b) => b.setAttribute("aria-pressed", "false"));
+
+  syncLangs();
+  paint();
+  draw = () => { syncLangs(); search.value = view.q; paint(); };
+  return wrap;
+}
+
+// j / k move between rows, f searches. Plain keys, skipped while typing or when any dialog is open.
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || document.body.dataset.view || document.querySelector("dialog[open]")) return;
+  if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "f") {
+    const q = document.getElementById("hub-q");
+    if (!q) return;
+    e.preventDefault();
+    q.focus();
+    return;
+  }
+  if (e.key !== "j" && e.key !== "k") return;
+  const ls = links();
+  if (!ls.length) return;
+  e.preventDefault();
+  const i = ls.indexOf(document.activeElement as HTMLAnchorElement);
+  const from = i >= 0 ? i : ls.findIndex((a) => a.dataset.vp === selected);
+  ls[from < 0 ? 0 : Math.min(ls.length - 1, Math.max(0, from + (e.key === "j" ? 1 : -1)))].focus();
+});
+
+/** main.ts passes all three fetches; no internal fetching here. The toolbar is built once, rows redraw in place. */
+export function renderProjects(projects: Res<Project[]>, _commits: Res<Commit[]>, status: Res<Status>) {
   if (projects.state === "ok") {
-    cur = { ps: projects.data, commits: cs };
+    cur = { ps: projects.data, status: status.state === "ok" ? status.data : null };
     setPaletteProjects(projects.data);
   }
-  const sec = document.getElementById("ledger")!;
-  if (sec.contains(document.activeElement) && sec.querySelector(":scope > .body:not(.skel)")) { held = [projects, commits, _status]; return; } // don't yank the search box mid-typing
-  held = null;
-  show("ledger", projects, (ps) => hub(ps, cs));
-  if (projects.state === "ok") syncDialog();
+  if (projects.state === "ok" && draw && document.querySelector("#ledger > .body .lg-table")) { draw(); return; }
+  if (projects.state !== "error") draw = null; // an error keeps the last good table (show() leaves it alone)
+  show("ledger", projects, (ps) => build(ps));
 }

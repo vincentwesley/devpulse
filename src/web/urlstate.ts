@@ -1,18 +1,19 @@
 import type { Sort, StatusFilter } from "./hubutil";
 
 export interface UrlState { q: string; sort: Sort; lang: string; status: StatusFilter; topic: string; p: string }
-const SORTS: Sort[] = ["active", "stars", "name", "status"];
-const STATUSES: StatusFilter[] = ["all", "up", "down"];
+const SORTS: Sort[] = ["active", "stars", "name", "status", "lang", "ci", "uptime"];
+const STATUSES: StatusFilter[] = ["all", "live", "failing", "wip"];
+const LEGACY_STATUS: Record<string, StatusFilter> = { up: "live", down: "failing" }; // old ?status=up|down links
 export const DEFAULT_VIEW: Omit<UrlState, "p"> = { q: "", sort: "active", lang: "", status: "all", topic: "" };
 
 const dec = (s: string) => {
   try { return decodeURIComponent(s); } catch { return ""; }
 };
 
-/** Parse `?q=&sort=&lang=&status=&topic=` and `#p/<name>`; invalid values fall back to defaults. */
+/** Parse `?q=&sort=&lang=&status=&topic=` and the legacy `#p/<name>` hash; invalid values fall back to defaults. */
 export function parseUrl(search: string, hash: string): UrlState {
   const u = new URLSearchParams(search);
-  const sort = u.get("sort") as Sort, status = u.get("status") as StatusFilter;
+  const sort = u.get("sort") as Sort, raw = u.get("status") ?? "", status = (LEGACY_STATUS[raw] ?? raw) as StatusFilter;
   return {
     q: (u.get("q") ?? "").slice(0, 100),
     sort: SORTS.includes(sort) ? sort : "active",

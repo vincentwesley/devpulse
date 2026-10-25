@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dayPct, fmtDuration, fmtPct, lastBars, windowPct } from "../../src/web/status";
+import { dayPct, dayText, fmtDuration, fmtPct, lastBars, windowPct } from "../../src/web/status";
 import { groupByDay } from "../../src/web/activity";
-import { heroTiles } from "../../src/web/hero";
 import { windowDays } from "../../src/web/heatmap";
 import type { Commit, Stats } from "../../src/web/api";
 
@@ -43,12 +42,5 @@ describe("charts helpers", () => {
     const c = (ts: string) => ({ ts }) as Commit;
     const g = groupByDay([c("2026-10-02T09:00:00Z"), c("2026-10-02T01:00:00Z"), c("2026-10-01T01:00:00Z")]);
     expect(g.map(([k, v]) => [k, v.length])).toEqual([["2026-10-02", 2], ["2026-10-01", 1]]);
-  });
-  it("hero hides zero/null stats and marks approx", () => {
-    const s = { streak: { current: 0, longest: 0 }, contributionsThisYear: 5, mostActive30d: null, approx: true, totals: { repos: 21, commits: 3450, loc: 0 } } as unknown as Stats;
-    const t = heroTiles(s);
-    expect(t.map((x) => x[0])).toEqual(["repos (public + private)", "commits", "contributions this year"]);
-    expect(t[0][2](21)).toBe("21+");
-    expect(t[1][2](3450)).toBe("≈3.5K");
   });
 });

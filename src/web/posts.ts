@@ -1,3 +1,4 @@
+import "./feed.css";
 import { add, el, fmtDate, link, show, type Post, type Res } from "./api";
 
 export function renderPosts(res: Res<Post[]>) {
@@ -6,10 +7,10 @@ export function renderPosts(res: Res<Post[]>) {
   document.getElementById("posts")!.hidden = none;
   if (none) return;
   show("posts", res, (ps) => {
-    const ul = el("ul", "", "list");
-    for (const p of ps) {
+    const ul = el("ul", "", "posts");
+    for (const p of ps.slice(0, 5)) {
       const li = el("li");
-      add(li, link(p.title, p.url), el("span", ` ${fmtDate(p.published)}`, "muted"));
+      add(li, el("time", fmtDate(p.published), "posts__d", { datetime: fmtDate(p.published) }), link(p.title, p.url, "posts__a"));
       add(ul, li);
     }
     return ul;

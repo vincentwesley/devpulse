@@ -1,6 +1,6 @@
-import "./showcase.css";
+import "./ledger.css";
 import { add, el, link, NODATA, type Project } from "./api";
-import { ciFromState, initialOf, safeColor, tileBackground, tileColors } from "./hubutil";
+import { ciOf, initialOf, safeColor, tileBackground, tileColors } from "./hubutil";
 import { navLink } from "./nav";
 import { toProjectPath } from "./urlstate";
 
@@ -34,12 +34,12 @@ export function langBar(p: Project) {
   return bar;
 }
 
-/** Up/Down + CI at a glance (text and icon, never colour alone). */
+/** Up/Down + CI at a glance (glyph + text, never colour alone). */
 export function pills(p: Project) {
   const row = el("div", "", "sc-pills");
-  if (!p.url) add(row, el("span", "no live site", "hs-chip hub-nosite"));
-  else add(row, p.up === null ? el("span", NODATA, "pill pill--none") : el("span", p.up ? "▲ Up" : "▼ Down", `pill ${p.up ? "pill--up" : "pill--down"}`));
-  const st = p.ci ? { cls: p.ci.conclusion ?? p.ci.status, label: p.ci.conclusion ?? p.ci.status } : ciFromState(p.ciState);
+  if (!p.url) add(row, el("span", "No live site", "dp-status", { "data-s": "none" }));
+  else add(row, p.up === null ? el("span", NODATA, "dp-status", { "data-s": "none" }) : el("span", p.up ? "Up" : "Down", "dp-status", { "data-s": p.up ? "ok" : "attn" }));
+  const st = ciOf(p);
   if (st) add(row, el("span", `CI: ${st.label}`, `hs-chip ci ci--${st.cls}`));
   return row;
 }

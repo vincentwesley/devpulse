@@ -1,46 +1,6 @@
-/* Heatmap, weekday bars, stat rows, activity feed. Tokens only. */
+/* Stat rows and readout (project page). Tokens only. */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; margin: 0.75rem 0 0; }
 .stats > div { padding: 0.5rem 0.7rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
 .stats dt { color: var(--fg-muted); font-size: 0.8rem; }
 .stats dd { margin: 0.1rem 0 0; font: 1.1rem var(--font-mono); overflow-wrap: anywhere; }
 .readout { margin: 0.4rem 0 0; min-height: 1.6em; font: 0.85rem var(--font-mono); color: var(--fg); }
-
-.heat-toggle { min-height: 44px; margin-top: 0.5rem; }
-.heat-toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
-.heat-wrap { overflow-x: auto; padding: 0.4rem 0.25rem; margin-top: 0.25rem; }
-.heat { display: block; width: 100%; height: auto; }
-.heat rect { fill: var(--border); cursor: pointer; }
-.heat rect:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.heat .l1 { fill: color-mix(in srgb, var(--accent) 30%, var(--bg-elev)); }
-.heat .l2 { fill: color-mix(in srgb, var(--accent) 55%, var(--bg-elev)); }
-.heat .l3 { fill: color-mix(in srgb, var(--accent) 80%, var(--bg-elev)); }
-.heat .l4 { fill: var(--accent); }
-.months { font: 11px var(--font-mono); fill: var(--fg-muted); }
-.heat-legend { display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.4rem; }
-.heat-legend i { width: 12px; height: 12px; background: var(--border); }
-.heat-legend .l1 { background: color-mix(in srgb, var(--accent) 30%, var(--bg-elev)); }
-.heat-legend .l2 { background: color-mix(in srgb, var(--accent) 55%, var(--bg-elev)); }
-.heat-legend .l3 { background: color-mix(in srgb, var(--accent) 80%, var(--bg-elev)); }
-.heat-legend .l4 { background: var(--accent); }
-
-.wk { display: block; margin-top: 0.75rem; width: 100%; max-width: 26rem; height: auto; }
-.wk .bar { fill: var(--accent); }
-.wk g { cursor: pointer; outline: none; }
-.wk g:focus-visible .bar { stroke: var(--focus); stroke-width: 2; }
-.wk text { font: 12px var(--font-mono); fill: var(--fg-muted); text-anchor: middle; }
-
-/* Activity feed */
-.act__day { font: 600 0.85rem var(--font-head); color: var(--fg-muted); margin: 1rem 0 0.25rem; }
-.act { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; }
-.act li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.6rem; padding: 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
-.act__sha { font: 0.8rem var(--font-mono); color: var(--accent); }
-.act__msg { flex: 1 1 14rem; min-width: 0; display: inline-flex; align-items: center; min-height: 44px; }
-.act__meta { font-size: 0.8rem; color: var(--fg-muted); }
-.act__more { min-height: 44px; margin-top: 0.75rem; }
-@media (prefers-reduced-motion: no-preference) {
-  .act li { transition: opacity 0.3s, translate 0.3s var(--fx-ease); @starting-style { opacity: 0; translate: 0 0.5rem; } }
-}
-/* scroll hint: the heatmap fades out on whichever side has more content (heatmap.ts sets data-fade-l / -r) */
-.heat-wrap { --fl: 0px; --fr: 0px; mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
-.heat-wrap[data-fade-l] { --fl: 2rem; }
-.heat-wrap[data-fade-r] { --fr: 2rem; }

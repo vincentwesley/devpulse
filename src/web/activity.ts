@@ -1,10 +1,10 @@
-import "./charts.css";
+import "./feed.css";
 import { add, el, link, show, type Commit, type Res } from "./api";
 import { relTime } from "./hubutil";
 
 const STEP = 10;
 const dayKey = (ts: string) => ts.slice(0, 10);
-const dayLabel = (k: string) => new Date(k + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const dayLabel = (k: string) => new Date(k + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 /** Group newest-first commits by UTC day. */
 export function groupByDay(cs: Commit[]) {
@@ -22,30 +22,37 @@ export function renderActivity(commits: Res<Commit[]>) {
   show("activity", commits, (all) => {
     const cs = [...all].sort((a, b) => b.ts.localeCompare(a.ts));
     const box = el("div");
+    const feed = el("div", "", "act-feed");
+    const more = el("button", "", "hs-btn act__more", { type: "button", "aria-expanded": "false" });
     let shown = STEP;
     const draw = (focusFrom = -1) => {
-      box.replaceChildren();
+      feed.replaceChildren();
       let n = 0, target: HTMLElement | null = null;
       for (const [day, group] of groupByDay(cs.slice(0, shown))) {
-        add(box, el("h3", dayLabel(day), "act__day"));
+        const sec = el("div", "", "act-day");
+        add(sec, el("h3", dayLabel(day), "act__day"));
         const ul = el("ul", "", "act");
         for (const c of group) {
+          const line = c.message.split("\n")[0];
           const li = el("li");
-          const a = link(c.message.split("\n")[0], c.url, "act__msg");
+          const a = link(line, c.url, "act__msg");
+          a.title = line;
           if (n++ === focusFrom) target = a;
-          add(li, el("code", c.sha.slice(0, 7), "act__sha"), a, el("span", `${c.repo} · ${relTime(c.ts)}`, "act__meta"));
+          const sha = link(c.sha.slice(0, 7), c.url, "act__sha");
+          add(li, el("span", c.repo, "act__repo"), a, sha, el("span", relTime(c.ts), "act__meta"));
           add(ul, li);
         }
-        add(box, ul);
+        add(sec, ul);
+        add(feed, sec);
       }
-      if (shown < cs.length) {
-        const b = el("button", `Show more (${cs.length - shown})`, "hs-btn act__more", { type: "button" });
-        b.addEventListener("click", () => { const from = shown; shown += STEP; draw(from); });
-        add(box, b);
-      }
+      more.hidden = shown >= cs.length;
+      more.textContent = `Show more (${Math.max(0, cs.length - shown)})`;
+      more.setAttribute("aria-expanded", String(shown > STEP));
       target?.focus();
     };
+    more.addEventListener("click", () => { const from = shown; shown += STEP; draw(from); });
     draw();
+    add(box, feed, more);
     return box;
   });
 }

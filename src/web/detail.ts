@@ -1,10 +1,16 @@
 import * as d3 from "d3";
-import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project } from "./api";
-import { commitsFor, firstLine, plural, relTime, safeColor } from "./hubutil";
-import { toHash } from "./urlstate";
+import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project, type Status } from "./api";
+import { icon } from "./icons";
+import { commitsFor, dayClass, firstLine, fmtPct, openIncidentRepos, readmeBlocks, relTime, rowState, safeColor, siteFor, STATE_TEXT } from "./hubutil";
+import { navigate } from "./nav";
+import { actions, cover, langBar, pills } from "./showcase";
+import { lastBars, windowPct } from "./status";
+import { parseProjectPath, toProjectPath } from "./urlstate";
 
-let dlg: HTMLDialogElement | null = null;
-let current = "";
+/** Desktop layout: the ledger has a sticky detail pane beside it. Below this a project opens as a full page. */
+export const wide = () => matchMedia("(min-width: 1024px)").matches;
+const narrow = () => matchMedia("(max-width: 639.98px)").matches;
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const wkLabel = (sec: number) => new Date(sec * 1000).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" });
 
@@ -71,20 +77,8 @@ export function copyRow(label: string, text: string) {
   return row;
 }
 
-export function timeline(p: Project) {
-  const ev: [string, string, string][] = [];
-  if (p.createdAt) ev.push([p.createdAt, "Created", ""]);
-  if (p.release?.at) ev.push([p.release.at, "Latest release", p.release.tag]);
-  if (p.pushedAt) ev.push([p.pushedAt, "Last push", ""]);
-  ev.sort((a, b) => a[0].localeCompare(b[0]));
-  const ol = el("ol", "", "hub-tl");
-  for (const [at, what, extra] of ev) add(ol, el("li", `${what}${extra ? ` ${extra}` : ""}: ${fmtDate(at)} (${relTime(at)})`));
-  add(ol, el("li", `Now: ${fmtDate(new Date().toISOString())}`));
-  return ol;
-}
-
-export function commitList(p: Project, commits: Commit[]) {
-  const cs = commitsFor(p, commits).slice(0, 8);
+export function commitList(p: Project, commits: Commit[], max = 8) {
+  const cs = commitsFor(p, commits).slice(0, max);
   if (!cs.length) return el("p", "no commits yet", "muted");
   const ul = el("ul", "", "list");
   for (const c of cs) {
@@ -95,48 +89,92 @@ export function commitList(p: Project, commits: Commit[]) {
   return ul;
 }
 
-function build(p: Project, commits: Commit[]) {
-  const d = el("dialog", "", "hub-dialog hs-card", { "aria-labelledby": "hub-dlg-title" });
-  const head = el("div", "", "hub-dialog__head");
-  add(head, el("h2", p.name, "", { id: "hub-dlg-title" }));
-  const close = el("button", "Close", "hs-btn hub-btn", { type: "button" });
-  close.addEventListener("click", () => d.close());
-  add(head, close);
-  add(d, head);
+const LH: [keyof NonNullable<Project["lighthouse"]>, string][] = [
+  ["performance", "Perf"], ["accessibility", "A11y"], ["best_practices", "Best"], ["seo", "SEO"],
+];
+const grade = (n: number) => (n >= 90 ? "good" : n >= 50 ? "needs work" : "poor");
 
-  const acts = el("div", "", "hub-actions");
-  if (p.url) add(acts, link("Live", p.url, "hs-btn hub-btn hub-btn--alt"));
-  add(acts, link("Repo", `https://github.com/${p.repo}`, "hs-btn hub-btn hub-btn--alt"));
-  add(d, acts);
-  if (p.release) add(d, el("p", `Latest release ${p.release.tag}${p.release.at ? `, ${fmtDate(p.release.at)}` : ""}`, "hub-meta"));
-  if (p.commitCount != null) add(d, el("p", plural(p.commitCount, "commit"), "hub-meta"));
+/** Uptime % + a 30 (phone) / 90 day strip from the shared status data. */
+function uptimeBlock(p: Project, st: Status | null) {
+  const box = el("div", "", "dt-up");
+  if (!p.url) return add(box, el("p", "no live site", "meta")), box;
+  const s = siteFor(p, st);
+  if (!s) return add(box, el("p", NODATA, "meta")), box;
+  const n = narrow() ? 30 : 90;
+  const bars = lastBars(s.days, n);
+  const pct = windowPct(bars);
+  const head = el("p", pct === null ? NODATA : `${fmtPct(pct)} uptime, last ${bars.length} days`, "meta dt-uppct");
+  const strip = el("div", "", "up-bar up-bar--lg", { role: "img", "aria-label": pct === null ? "No uptime checks yet" : `Daily uptime, last ${bars.length} days: ${fmtPct(pct)}` });
+  for (const d of bars) {
+    const c = dayClass(d);
+    add(strip, el("i", "", "", { "data-c": c.cls, title: `${d.date}: ${c.pct === null ? "no checks" : fmtPct(c.pct)}` }));
+  }
+  add(box, head, strip);
+  return box;
+}
 
-  add(d, el("h3", "Timeline"), timeline(p));
+export interface DetailOpts {
+  /** Title heading level: 1 on the full page, 3 inside the pane (under the "Projects" h2). */
+  lvl: 1 | 3;
+  commits: Commit[];
+  status: Status | null;
+  /** Currently filtered topic, and the handler that toggles one (returns the new active topic). */
+  topic: () => string;
+  onTopic: (t: string) => string;
+  /** Pane only: close button. */
+  onClose?: () => void;
+}
 
-  add(d, el("h3", "Lighthouse"));
-  if (p.lighthouse) {
-    const lh = p.lighthouse;
-    const ul = el("ul", "", "hub-langs");
-    for (const [k, n] of [["Perf", lh.performance], ["A11y", lh.accessibility], ["Best", lh.best_practices], ["SEO", lh.seo]] as const) add(ul, el("li", `${k} ${n}`));
-    add(d, ul, el("p", `Week ${lh.week}`, "muted"));
-  } else add(d, el("p", NODATA, "muted"));
+/** One project's detail, shared by the sticky pane and the full page. textContent only; links https-only via link(). */
+export function buildDetail(p: Project, o: DetailOpts): HTMLElement {
+  const page = o.lvl === 1;
+  const root = el("div", "", `dt ${page ? "dt--page" : "dt--pane"}`);
+  const sec = (title: string, ...kids: (Node | string)[]) => {
+    const d = el("div", "", "dt-sec");
+    add(d, el(`h${o.lvl + 1}` as "h2", title, "micro dt-h"), ...kids);
+    return d;
+  };
 
-  if (p.deps?.length) {
-    add(d, el("h3", "Dependencies"));
-    const ul = el("ul", "", "hub-langs");
-    for (const x of p.deps) { const li = el("li"); add(li, link(`${x.name}: ${x.indicator}`, x.url)); add(ul, li); }
-    add(d, ul);
+  if (o.onClose) {
+    const b = el("button", "", "hs-btn hub-btn dt-close", { type: "button", "aria-label": `Close ${p.name} details` });
+    add(b, icon("close", 16), el("span", "Close"));
+    b.addEventListener("click", o.onClose);
+    add(root, b);
+  }
+  add(root, cover(p, "lg"));
+
+  const head = el("div", "", "dt-head");
+  add(head, el(`h${o.lvl}` as "h1", p.name, "dt-title", { tabindex: "-1" }));
+  if (p.tagline) add(head, el("p", p.tagline, "dt-tag"));
+  if (p.description && p.description !== p.tagline) add(head, el("p", p.description, "hub-desc"));
+  add(head, pills(p), uptimeBlock(p, o.status), actions(p, false));
+  add(root, head);
+
+  // Health summary for screen readers; the dot in the ledger carries the same words.
+  const rs = rowState(p, openIncidentRepos(o.status));
+  add(head, el("p", `Overall: ${STATE_TEXT[rs]}`, "sr-only"));
+
+  const dl = el("dl", "", "dt-stats");
+  const row = (k: string, v: string) => { const g = el("div"); add(g, el("dt", k), el("dd", v)); add(dl, g); };
+  row("Stars", p.stars.toLocaleString("en"));
+  row("Forks", p.forks.toLocaleString("en"));
+  if (p.license) row("License", p.license);
+  if (p.commitCount != null) row("Commits", p.commitCount.toLocaleString("en"));
+  if (p.loc != null && p.loc > 0) row("Lines changed (est.)", p.loc.toLocaleString("en"));
+  if (p.createdAt) row("Created", `${fmtDate(p.createdAt)} → now`);
+  if (p.release) row("Release", `${p.release.tag}${p.release.at ? ` · ${fmtDate(p.release.at)}` : ""}`);
+  add(root, dl);
+
+  if (p.readme) {
+    const box = el("div", "", "pp-read");
+    let ul: HTMLElement | null = null;
+    for (const b of readmeBlocks(p.readme, page ? 60 : 12)) {
+      if (b.kind === "li") { if (!ul) add(box, (ul = el("ul"))); add(ul, el("li", b.text)); } // textContent only
+      else { ul = null; add(box, el("p", b.text)); }
+    }
+    add(root, sec("README", box));
   }
 
-  add(d, el("h3", "Lines changed, last 26 weeks"));
-  if (p.codeFreq?.length) {
-    add(d, freqChart(p));
-    const k = el("p", "", "muted");
-    add(k, el("span", "added", "hub-key"), el("span", "deleted", "hub-key hub-key--del"));
-    add(d, k);
-  } else add(d, el("p", COLLECTING, "muted"));
-
-  add(d, el("h3", "Languages"));
   if (p.languages?.length) {
     const ul = el("ul", "", "hub-langs");
     for (const l of p.languages) {
@@ -146,46 +184,79 @@ function build(p: Project, commits: Commit[]) {
       add(li, dot, `${l.lang} ${l.pct.toFixed(1)}%`);
       add(ul, li);
     }
-    add(d, ul);
-  } else add(d, el("p", NODATA, "muted"));
+    add(root, sec("Languages", langBar(p), ul));
+  }
 
-  add(d, el("h3", "Recent commits"), commitList(p, commits));
+  if (p.codeFreq?.length) {
+    const k = el("p", "", "muted");
+    add(k, el("span", "added", "hub-key"), el("span", "deleted", "hub-key hub-key--del"));
+    add(root, sec("Code activity, last 26 weeks", freqChart(p), k));
+  } else add(root, sec("Code activity, last 26 weeks", el("p", COLLECTING, "muted")));
+
+  add(root, sec("Recent commits", commitList(p, o.commits, page ? 8 : 5)));
+
+  if (p.lighthouse) {
+    const ul = el("ul", "", "hub-langs");
+    for (const [k, label] of LH) add(ul, el("li", `${label} ${p.lighthouse[k] as number} ${grade(p.lighthouse[k] as number)}`));
+    add(root, sec("Lighthouse", ul, el("p", `Week ${p.lighthouse.week}`, "muted")));
+  }
+  if (p.deps?.length) {
+    const ul = el("ul", "", "hub-langs");
+    for (const x of p.deps) { const li = el("li"); add(li, link(`${x.name}: ${x.indicator}`, x.url)); add(ul, li); }
+    add(root, sec("Dependencies", ul));
+  }
+
+  if (p.links?.length) {
+    const ul = el("ul", "", "list");
+    for (const l of p.links) { const li = el("li"); add(li, link(l.label, l.url)); add(ul, li); }
+    add(root, sec("Links", ul));
+  }
+
+  if (p.topics?.length) {
+    const ul = el("ul", "", "hub-topics", { "aria-label": "Topics (select to filter the project list)" });
+    const chips = p.topics.map((t) => {
+      const li = el("li");
+      const b = el("button", t, "hs-chip hub-topic", { type: "button", "aria-pressed": String(o.topic() === t) });
+      b.addEventListener("click", () => {
+        const now = o.onTopic(t);
+        for (const c of chips) c.setAttribute("aria-pressed", String(c.textContent === now));
+      });
+      add(li, b);
+      add(ul, li);
+      return b;
+    });
+    add(root, sec("Topics", ul));
+  }
 
   const n = encodeURIComponent(p.name);
-  add(d, el("h3", "Status badge"), copyRow("badge", `![status](${location.origin}/badge/${n}.svg)`));
-  add(d, el("h3", "Project card"), copyRow("card", `![card](${location.origin}/card/${n}.svg)`));
-
-  d.addEventListener("close", () => {
-    d.remove();
-    if (dlg === d) { dlg = null; current = ""; }
-    if (d.dataset.quiet) return;
-    if (history.state?.hubDlg) history.back(); // we pushed the entry: pop it
-    else if (location.hash.startsWith("#p/")) history.replaceState(null, "", location.pathname + location.search);
-  });
-  return d;
+  add(root, sec("Status badge", copyRow("badge", `![status](${location.origin}/badge/${n}.svg)`)),
+    sec("Project card", copyRow("card", `![card](${location.origin}/card/${n}.svg)`)));
+  return root;
 }
 
-/** Name of the project whose dialog is open, or "". */
-export const openName = () => current;
+/**
+ * Open a project: desktop shows it in the sticky pane (URL /p/<name>, one history entry; switching rows replaces it),
+ * phones and tablets go to the full page with a view transition when the browser has one.
+ */
+export function openDetail(name: string) {
+  if (parseProjectPath(location.pathname) === name) return;
+  const path = toProjectPath(name);
+  if (wide() && parseProjectPath(location.pathname) !== null) {
+    history.replaceState({ route: 1 }, "", path);
+    dispatchEvent(new PopStateEvent("popstate"));
+    return;
+  }
+  const go = () => navigate(path);
+  if (!wide() && document.startViewTransition && !reduced()) document.startViewTransition(go);
+  else go();
+}
 
-/** Close without touching history (used when history already moved). */
+/** Close the pane (Back if we pushed its entry, else swap the URL to the list). */
 export function closeDetail() {
-  if (!dlg) return;
-  dlg.dataset.quiet = "1"; // close event is async, so flag the element, not a global
-  dlg.close();
-  dlg.remove();
-  dlg = null;
-  current = "";
-}
-
-/** Open the detail dialog; pushes one #p/<name> history entry (none if the hash already matches). Focus returns to the opener on close. */
-export function openDetail(p: Project, commits: Commit[]) {
-  if (dlg && current === p.name) return;
-  closeDetail();
-  const hash = toHash(p.name);
-  if (location.hash !== hash) history.pushState({ hubDlg: 1 }, "", location.pathname + location.search + hash);
-  dlg = build(p, commits);
-  current = p.name;
-  document.body.appendChild(dlg);
-  dlg.showModal();
+  if (parseProjectPath(location.pathname) === null) return;
+  if (history.state?.route) history.back();
+  else {
+    history.replaceState(null, "", `/${location.search}`);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }
 }

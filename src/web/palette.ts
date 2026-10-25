@@ -1,4 +1,4 @@
-import "./palette.css";
+﻿import "./palette.css";
 import { add, el, type Project } from "./api";
 import { rankBy } from "./hubutil";
 import { navigate } from "./nav";
@@ -11,7 +11,7 @@ const SECTIONS: [string, string][] = [
 ];
 const SHORTCUTS: [string, string][] = [
   ["/ or Ctrl+K", "Open the command palette"], ["?", "Show this help"], ["Up / Down", "Move through results"],
-  ["Enter", "Run the selected result"], ["Esc", "Close"],
+  ["j / k", "Move between projects in the list"], ["f", "Search the project list"], ["Enter", "Run the selected result"], ["Esc", "Close"],
 ];
 
 let projects: Project[] = [];
@@ -70,7 +70,7 @@ function choose(i: number) {
 function ensure() {
   if (dlg) return;
   dlg = el("dialog", "", "pal hs-card", { "aria-label": "Command palette" });
-  input = el("input", "", "pal__in", { type: "text", role: "combobox", "aria-expanded": "true", "aria-controls": "pal-list", "aria-autocomplete": "list", "aria-label": "Search projects, sections and actions", placeholder: "Type to search…", autocomplete: "off", spellcheck: "false" });
+  input = el("input", "", "pal__in", { type: "text", role: "combobox", "aria-expanded": "true", "aria-controls": "pal-list", "aria-autocomplete": "list", "aria-label": "Search projects, sections and actions", placeholder: "Type to searchâ€¦", autocomplete: "off", spellcheck: "false" });
   list = el("ul", "", "pal__list", { id: "pal-list", role: "listbox", "aria-label": "Results" });
   hint = el("p", "", "pal__hint muted", { role: "status" });
   help = el("div", "", "pal__help");

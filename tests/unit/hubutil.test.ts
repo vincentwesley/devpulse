@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { commitsFor, fuzzy, plural, rankBy, relTime, safeColor, sortFilter } from "../../src/web/hubutil";
-import type { Commit, Project } from "../../src/web/api";
+import { commitsFor, dayClass, fmtPct, fuzzy, openIncidentRepos, plural, rankBy, relTime, rowState, safeColor, sortFilter } from "../../src/web/hubutil";
+import type { Commit, Project, Status } from "../../src/web/api";
 
 const P = (o: Partial<Project>) => ({ repo: "o/x", name: "x", up: null, stars: 0, language: null, pushedAt: null, ...o }) as Project;
 
@@ -27,10 +27,30 @@ describe("hub helpers", () => {
     expect(names("active")).toEqual(["a", "b", "c"]);
     expect(names("stars")).toEqual(["a", "b", "c"]);
     expect(names("name")).toEqual(["a", "b", "c"]);
-    expect(names("status")).toEqual(["a", "b", "c"]);
+    expect(names("status")).toEqual(["a", "c", "b"]); // attention, no signal, healthy
+    expect(names("lang")).toEqual(["a", "b", "c"]);
     expect(names("name", "TS")).toEqual(["b", "c"]);
-    expect(names("name", "", "up")).toEqual(["b"]);
-    expect(names("name", "", "down")).toEqual(["a"]);
+    expect(names("name", "", "live")).toEqual(["b"]);
+    expect(names("name", "", "failing")).toEqual(["a"]);
+    expect(names("name", "", "wip")).toEqual(["c"]);
+  });
+  it("rowState: failures, incidents, pending, healthy, none", () => {
+    expect(rowState(P({ ciState: "FAILURE" }))).toBe("attn");
+    expect(rowState(P({ up: false }))).toBe("attn");
+    expect(rowState(P({ repo: "o/x" }), new Set(["o/x"]))).toBe("attn");
+    expect(rowState(P({ ciState: "PENDING", up: true }))).toBe("wip");
+    expect(rowState(P({ up: true }))).toBe("ok");
+    expect(rowState(P({ ciState: "SUCCESS" }))).toBe("ok");
+    expect(rowState(P({}))).toBe("none");
+  });
+  it("openIncidentRepos + dayClass + fmtPct", () => {
+    const st = { sites: [{ name: "S", repo: "o/s" }], incidents: [{ name: "S", end: null }, { name: "T", end: "x" }] } as unknown as Status;
+    expect([...openIncidentRepos(st)]).toEqual(["o/s"]);
+    expect(dayClass({ up: 96, total: 96 })).toEqual({ pct: 100, cls: "ok" });
+    expect(dayClass({ up: 92, total: 96 }).cls).toBe("warn");
+    expect(dayClass({ up: 50, total: 96 }).cls).toBe("bad");
+    expect(dayClass({ up: 0, total: 0 })).toEqual({ pct: null, cls: "none" });
+    expect(fmtPct(99.999)).toBe("99.99%");
   });
   it("commitsFor", () => {
     const c = (repo: string, ts: string) => ({ repo, ts }) as Commit;

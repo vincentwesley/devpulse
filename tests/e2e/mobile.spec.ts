@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+﻿import { expect, test, type Page } from "@playwright/test";
 import commits from "./fixtures/commits.json" with { type: "json" };
 import heatmap from "./fixtures/heatmap.json" with { type: "json" };
 import posts from "./fixtures/posts.json" with { type: "json" };
@@ -49,15 +49,13 @@ test("desktop: topic chip hit area extends to 44px", async ({ page }) => {
   }).toBe(true);
 });
 
-test("posts: section and tab hidden when empty, shown when there are posts", async ({ page }) => {
+test("posts: section hidden when empty, shown when there are posts", async ({ page }) => {
   await open(page, "/", { posts: [] });
   await expect(page.locator("#posts")).toBeHidden();
-  await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Posts" })).toBeHidden();
   await page.unroute("**/api/*");
   await open(page);
   await expect(page.locator("#posts")).toBeVisible();
   await expect(page.locator("#posts a")).toHaveText("Hello world");
-  await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Posts" })).toBeVisible();
 });
 
 test("posts: an API error still shows the section with couldn't load", async ({ page }) => {
@@ -80,3 +78,4 @@ test("project page: real commits, 'no commits yet', and the daily-collection hin
   await expect(page.locator("#pp")).toContainText("no commits yet");
   await expect(page.locator("#pp")).toContainText("collecting data — updates daily");
 });
+

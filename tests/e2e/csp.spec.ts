@@ -37,9 +37,9 @@ test("page, project dialog and palette raise no CSP / Trusted Types violations",
   await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.evaluate(() => { location.hash = "#p/Alpha"; });
-  await expect(page.locator("dialog[open]")).toBeVisible();
+  await expect(page.locator("#detail-pane")).toContainText("Alpha");
   await page.keyboard.press("Escape");
-  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(page.locator("#detail-pane")).toBeHidden();
   expect(bad).toEqual([]);
   // credits fireflies kept their per-element vars via CSS
   expect(await page.locator(".creator__fx i").first().evaluate((e) => getComputedStyle(e).getPropertyValue("--x").trim())).toBe("30%");

@@ -8,7 +8,7 @@ Continue work on **DevPulse**, the public project hub, now at https://devpulse.v
 
 ## State after the token (2026-10-24, verified)
 New fine-grained `GITHUB_TOKEN` (read-only: Metadata, Contents, Commit statuses, Actions; there is no "Checks" permission) works: 21:00 SGT sync gave 29 repos, `approx: true`, `ciState` populated for repos with Actions runs, no private repo names in any output (scanned api/projects, stats, languages, commits, heatmap, status, posts, feed, cards, badges). `INGEST_TOKEN` deleted and "include private contributions" enabled by the owner (heatmap picks it up at the 00:00 UTC refresh).
-Still to confirm next session: `loc`/`codeFreq` are still null on 2026-10-26 even though the 00:30 UTC job ran OK (GitHub `/stats/code_frequency` returns 202 on first request). A retry (`retryLoc` in `loc.ts`, up to 4 repos per slot, once per 10 min) was deployed 2026-10-26; check `/api/projects` loc fields after a few slots. If still null, debug the live GitHub response (status codes) before adding more code. Heatmap should include private contributions after 00:00 UTC. access-ease CI shows FAILURE (other repos are hands-off unless the owner asks). Posts stay hidden until `PORTFOLIO_RSS_URL` is set. Optional showcase blocks go in repos' `.devpulse.json` (owner commits them).
+Lines changed: GitHub `/stats/code_frequency` answers 202 on first request, so the 00:30 UTC job alone left every repo empty. The 15-minute retry (`retryLoc` in `loc.ts`, up to 4 repos per slot, once per 10 min) fixed it: by 2026-10-26 14:54 SGT 6 of 9 repos had `loc`/`codeFreq` (stats total about 135K, approximate) and the rest were still being retried. Confirm all 9 are filled (MetaLensVGC, access-ease, devpulse were pending); if a repo stays null for a day, check its `/stats/code_frequency` status with `gh api`. Heatmap should include private contributions after 00:00 UTC. access-ease CI shows FAILURE (other repos are hands-off unless the owner asks). Posts stay hidden until `PORTFOLIO_RSS_URL` is set. Optional showcase blocks go in repos' `.devpulse.json` (owner commits them).
 
 ## How to work here
 - Orchestrator rule: dispatch builders, don't write code inline. House rules in `../CLAUDE.md`.
@@ -19,7 +19,7 @@ Still to confirm next session: `loc`/`codeFreq` are still null on 2026-10-26 eve
 ## Current state
 Worker: GraphQL sync (`github.ts`, up to 50 repos), cron (`cron.ts`: uptime 15 min; hourly sync + RSS + statuspages; 00:00 prune; 00:30 LOC `loc.ts`; Mon 01:00 PageSpeed `psi.ts`). Routes: projects/github/posts/stats, `/api/status` (90d strips + incidents), `/feed.xml` (Atom), `/badge/:name.svg`, `/card/:name.svg` (unknown names are `no-store`). Per-IP rate limit via binding `RL` (60 req/10s). Migrations 0001-0005 (0003 = rollup tables, 0004 = backfill from `checks`, idempotent, 0005 = showcase columns); all applied remotely. Frontend: hero counters, languages bar, hub cards with sort/filter + detail dialog, status section, activity feed, heatmap, command palette, service worker (`src/web/sw.js`, network-first API + offline banner), motion. (older description; the round-3 layout replaced the cards/tab strip with a ledger table + bento tiles, see index.html and src/web/ledger.css, bento.css, feed.css, shell.css).
 Showcase: `/p/<name>` (project page, per-project OG tags injected by `routes/page.ts`, trailing `/` tolerated, HEAD ok), `/img/<name>` (cover proxy from the repo, <=2 MB, never svg; exempt from the rate limit; `/api/projects` emits `cover` as `/img/<name>?v=<hash of cover_path+pushed_at>` to bust browser/SW caches, edge cache keys on pathname). Fields come from `.devpulse.json` (`tagline`, `featured`, `image`, `links`; parser `parseShowcase` in `lib/github-parse.ts`) plus a README excerpt (control/bidi chars stripped).
-Live check 2026-10-21: projects, stats, languages, badges return real data. LOC is 0 until the first 00:30 UTC run; posts empty (no RSS URL).
+Posts stay empty (hidden) until `PORTFOLIO_RSS_URL` is set.
 
 Freshness (round 3, migration 0006, deployed): 15-min GraphQL change check with fingerprint in `meta`, hourly safety-net sync, wipe guard, rename re-key by `repo_id` + `repo_alias` with 301s, 7-day orphan grace, `jobs` heartbeats (error codes only), token expiry from `GitHub-Authentication-Token-Expiration`, `/api/health` + `stats.health`, email alerts (`alerts.ts`, binding `ALERT`). Slot budget (tests/unit/budget.test.ts): hourly <= 43 fetches, change-check slot <= 35 (30 uptime + 1 check + 3 pages + 1 heatmap), 00:30 LOC 46, Mon 01:00 PSI 30; LOC/PSI slots skip the check.
 
@@ -41,4 +41,5 @@ Freshness (round 3, migration 0006, deployed): 15-min GraphQL change check with 
 4. No screenshots taken for the new UI (needs owner OK for visual checks).
 
 Report outcomes tersely.
+
 

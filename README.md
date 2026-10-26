@@ -2,6 +2,8 @@
 
 Public, read-only dashboard for the health of vincentwesley's deployed projects: commits and heatmap, CI, uptime, languages, lines-of-code estimate, weekly Lighthouse scores and latest blog posts. Runs on Cloudflare Workers + D1. Live data only: projects are discovered from GitHub and nothing is mocked outside tests.
 
+Live: https://devpulse.vwesley.workers.dev
+
 ## Run
 ```
 npm ci

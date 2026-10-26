@@ -1,4 +1,5 @@
 import { el } from "./api";
+import { parseProjectPath, toProjectPath } from "./urlstate";
 
 let handler: () => void = () => {};
 /** The router registers itself here so links and the palette can navigate without importing it. */
@@ -20,4 +21,35 @@ export function navLink(text: string, path: string, cls = "", label = "") {
     navigate(path);
   });
   return a;
+}
+
+/** Desktop layout: the ledger has a sticky detail pane beside it. Below this a project opens as a full page. */
+export const wide = () => matchMedia("(min-width: 1024px)").matches;
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Open a project: desktop shows it in the sticky pane (URL /p/<name>, one history entry; switching rows replaces it),
+ * phones and tablets go to the full page with a view transition when the browser has one.
+ */
+export function openDetail(name: string) {
+  if (parseProjectPath(location.pathname) === name) return;
+  const path = toProjectPath(name);
+  if (wide() && parseProjectPath(location.pathname) !== null) {
+    history.replaceState({ route: 1 }, "", path);
+    dispatchEvent(new PopStateEvent("popstate"));
+    return;
+  }
+  const go = () => navigate(path);
+  if (!wide() && document.startViewTransition && !reduced()) document.startViewTransition(go);
+  else go();
+}
+
+/** Close the pane (Back if we pushed its entry, else swap the URL to the list). */
+export function closeDetail() {
+  if (parseProjectPath(location.pathname) === null) return;
+  if (history.state?.route) history.back();
+  else {
+    history.replaceState(null, "", `/${location.search}`);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }
 }

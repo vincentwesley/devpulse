@@ -23,8 +23,8 @@
   <meta name="twitter:image" content="https://devpulse.vwesley.workers.dev/og.png">
   <link rel="preload" href="/src/web/house/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/src/web/house/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/src/web/house/fonts/departure-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="/theme-init.js"></script>
+  <link rel="preload" href="/api/projects" as="fetch" crossorigin>
+  <script>try{if(localStorage.getItem("theme")==="light"){document.documentElement.dataset.theme="light";var m=document.querySelector('meta[name="theme-color"]');if(m)m.content="#eef7f1"}}catch(e){}</script>
   <script type="module" src="/src/web/main.ts"></script>
 </head>
 <body>
@@ -98,7 +98,7 @@
             <b class="spark"></b><b class="spark"></b><b class="spark spark--sm"></b><b class="spark spark--sm"></b>
           </div>
           <div class="creator__art" aria-hidden="true">
-            <img src="/src/web/house/credits/creator.webp" alt="" width="456" height="613" loading="lazy" decoding="async">
+            <img src="/src/web/house/credits/creator.webp" srcset="/src/web/creator-264.webp 264w, /src/web/house/credits/creator.webp 456w" sizes="(max-width: 600px) min(220px, 60vw), 260px" alt="" width="456" height="613" loading="lazy" decoding="async">
           </div>
           <div class="creator__text">
             <p class="creator__eyebrow">Made by</p>

@@ -1,9 +1,17 @@
 /* DevPulse design system: spacing, type scale, colour roles, status glyphs, density. Imported after house/tokens.css. */
 @font-face { font-family: "Departure Mono"; src: url("./house/fonts/departure-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+/* Metric-matched local fallbacks (size-adjust + ascent/descent from the font files) so the swap to the webfont does not reflow text. */
+@font-face { font-family: "Inter Fallback"; src: local("Arial"); size-adjust: 107.5%; ascent-override: 90.1%; descent-override: 22.4%; line-gap-override: 0%; }
+@font-face { font-family: "Space Grotesk Fallback"; src: local("Arial"); size-adjust: 111.3%; ascent-override: 88.4%; descent-override: 26.2%; line-gap-override: 0%; }
+@font-face { font-family: "Departure Mono Fallback"; src: local("Courier New"); size-adjust: 106%; ascent-override: 94.3%; descent-override: 25.7%; line-gap-override: 0%; }
+@font-face { font-family: "Silkscreen Fallback"; src: local("Courier New"); size-adjust: 112.6%; ascent-override: 91.5%; descent-override: 22.2%; line-gap-override: 0%; }
 
 :root {
+  --font-head: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
+  --font-body: "Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-label: "Silkscreen", "Silkscreen Fallback", ui-monospace, monospace;
   /* Data font: every number and piece of metadata. Old rules that use --font-mono follow it. */
-  --font-data: "Departure Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-data: "Departure Mono", "Departure Mono Fallback", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-mono: var(--font-data);
 
   /* Spacing scale */

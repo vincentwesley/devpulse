@@ -129,7 +129,7 @@ test("PWA files are served from the build", async ({ request }) => {
   expect(m.ok()).toBe(true);
   const j = await m.json();
   expect(j.icons.map((i: { sizes: string }) => i.sizes)).toContain("512x512");
-  for (const p of ["/sw.js", "/theme-init.js", "/og.png", "/favicon.svg", "/icon-192.png", "/icon-maskable-512.png", "/apple-touch-icon.png"]) {
+  for (const p of ["/sw.js", "/og.png", "/favicon.svg", "/icon-192.png", "/icon-maskable-512.png", "/apple-touch-icon.png"]) {
     expect((await request.get(p)).ok(), p).toBe(true);
   }
   const sw = await (await request.get("/sw.js")).text();

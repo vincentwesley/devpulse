@@ -107,7 +107,7 @@ function open(showHelp = false) {
 }
 
 /** Open the palette (header hint button). */
-export const openPalette = () => open();
+export const openPalette = (help = false) => open(help);
 
 // A just-closed dialog's input can keep focus for a frame; that is not typing.
 const typing = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]") && !t.closest("dialog:not([open])");

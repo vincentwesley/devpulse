@@ -1,3 +1,5 @@
+// @ts-expect-error no @types/node in this repo
+import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import projects from "./fixtures/projects.json" with { type: "json" };
 import commits from "./fixtures/commits.json" with { type: "json" };
@@ -17,6 +19,15 @@ test("_headers CSP: no unsafe-inline in style-src or script-src", () => {
   expect(csp).toMatch(/style-src 'self'(;|$)/);
   expect(csp).not.toContain("unsafe-inline");
   expect(csp).not.toContain("unsafe-eval");
+});
+
+test("_headers allows exactly the inline theme script in index.html by sha256 (no drift, no external theme-init.js)", async ({ request }) => {
+  const html = await (await request.get("/")).text();
+  const inline = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)];
+  expect(inline).toHaveLength(1);
+  expect(csp).toContain(`'sha256-${createHash("sha256").update(inline[0][1]).digest("base64")}'`);
+  expect(csp).not.toContain("__THEME_HASH__");
+  expect(html).not.toContain("theme-init.js");
 });
 
 test("page, service worker registration, project dialog and palette raise no CSP / Trusted Types violations", async ({ page }) => {

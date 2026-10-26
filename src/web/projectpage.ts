@@ -1,7 +1,6 @@
 import { add, el, NODATA, type Commit, type Project, type Res, type Status } from "./api";
-import { buildDetail, closeDetail, wide } from "./detail";
 import { commitsFor, openIncidentRepos, siteFor } from "./hubutil";
-import { navigate, navLink, setRouteHandler } from "./nav";
+import { closeDetail, navigate, navLink, setRouteHandler, wide } from "./nav";
 import { markSelected, showTopic, toggleTopic, topicNow } from "./projects";
 import { parseProjectPath, parseUrl, toProjectPath } from "./urlstate";
 
@@ -16,6 +15,14 @@ let shown: string | null = null; // name rendered into #pp (full page), "" while
 let pageKey = "";
 let paneName: string | null = null; // name rendered into #detail-pane (desktop)
 let paneKey = "";
+
+// The detail view (d3 chart, README, commit list) loads on first open; routing re-runs once it is in.
+let D: typeof import("./detail") | undefined;
+let loadingD = false;
+const needDetail = () => {
+  if (!D && !loadingD) { loadingD = true; import("./detail").then((m) => { D = m; renderRoute(); }, () => { loadingD = false; }); }
+  return D;
+};
 
 const pp = () => document.getElementById("pp")!;
 const pane = () => document.getElementById("detail-pane")!;
@@ -47,9 +54,9 @@ const detailOpts = (lvl: 1 | 3) => ({
 });
 
 const back = () => navLink("← All projects", "/", "hs-btn hub-btn hub-btn--alt pp-back");
-function pageEl(p: Project) {
+function pageEl(p: Project, d: NonNullable<typeof D>) {
   const root = el("div", "", "pp");
-  add(root, back(), buildDetail(p, detailOpts(1)));
+  add(root, back(), d.buildDetail(p, detailOpts(1)));
   return root;
 }
 
@@ -85,12 +92,14 @@ function resetPage() {
 /** Desktop: fill the sticky pane. */
 function paintPane(name: string, p: Project | undefined) {
   if (!p) return closePane(); // still loading
+  const d = needDetail();
+  if (!d) return;
   const key = keyOf(p), box = pane();
   if (paneName === name && (key === paneKey || box.contains(document.activeElement))) return;
   const fresh = paneName !== name;
   paneName = name;
   paneKey = key;
-  box.replaceChildren(buildDetail(p, detailOpts(3)));
+  box.replaceChildren(d.buildDetail(p, detailOpts(3)));
   box.hidden = false;
   if (!fresh) return;
   box.scrollTop = 0;
@@ -108,10 +117,10 @@ function paintPage(name: string, p: Project | undefined) {
     const key = keyOf(p);
     if (key === pageKey || root.contains(document.activeElement)) return;
     pageKey = key;
-    root.replaceChildren(pageEl(p));
+    root.replaceChildren(pageEl(p, D!));
     return;
   }
-  if (projState === "loading") {
+  if (projState === "loading" || (p && !needDetail())) {
     root.setAttribute("aria-busy", "true");
     if (shown === null) { const k = el("div", "", "skel body", { "aria-hidden": "true" }); add(k, el("i"), el("i"), el("i")); root.replaceChildren(back(), k); }
     shown = "";
@@ -120,7 +129,7 @@ function paintPage(name: string, p: Project | undefined) {
   root.removeAttribute("aria-busy");
   shown = name;
   pageKey = p ? keyOf(p) : "";
-  root.replaceChildren(p ? pageEl(p) : notFound(name));
+  root.replaceChildren(p ? pageEl(p, D!) : notFound(name));
   if (p) headFor(p);
   else head(`Not found · ${TITLE}`, DESC);
   live.textContent = p ? `${p.name} project page` : "Project not found";

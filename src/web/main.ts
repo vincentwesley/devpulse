@@ -1,11 +1,9 @@
 import "./style.css";
 import "./shell.css";
-import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Res, type Stats } from "./api";
+import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Project, type Res, type Stats } from "./api";
 import { renderActivity } from "./activity";
 import { renderContrib, renderFeatured, renderLangs, renderPulse, renderTotals } from "./bento";
 import { icon } from "./icons";
-import { openPalette, initPalette, setPaletteProjects } from "./palette";
-import { initMotion } from "./motion";
 import { renderPosts } from "./posts";
 import { renderProjects, showFailing } from "./projects";
 import { renderRoute, setProjects, setStatus } from "./projectpage";
@@ -28,7 +26,26 @@ setTheme(root.dataset.theme === "light" ? "light" : "dark"); // theme-init.js al
 btn.addEventListener("click", () => setTheme(root.dataset.theme === "light" ? "dark" : "light", true));
 const kbd = document.querySelector<HTMLButtonElement>("#kbd")!;
 kbd.insertBefore(icon("command", 20), kbd.firstChild);
-kbd.addEventListener("click", openPalette);
+// The palette loads on idle (so the first use is instant), or on the first shortcut / click, whichever comes first.
+let palProjects: Project[] = [];
+let palMod: Promise<typeof import("./palette")> | undefined;
+const loadPalette = () => (palMod ??= import("./palette").then((m) => {
+  m.setPaletteProjects(palProjects);
+  m.initPalette(); // adds its own shortcut listener...
+  document.removeEventListener("keydown", early); // ...so the stub goes away
+  return m;
+}));
+const typing = (t: EventTarget | null) => t instanceof Element && !!t.closest("input, textarea, select, [contenteditable]") && !t.closest("dialog:not([open])");
+function early(e: KeyboardEvent) { // same triggers as palette.ts initPalette
+  const k = (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k";
+  const s = !(e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || typing(e.target)) && (e.key === "/" || e.key === "?") && !document.querySelector("dialog[open]");
+  if (!k && !s) return;
+  e.preventDefault();
+  loadPalette().then((m) => m.openPalette(s && e.key === "?"));
+}
+document.addEventListener("keydown", early);
+kbd.addEventListener("click", () => loadPalette().then((m) => m.openPalette()));
+const idle = (f: () => unknown) => ("requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 4000 }) : setTimeout(f, 2000));
 
 if (!navigator.webdriver) root.dataset.reveal = ""; // scroll reveal for real users only
 
@@ -61,7 +78,7 @@ const run = async (slow: boolean) => {
     Promise.all([projects, stats, status]).then(([p, s, st]) => renderHealth(p, s, st)).catch(() => {}),
     done("ledger", Promise.all([projects, commits, status]), ([p, c, st]) => {
       renderProjects(p, c, st);
-      if (p.state === "ok") setPaletteProjects(p.data);
+      if (p.state === "ok") { palProjects = p.data; palMod?.then((m) => m.setPaletteProjects(p.data)); }
       setProjects(p, c.state === "ok" ? c.data : []);
     }),
     done("tile-featured", projects, renderFeatured),
@@ -94,8 +111,12 @@ function refresh(slow: boolean): Promise<void> {
 }
 setAttnHandler(showFailing);
 renderRoute(); // /p/<name> direct load: show the page shell now, content once data arrives
-initPalette();
-refresh(true).then(() => { initMotion(document.querySelector("main")!); document.body.dataset.loaded = "1"; });
+refresh(true).then(() => {
+  document.body.dataset.loaded = "1";
+  // Lazy chunks arrive once the page is quiet, one after another: motion (enhancement), then detail (so opening a row is instant and offline works).
+  idle(() => import("./motion").then((m) => m.initMotion(document.querySelector("main")!)).then(() => idle(() => { import("./detail"); })));
+});
+loadPalette(); // small chunk, requested alongside the data so the first shortcut press finds it ready
 // One timer decides fast vs slow refresh, from timestamps.
 setInterval(() => {
   tickUpdated();

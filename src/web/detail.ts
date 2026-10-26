@@ -1,41 +1,37 @@
-import * as d3 from "d3";
+import { create, max as dmax } from "d3";
 import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project, type Status } from "./api";
 import { icon } from "./icons";
 import { commitsFor, dayClass, firstLine, fmtPct, openIncidentRepos, readmeBlocks, relTime, rowState, safeColor, siteFor, STATE_TEXT } from "./hubutil";
-import { navigate } from "./nav";
+import { band, linear } from "./scale";
 import { actions, cover, langBar, pills } from "./showcase";
 import { lastBars, windowPct } from "./status";
-import { parseProjectPath, toProjectPath } from "./urlstate";
 
-/** Desktop layout: the ledger has a sticky detail pane beside it. Below this a project opens as a full page. */
-export const wide = () => matchMedia("(min-width: 1024px)").matches;
 const narrow = () => matchMedia("(max-width: 639.98px)").matches;
-const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const wkLabel = (sec: number) => new Date(sec * 1000).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" });
 
 export function freqChart(p: Project) {
   const w = 520, h = 190, m = 6, data = p.codeFreq, axis = 28;
-  const max = d3.max(data, (d) => Math.max(d.add, d.del)) || 1;
-  const x = d3.scaleBand<number>(data.map((_, i) => i), [m, w - m]).padding(0.2);
+  const max = dmax(data, (d) => Math.max(d.add, d.del)) || 1;
+  const bd = band(data.length, [m, w - m], 0.2), x = bd.x;
   const mid = (h - axis) / 2;
-  const y = d3.scaleLinear([0, max], [0, mid - m]);
+  const y = linear([0, max], [0, mid - m]);
   const wrap = el("div", "", "hub-chartwrap");
   const out = el("p", "Tap or focus a week for its numbers.", "hub-readout muted", { role: "status" });
-  const svg = d3.create("svg").attr("class", "hub-chart").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "group")
+  const svg = create("svg").attr("class", "hub-chart").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "group")
     .attr("aria-label", `Weekly lines added and deleted, last ${data.length} weeks. Arrow keys move between weeks.`);
   svg.append("line").attr("x1", m).attr("x2", w - m).attr("y1", mid).attr("y2", mid).attr("stroke", "var(--border-strong)");
   const cols = svg.selectAll("g.wk").data(data).join("g").attr("class", "wk-col")
     .attr("tabindex", (_, i) => (i === 0 ? 0 : -1)).attr("role", "img")
     .attr("aria-label", (d) => `Week of ${wkLabel(d.week)}: ${d.add} added, ${d.del} deleted`);
-  cols.append("rect").attr("class", "hit").attr("fill", "transparent").attr("x", (_, i) => x(i)! - 1).attr("width", x.bandwidth() + 2).attr("y", 0).attr("height", h - axis);
-  cols.append("rect").attr("class", "add").attr("fill", "var(--accent)").attr("x", (_, i) => x(i)!).attr("width", x.bandwidth())
+  cols.append("rect").attr("class", "hit").attr("fill", "transparent").attr("x", (_, i) => x(i) - 1).attr("width", bd.width + 2).attr("y", 0).attr("height", h - axis);
+  cols.append("rect").attr("class", "add").attr("fill", "var(--accent)").attr("x", (_, i) => x(i)).attr("width", bd.width)
     .attr("y", (d) => mid - y(d.add)).attr("height", (d) => y(d.add));
-  cols.append("rect").attr("class", "del").attr("fill", "var(--fx-2)").attr("x", (_, i) => x(i)!).attr("width", x.bandwidth())
+  cols.append("rect").attr("class", "del").attr("fill", "var(--fx-2)").attr("x", (_, i) => x(i)).attr("width", bd.width)
     .attr("y", mid).attr("height", (d) => y(d.del));
   const step = Math.max(1, Math.ceil(data.length / 5));
   svg.selectAll("text.ax").data(data.map((d, i) => ({ d, i })).filter((o) => o.i % step === 0)).join("text").attr("class", "hub-ax")
-    .attr("x", (o) => x(o.i)! + x.bandwidth() / 2).attr("y", h - 6).attr("text-anchor", "middle").text((o) => wkLabel(o.d.week));
+    .attr("x", (o) => x(o.i) + bd.width / 2).attr("y", h - 6).attr("text-anchor", "middle").text((o) => wkLabel(o.d.week));
   const node = svg.node() as unknown as SVGSVGElement;
   const show = (i: number) => {
     const d = data[i];
@@ -244,31 +240,4 @@ export function buildDetail(p: Project, o: DetailOpts): HTMLElement {
   add(root, sec("Status badge", copyRow("badge", `![status](${location.origin}/badge/${n}.svg)`)),
     sec("Project card", copyRow("card", `![card](${location.origin}/card/${n}.svg)`)));
   return root;
-}
-
-/**
- * Open a project: desktop shows it in the sticky pane (URL /p/<name>, one history entry; switching rows replaces it),
- * phones and tablets go to the full page with a view transition when the browser has one.
- */
-export function openDetail(name: string) {
-  if (parseProjectPath(location.pathname) === name) return;
-  const path = toProjectPath(name);
-  if (wide() && parseProjectPath(location.pathname) !== null) {
-    history.replaceState({ route: 1 }, "", path);
-    dispatchEvent(new PopStateEvent("popstate"));
-    return;
-  }
-  const go = () => navigate(path);
-  if (!wide() && document.startViewTransition && !reduced()) document.startViewTransition(go);
-  else go();
-}
-
-/** Close the pane (Back if we pushed its entry, else swap the URL to the list). */
-export function closeDetail() {
-  if (parseProjectPath(location.pathname) === null) return;
-  if (history.state?.route) history.back();
-  else {
-    history.replaceState(null, "", `/${location.search}`);
-    dispatchEvent(new PopStateEvent("popstate"));
-  }
 }

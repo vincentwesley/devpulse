@@ -1,4 +1,5 @@
-import * as d3 from "d3";
+import { create, max as dmax, sum } from "d3";
+import { linear, quantize } from "./scale";
 import { add, el, type Heat, type Stats } from "./api";
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -45,11 +46,11 @@ function grid(all: Day[]) {
     const cell = 12, step = 14, top = 18;
     const first = new Date(days[0].date + "T00:00:00Z").getUTCDay();
     const weeks = Math.ceil((first + days.length) / 7);
-    const total = d3.sum(days, (d) => d.count);
-    const max = d3.max(days, (d) => d.count) ?? 0;
-    const level = d3.scaleQuantize<number>([1, Math.max(2, max + 1)], [1, 2, 3, 4]);
+    const total = sum(days, (d) => d.count);
+    const max = dmax(days, (d) => d.count) ?? 0;
+    const level = quantize([1, Math.max(2, max + 1)], [1, 2, 3, 4]);
     const w = weeks * step, h = 7 * step + top;
-    const svg = d3.create("svg").attr("class", "heat").attr("viewBox", `0 0 ${w} ${h}`).attr("width", w).attr("height", h)
+    const svg = create("svg").attr("class", "heat").attr("viewBox", `0 0 ${w} ${h}`).attr("width", w).attr("height", h)
       .attr("role", "group").attr("aria-label", `Daily contributions, ${days.length} days`);
     let prev = "";
     const marks: { x: number; d: Day }[] = [];
@@ -119,13 +120,13 @@ function streaks(s: Stats) {
 }
 
 function weekdays(t: number[]) {
-  const max = d3.max(t) ?? 0;
+  const max = dmax(t) ?? 0;
   if (t.length !== 7 || !max) return el("div");
   const bw = 32, gap = 12, h = 56, w = 7 * (bw + gap); // each column's hit area is the full bw+gap tile (44px)
-  const y = d3.scaleLinear([0, max], [0, h]);
+  const y = linear([0, max], [0, h]);
   const out = el("div", "", "ct__wk");
   const readout = el("p", "Tap or focus a bar for details.", "tile-readout", { "aria-live": "polite" });
-  const svg = d3.create("svg").attr("class", "wk").attr("viewBox", `0 0 ${w} ${h + 18}`)
+  const svg = create("svg").attr("class", "wk").attr("viewBox", `0 0 ${w} ${h + 18}`)
     .attr("role", "group").attr("aria-label", "Commits by weekday");
   const g = svg.selectAll("g").data(t).join("g").attr("class", "wk-col").attr("transform", (_, i) => `translate(${i * (bw + gap) + gap / 2},0)`)
     .attr("role", "button").attr("tabindex", 0).attr("aria-label", (n, i) => `${WD[i]}: ${plural(n, "commit")}`);

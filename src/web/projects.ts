@@ -1,11 +1,10 @@
-import * as d3 from "d3";
+import { create, extent, line } from "d3";
 import "./ledger.css";
 import { add, el, fmtDate, NODATA, show, type Commit, type Project, type Res, type Status } from "./api";
-import { openDetail, wide } from "./detail";
 import { icon } from "./icons";
 import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StatusFilter } from "./hubutil";
-import { navigate } from "./nav";
-import { setPaletteProjects } from "./palette";
+import { navigate, openDetail, wide } from "./nav";
+import { linear } from "./scale";
 import { lastBars, windowPct } from "./status";
 import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
 
@@ -17,12 +16,12 @@ const saveUrl = () => parseProjectPath(location.pathname) === null && history.re
 /** Sparkline of weekly churn; role=img so the cell has a text alternative. */
 function spark(vals: number[], label: string) {
   const w = 120, h = 24;
-  const [lo, hi] = d3.extent(vals) as [number, number];
-  const svg = d3.create("svg").attr("class", "lg-spark").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "img").attr("aria-label", label);
-  const x = d3.scaleLinear([0, Math.max(1, vals.length - 1)], [2, w - 2]);
-  const y = d3.scaleLinear([0, hi || 1], [h - 3, 3]);
+  const [lo, hi] = extent(vals) as [number, number];
+  const svg = create("svg").attr("class", "lg-spark").attr("viewBox", `0 0 ${w} ${h}`).attr("role", "img").attr("aria-label", label);
+  const x = linear([0, Math.max(1, vals.length - 1)], [2, w - 2]);
+  const y = linear([0, hi || 1], [h - 3, 3]);
   svg.append("path").attr("fill", "none").attr("stroke", "currentColor").attr("stroke-width", 1.5)
-    .attr("d", d3.line<number>().x((_, i) => x(i)).y((v) => (lo === hi ? h / 2 : y(v)))(vals));
+    .attr("d", line<number>().x((_, i) => x(i)).y((v) => (lo === hi ? h / 2 : y(v)))(vals));
   return svg.node() as unknown as SVGElement;
 }
 
@@ -184,11 +183,19 @@ function build(ps: Project[]) {
   add(table, thead, tbody);
   add(wrap, bar, table);
 
+  // The pane fills asynchronously the first time (the detail chunk loads on demand): focus its title once it exists.
+  const focusPaneTitle = () => {
+    const pane = document.getElementById("detail-pane")!, f = () => pane.querySelector<HTMLElement>(".dt-title")?.focus();
+    if (pane.querySelector(".dt-title")) return f();
+    const mo = new MutationObserver(() => { if (pane.querySelector(".dt-title")) { mo.disconnect(); f(); } });
+    mo.observe(pane, { childList: true, subtree: true });
+    setTimeout(() => mo.disconnect(), 3000);
+  };
   const open = (e: MouseEvent, name: string) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     openDetail(name);
-    if (e.detail === 0 && wide()) document.querySelector<HTMLElement>("#detail-pane .dt-title")?.focus(); // keyboard: move into the pane
+    if (e.detail === 0 && wide()) focusPaneTitle(); // keyboard: move into the pane
   };
   tbody.addEventListener("click", (e) => {
     const t = e.target as Element;
@@ -287,7 +294,6 @@ document.addEventListener("keydown", (e) => {
 export function renderProjects(projects: Res<Project[]>, _commits: Res<Commit[]>, status: Res<Status>) {
   if (projects.state === "ok") {
     cur = { ps: projects.data, status: status.state === "ok" ? status.data : null };
-    setPaletteProjects(projects.data);
   }
   if (projects.state === "ok" && draw && document.querySelector("#ledger > .body .lg-table")) { draw(); return; }
   if (projects.state !== "error") draw = null; // an error keeps the last good table (show() leaves it alone)

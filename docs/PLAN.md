@@ -34,6 +34,10 @@ Not in the MVP: alerts and notifications, private repos, auth, history beyond 90
 - **M4** RSS posts. Add `@astrojs/rss` to the portfolio if it's missing (that change goes in the portfolio repo).
 - **M5** Polish: a11y with axe, screenshots at 375px and desktop in dark and light, reduced motion, `security-review`, go live.
 
+- **M6** Hub: project ledger with detail pane and `/p/<name>` pages, command palette, lines-of-code estimate, Atom feed, badges and cards.
+- **M7** Round 2 / showcase: `.devpulse.json` `showcase` block (tagline, cover via `/img/:name`, links, featured), README excerpts for public repos, per-project Open Graph tags, edge rate limiting.
+- **M8** Round 3 / redesign + freshness: bento strip, verdict pill and stale/token banner, mobile Sort select and 44px tap targets (e2e-audited at 360/390), 15-minute change check with full sync only on change, `jobs` heartbeats, `/api/health`, alert emails (`ALERT_TO`), rename-safe re-keying with `repo_alias`, Trusted Types enforced (one `devpulse` policy for the service-worker URL), print stylesheet, palette *Copy status summary*.
+
 ## Owner prerequisites
 Create the fine-grained GitHub token. Set a repo "Website" (https) to enable uptime for it; `devpulse-ignore` topic hides a repo. Confirm the portfolio RSS URL. Have a Cloudflare account logged in through wrangler.
 

@@ -19,9 +19,9 @@ test("_headers CSP: no unsafe-inline in style-src or script-src", () => {
   expect(csp).not.toContain("unsafe-eval");
 });
 
-test("page, project dialog and palette raise no CSP / Trusted Types violations", async ({ page }) => {
+test("page, service worker registration, project dialog and palette raise no CSP / Trusted Types violations", async ({ page }) => {
   const bad: string[] = [];
-  await page.addInitScript(() => addEventListener("securitypolicyviolation", (e) => console.error("CSPV " + e.violatedDirective + " " + e.blockedURI)));
+  await page.addInitScript(() => addEventListener("securitypolicyviolation", (e) => console.error("CSPV " + e.violatedDirective + " " + e.blockedURI + " | " + e.sample + " @ " + e.sourceFile + ":" + e.lineNumber)));
   page.on("console", (m) => { if (/CSPV|Content Security Policy|Trusted Type/i.test(m.text())) bad.push(m.text()); });
   page.on("pageerror", (e) => { if (/Trusted Type|Content Security/i.test(e.message)) bad.push(e.message); });
   await page.route("**/api/*", (r) => r.fulfill({ json: bodies[new URL(r.request().url()).pathname.split("/").pop()!] ?? [] }));
@@ -40,6 +40,7 @@ test("page, project dialog and palette raise no CSP / Trusted Types violations",
   await expect(page.locator("#detail-pane")).toContainText("Alpha");
   await page.keyboard.press("Escape");
   await expect(page.locator("#detail-pane")).toBeHidden();
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true)); // /sw.js registered through the devpulse Trusted Types policy
   expect(bad).toEqual([]);
   // credits fireflies kept their per-element vars via CSS
   expect(await page.locator(".creator__fx i").first().evaluate((e) => getComputedStyle(e).getPropertyValue("--x").trim())).toBe("30%");

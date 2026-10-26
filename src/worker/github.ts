@@ -54,7 +54,7 @@ export async function githubTick(env: Env, now: Date, hourly: boolean): Promise<
   await syncGithub(env, now);
 }
 
-const RENAMED: (readonly [string, string])[] = [...["projects", "languages", "code_freq", "commits_recent", "ci"].map((t) => [t, "repo"] as const),
+const RENAMED: (readonly [string, string])[] = [...["projects", "languages", "code_freq", "commits_recent"].map((t) => [t, "repo"] as const),
   ...["uptime_summary", "daily_uptime", "incidents", "checks", "lighthouse"].map((t) => [t, "project"] as const)];
 
 export async function syncGithub(env: Env, now = new Date()): Promise<void> {
@@ -105,7 +105,7 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
       ...(r.commits.length ? [db.prepare(`INSERT INTO commits_recent (repo,sha,message,author,ts,url) VALUES ${rows(r.commits.length, 6)} ON CONFLICT(sha) DO UPDATE SET repo=excluded.repo WHERE repo NOT IN (SELECT repo FROM projects)`).bind(...r.commits.flatMap((c) => [c.repo, c.sha, c.message, c.author, c.ts, c.url]))] : []),
     ]),
     db.prepare("DELETE FROM projects WHERE updated_at <> ?").bind(ts),
-    ...["ci", "commits_recent", "languages", "code_freq"].map((t) => db.prepare(`DELETE FROM ${t} WHERE repo NOT IN (SELECT repo FROM projects)`)),
+    ...["commits_recent", "languages", "code_freq"].map((t) => db.prepare(`DELETE FROM ${t} WHERE repo NOT IN (SELECT repo FROM projects)`)),
     db.prepare("DELETE FROM commits_recent WHERE sha NOT IN (SELECT sha FROM commits_recent ORDER BY ts DESC LIMIT ?) AND sha NOT IN (SELECT sha FROM (SELECT sha, ROW_NUMBER() OVER (PARTITION BY repo ORDER BY ts DESC) AS rn FROM commits_recent) WHERE rn <= ?)").bind(COMMITS_KEPT, COMMITS_PER_REPO),
     db.prepare("INSERT INTO meta (key,value) VALUES ('fp',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(await fingerprint(nodes)),
     // Truncated list = incomplete private totals: keep the previous ones.

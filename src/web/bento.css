@@ -56,9 +56,10 @@
 .pulse__cell[data-s="attn"] .pulse__pix::before { content: var(--glyph-attn); color: var(--attn-fg); }
 .pulse__cell[data-s="wip"] .pulse__pix { border-color: var(--wip); background: color-mix(in srgb, var(--wip) 16%, var(--bg)); }
 .pulse__cell[data-s="wip"] .pulse__pix::before { content: var(--glyph-wip); color: var(--wip-fg); }
-.pulse__attn { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); margin: var(--s2) 0 0; padding: 0; list-style: none; font: 400 var(--fs-meta)/1.3 var(--font-data); }
+.pulse__attn { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s2); margin: 0; padding: 0; list-style: none; font: 400 var(--fs-meta)/1.3 var(--font-data); }
+.pulse__attn li { padding-block: 12px; } /* room for the chip hit area */
 .pulse__chip { position: relative; display: inline-block; padding: 2px var(--s2); color: var(--fg); text-decoration: none; border: 1px solid var(--attn); background: color-mix(in srgb, var(--attn) 14%, transparent); }
-.pulse__chip::after { content: ""; position: absolute; inset: -9px -2px; } /* 44px hit area, same look */
+.pulse__chip::after { content: ""; position: absolute; inset: -12px -2px; } /* 44px hit area, same look */
 .pulse__more { color: var(--fg-muted); }
 @media (hover: hover) { .pulse__chip:hover { color: var(--accent); } }
 .pulse__cell:focus-visible { outline: var(--ring); outline-offset: -2px; }
@@ -72,7 +73,7 @@
 .heat-toggle { min-height: 44px; padding: 0 var(--s3); font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg); background: transparent; border: var(--rule-strong); border-radius: 0; cursor: pointer; }
 .heat-toggle + .heat-toggle { margin-left: -1px; }
 .heat-toggle[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
-@media (pointer: fine) { .heat-toggle { min-height: 36px; } }
+@media (pointer: fine) and (min-width: 769px) { .heat-toggle { min-height: 36px; } }
 .heat-wrap { overflow-x: auto; padding: var(--s1); margin-top: var(--s2); --fl: 0px; --fr: 0px; mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
 .heat-wrap[data-fade-l] { --fl: 2rem; }
 .heat-wrap[data-fade-r] { --fr: 2rem; }
@@ -94,6 +95,7 @@
 .ct__streaks dd { margin: 0; font: 400 1.25rem/1.3 var(--font-data); font-variant-numeric: tabular-nums; }
 .ct__side { display: grid; gap: var(--s3); align-content: start; min-width: 0; }
 .wk { display: block; width: 100%; max-width: 308px; height: auto; }
+@media (max-width: 400px) { .wk { width: calc(100% + 16px); margin-inline: -8px; } } /* 7 x 44px columns need 308px; spill into the tile padding */
 .wk .bar { fill: var(--accent); }
 .wk-col { cursor: pointer; outline: none; }
 .wk-col:focus-visible .bar { stroke: var(--focus); stroke-width: 2; }

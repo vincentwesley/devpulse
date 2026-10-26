@@ -1,6 +1,5 @@
 // Bento strip: Featured, Pulse, Contributions, Totals, Languages. Each renderer fills its #tile-* element.
 import "./bento.css";
-import "./charts.css"; // shared .stats / .readout rows still used by the project page
 import { add, el, link, show, type Heat, type Languages, type Project, type Res, type Stats, type Status } from "./api";
 import { contribTile } from "./heatmap";
 import { totalsTile } from "./hero";

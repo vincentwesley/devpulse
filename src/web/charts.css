@@ -1,6 +1,0 @@
-/* Stat rows and readout (project page). Tokens only. */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; margin: 0.75rem 0 0; }
-.stats > div { padding: 0.5rem 0.7rem; background: var(--bg); box-shadow: var(--pix); min-width: 0; }
-.stats dt { color: var(--fg-muted); font-size: 0.8rem; }
-.stats dd { margin: 0.1rem 0 0; font: 1.1rem var(--font-mono); overflow-wrap: anywhere; }
-.readout { margin: 0.4rem 0 0; min-height: 1.6em; font: 0.85rem var(--font-mono); color: var(--fg); }

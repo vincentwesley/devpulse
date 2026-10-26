@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { checkAlerts } from "./alerts";
 import { githubTick } from "./github";
 import { beat, errCode, persistExpiry } from "./lib/jobs";
-import { syncLoc } from "./loc";
+import { retryLoc, syncLoc } from "./loc";
 import { pruneChecks } from "./prune";
 import { runPsi } from "./psi";
 import { syncPosts } from "./posts";
@@ -17,6 +17,7 @@ const run = (env: Env, name: string, fn: () => Promise<void>) =>
 //   00:30 UTC daily  -> LOC: 1 private-repo list + <= CODEFREQ_MAX code_frequency calls (uptime and the change check skipped this once a day)
 //   Mon 01:00 UTC    -> PSI: <= MAX_SITES calls (rest of the work skipped this once a week)
 //   hourly           -> uptime (<= MAX_SITES) + GitHub full sync (<= 3 GraphQL + 1 heatmap) + posts (1) + statuspages (<= MAX_STATUS_ORIGINS); 00:00 prunes
+//   (every hourly and :15/:30/:45 slot then runs uptime + retryLoc after the GitHub step; retryLoc adds <= LOC_RETRY_MAX fetches)
 //   other :15/:30/:45 -> uptime + GitHub change check (1 GraphQL; a full sync only if the fingerprint moved: <= 1 + 3 + 1)
 // Every slot ends with the alert check and token-expiry persist (D1 only, no subrequests besides the email binding).
 export async function runScheduled(event: ScheduledController, env: Env): Promise<void> {
@@ -27,7 +28,11 @@ export async function runScheduled(event: ScheduledController, env: Env): Promis
   if (h === 0 && m === 30) jobs.push(run(env, "loc", () => syncLoc(env)));
   else if (d.getUTCDay() === 1 && h === 1 && m === 0) jobs.push(run(env, "psi", () => runPsi(env, d)));
   else {
-    jobs.push(run(env, "uptime", () => runUptime(env, hourly)), run(env, "github", () => githubTick(env, d, hourly)));
+    // Uptime and the LOC retry run after the GitHub step: they see renamed repos and never write under an old name.
+    jobs.push(run(env, "github", () => githubTick(env, d, hourly)).then(() => Promise.all([
+      run(env, "uptime", () => runUptime(env, hourly)),
+      retryLoc(env, d).catch((e) => console.error(`loc retry failed: ${errCode(e)}`)),
+    ]).then(() => {})));
     if (hourly) {
       jobs.push(run(env, "posts", () => syncPosts(env)));
       if (h === 0) jobs.push(run(env, "prune", () => pruneChecks(env)));

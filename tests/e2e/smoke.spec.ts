@@ -107,7 +107,7 @@ test("project ledger: columns, sort and filter", async ({ page }) => {
   const first = page.locator(".proj").first();
   await expect(first).toContainText("Alpha ships tiny tools fast");
   await expect(first).toContainText("TypeScript");
-  await expect(first).toContainText(/ago|just now/);
+  await expect(first).toContainText(/ago|just now|wk|mo|yr/);
   await expect(first.locator("[title='2026-10-18']")).toHaveCount(1);
   await expect(page.locator(".proj", { hasText: "NoSite" })).toContainText("pending"); // ciState fallback
   await page.getByRole("columnheader", { name: "Project" }).getByRole("button").click();

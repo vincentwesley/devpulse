@@ -2,6 +2,7 @@
 import { add, el, type Project } from "./api";
 import { rankBy } from "./hubutil";
 import { navigate } from "./nav";
+import { statusSummary } from "./shell";
 import { toProjectPath } from "./urlstate";
 
 interface Item { label: string; group: "Project" | "Section" | "Action"; run: () => void }
@@ -22,6 +23,9 @@ let shown: Item[] = [], sel = 0;
 const toast = el("p", "", "pal__toast", { role: "status", "aria-live": "polite", hidden: "" });
 document.body.appendChild(toast);
 
+const say = (m: string) => { toast.textContent = m; toast.hidden = false; setTimeout(() => { toast.hidden = true; toast.textContent = ""; }, 2500); };
+const copy = (text: string, ok: string) => navigator.clipboard?.writeText(text).then(() => say(ok), () => say("Couldn't copy")) ?? say("Couldn't copy");
+
 /** Projects offered by the palette; called by renderProjects on each load. */
 export const setPaletteProjects = (p: Project[]) => { projects = p; };
 
@@ -34,10 +38,8 @@ function items(): Item[] {
       out.push({ label, group: "Section", run: () => { if (document.body.dataset.view) navigate("/"); document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }); } });
   out.push(
     { label: "Toggle theme", group: "Action", run: () => document.querySelector<HTMLButtonElement>("#theme")?.click() },
-    { label: "Copy feed URL", group: "Action", run: () => {
-      const say = (m: string) => { toast.textContent = m; toast.hidden = false; setTimeout(() => { toast.hidden = true; toast.textContent = ""; }, 2500); };
-      navigator.clipboard?.writeText(`${location.origin}/feed.xml`).then(() => say("Feed URL copied"), () => say("Couldn't copy the feed URL")) ?? say("Couldn't copy the feed URL");
-    } },
+    { label: "Copy feed URL", group: "Action", run: () => copy(`${location.origin}/feed.xml`, "Feed URL copied") },
+    { label: "Copy status summary", group: "Action", run: () => { const s = statusSummary(); if (s) copy(s, "Status summary copied"); else say("No status yet"); } },
     { label: "Show keyboard shortcuts", group: "Action", run: () => open(true) },
   );
   return out;

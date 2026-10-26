@@ -2,20 +2,19 @@
 .act-day { display: grid; gap: 0 var(--s4); padding: var(--s3) 0; border-bottom: var(--rule); }
 .act__day { margin: 0; font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); }
 .act { list-style: none; margin: 0; padding: 0; display: grid; min-width: 0; }
-.act li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "msg msg msg" "repo sha meta"; gap: 0 var(--s3); align-items: center; padding: var(--s1) 0; min-width: 0; }
+.act li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "msg sha" "repo meta"; gap: 0 var(--s3); align-items: center; padding: var(--s1) 0; min-width: 0; }
 .act__msg { grid-area: msg; min-width: 0; display: block; line-height: 44px; min-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); text-decoration: none; }
 .act__msg:hover { text-decoration: underline; }
 .act__repo { grid-area: repo; font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.act__sha { position: relative; grid-area: sha; justify-self: end; font: 400 var(--fs-meta)/1 var(--font-data); color: var(--accent); }
-.act__sha::after { content: ""; position: absolute; inset: -4px -8px; }
-.act__meta { grid-area: meta; font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); white-space: nowrap; }
+.act__sha { position: relative; grid-area: sha; display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--s2); font: 400 var(--fs-meta)/1 var(--font-data); color: var(--accent); }
+.act__meta { grid-area: meta; justify-self: end; font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); white-space: nowrap; }
 .act__more { min-height: 44px; margin-top: var(--s4); }
 .act__more[hidden] { display: none; }
 @media (min-width: 640px) {
   .act-day { grid-template-columns: 6rem minmax(0, 1fr); }
   .act__day { padding-top: 13px; }
   .act li { grid-template-columns: 7rem minmax(0, 1fr) auto auto; grid-template-areas: "repo msg sha meta"; }
-  .act__sha { justify-self: start; }
+  .act__meta { justify-self: auto; }
 }
 @media (hover: hover) { .act__sha:hover { text-decoration: underline; } }
 @media (prefers-reduced-motion: no-preference) {

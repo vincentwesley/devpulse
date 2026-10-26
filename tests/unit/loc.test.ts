@@ -55,9 +55,9 @@ describe("syncLoc", () => {
     expect(loc(log)).toEqual([[155, "o/pub2"]]);
     expect(agg(log)).toBeUndefined();
   });
-  it("422 skips a public repo; a private 422 counts as 0 but does not block", async () => {
+  it("422 marks a public repo 0 (final); a private 422 counts as 0 but does not block", async () => {
     const { log } = await run({ "o/pub": 422, "o/secret-project-xyz": 422 });
-    expect(loc(log)).toEqual([[155, "o/pub2"]]);
+    expect(loc(log)).toEqual([["o/pub"], [155, "o/pub2"]]); // public 422 is final: loc=0 so it is never retried
     expect(agg(log)).toEqual([0]);
   });
   it("other errors skip public and keep the private aggregate", async () => {

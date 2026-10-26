@@ -5,6 +5,8 @@ export const MAX_REPO_PAGES = 3; // so a sync is <= 3 GraphQL calls
 export const MAX_SITES = 30; // uptime / PSI targets per slot
 export const MAX_STATUS_ORIGINS = 8; // statuspage fetches per hourly slot
 export const CODEFREQ_MAX = 45; // repos per daily LOC slot (1 list call + 45 stats calls)
+export const LOC_RETRY_MAX = 4; // code_frequency fetches (incl. the private list call) per hourly/15-min retry; leaves >= 3 spare per slot
+export const LOC_RETRY_GAP_S = 600; // min seconds between two attempts at the same repo
 export const CODEFREQ_WEEKS = 26;
 export const PSI_TIMEOUT_MS = 60_000;
 export const COMMITS_KEPT = 50;

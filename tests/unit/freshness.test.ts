@@ -138,6 +138,7 @@ describe("rename", () => {
     for (const [from, to] of [["/badge/old.svg", "/badge/New.svg"], ["/badge/new.svg", "/badge/New.svg"], ["/card/OLD.svg", "/card/New.svg"], ["/p/old", "/p/New"], ["/img/old?v=1", "/img/New?v=1"]]) {
       const r = await get(from);
       expect([from, r.status, r.headers.get("Location")]).toEqual([from, 301, to]);
+      expect(r.headers.get("Cache-Control")).toBe("no-store"); // case variants must not grow the edge cache
     }
     expect((await get("/badge/New.svg")).status).toBe(200);
     expect((await get("/card/New.svg")).status).toBe(200);

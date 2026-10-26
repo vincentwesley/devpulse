@@ -46,7 +46,7 @@ describe("routes", () => {
       "SUM(loc)": [{ repos: 2, commits: 100, loc: 5000, synced: "2026-10-05T10:00:00.000Z" }],
       "FROM private_agg": [{ repos: 3, commit_count: 40, loc: 900 }],
     }))!;
-    expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(r.headers.get("Cache-Control")).toBe("public, max-age=60"); // health rides along: short cache keeps the stale banner fresh
     const b = (await r.json()) as any;
     expect(b.totals).toEqual({ repos: 5, commits: 140, loc: 6000 }); // private included: commits to 10, loc to 1000
     expect(b.approx).toBe(true);

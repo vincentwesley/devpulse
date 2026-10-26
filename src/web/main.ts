@@ -119,6 +119,9 @@ syncOnline();
 if ("serviceWorker" in navigator) {
   try {
     navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.stale) offline.hidden = false; });
-    addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+    // register() is a TrustedScriptURL sink under CSP require-trusted-types-for; the one policy only mints "/sw.js".
+    const tt = (window as { trustedTypes?: { createPolicy(n: string, r: { createScriptURL(u: string): string }): { createScriptURL(u: string): string } } }).trustedTypes;
+    const swUrl = tt?.createPolicy("devpulse", { createScriptURL: (u) => { if (u !== "/sw.js") throw new TypeError("blocked"); return u; } }).createScriptURL("/sw.js") ?? "/sw.js";
+    addEventListener("load", () => navigator.serviceWorker.register(swUrl).catch(() => {}));
   } catch {}
 }

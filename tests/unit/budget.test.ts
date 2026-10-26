@@ -55,7 +55,7 @@ describe("per-slot subrequest budget", () => {
       const d = new Date(t);
       if (d.getUTCHours() === 0 && d.getUTCMinutes() === 30) { seen.loc = true; expect(fetched.some((u) => u.includes("code_frequency"))).toBe(true); }
       if (d.getUTCDay() === 1 && d.getUTCHours() === 1 && d.getUTCMinutes() === 0) { seen.psi = true; expect(fetched.some((u) => u.includes("pagespeedonline"))).toBe(true); expect(fetched.length).toBe(30); }
-      if (d.getUTCHours() === 3 && d.getUTCMinutes() === 0) { seen.hourly = true; expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(3 + 1); } // 3 repo pages + heatmap
+      if (d.getUTCHours() === 3 && d.getUTCMinutes() === 0) { seen.hourly = true; expect(fetched.filter((u) => u.includes("code_frequency")).length).toBe(4); /* retryLoc worst case (fakeDb answers its pending query with all 60 repos) */ expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(3 + 1); } // 3 repo pages + heatmap
       // Worst case, fingerprint changed every slot (empty meta): 1 change check + 3 repo pages + heatmap, on top of <= 30 uptime fetches.
       if (d.getUTCHours() === 3 && d.getUTCMinutes() === 15) { seen.check = true; expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(1 + 3 + 1); }
     }

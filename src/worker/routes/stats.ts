@@ -37,7 +37,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
       syncedAt: synced && !isNaN(+synced) ? synced.toISOString() : null,
       approx,
       health: computeHealth(jobs.results as JobRow[], exp.results[0]?.value),
-    }, 200, 300);
+    }, 200, 60); // 60s, not 300: `health` (the stale banner) rides in this payload and is computed fresh on every cache miss
   }
   if (pathname === "/api/languages") {
     const [pub, priv] = (await db.batch([

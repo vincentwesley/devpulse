@@ -59,6 +59,7 @@ test("1280: columns with data stay", async ({ page }) => {
   await open(page);
   await expect(page.getByRole("columnheader", { name: "Activity" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: /Uptime/ })).toBeVisible();
+  await expect(page.locator(".proj .lg-spark").first()).toBeVisible(); // data present: a sparkline, not a dash
 });
 
 test("verdict pill is a button that applies the Failing filter and scrolls to the ledger", async ({ page }) => {

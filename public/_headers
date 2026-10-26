@@ -1,7 +1,7 @@
 # Strict headers for Workers Static Assets (served by the assets binding). No external hosts: fonts and the credits image are bundled into /assets/.
 # To widen: append one host at a time to connect-src or img-src; never a wildcard, never 'unsafe-inline' for script-src.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; manifest-src 'self'; worker-src 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; manifest-src 'self'; worker-src 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types devpulse
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()

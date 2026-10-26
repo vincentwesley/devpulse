@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 /** Real SQLite behind the D1 interface (migrations applied), so tests exercise the actual SQL. */
 export function sqliteDb() {
   const raw = new DatabaseSync(":memory:");
-  for (const f of ["0001_init", "0002_hub", "0003_status", "0005_showcase", "0006_freshness"]) raw.exec(readFileSync(new URL(`../../migrations/${f}.sql`, import.meta.url), "utf8"));
+  for (const f of ["0001_init", "0002_hub", "0003_status", "0005_showcase", "0006_freshness", "0007_drop_ci"]) raw.exec(readFileSync(new URL(`../../migrations/${f}.sql`, import.meta.url), "utf8"));
   const stmts = { n: 0 };
   const stmt = (sql: string, args: unknown[] = []) => ({
     sql,

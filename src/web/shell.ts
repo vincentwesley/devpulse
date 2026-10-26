@@ -5,14 +5,14 @@ let onAttn: () => void = () => {};
 /** main.ts wires the verdict pill to the ledger's Failing filter (keeps this module free of DOM-heavy imports). */
 export const setAttnHandler = (f: () => void) => { onAttn = f; };
 
-export interface Verdict { level: "ok" | "attn" | "none"; attention: number; text: string }
+export interface Verdict { level: "ok" | "attn" | "none"; attention: number; ok: number; names: string[]; text: string }
 
 const failing = (p: Project) => p.ci?.conclusion === "failure" || p.ciState === "FAILURE" || p.ciState === "ERROR";
 
 /** Overall health from projects with CI or uptime data. Attention = CI failure, site down or an open incident. */
 export function verdict(projects: Project[], status: Status | null): Verdict {
   const watched = projects.filter((p) => p.url || p.ci || p.ciState);
-  if (!watched.length) return { level: "none", attention: 0, text: "No data yet" };
+  if (!watched.length) return { level: "none", attention: 0, ok: 0, names: [], text: "No data yet" };
   const bad = new Set<string>();
   for (const p of watched) if (failing(p) || p.up === false) bad.add(p.repo);
   for (const i of status?.incidents ?? []) {
@@ -20,7 +20,8 @@ export function verdict(projects: Project[], status: Status | null): Verdict {
     bad.add(status?.sites.find((s) => s.name === i.name)?.repo ?? i.name);
   }
   const n = bad.size;
-  return n ? { level: "attn", attention: n, text: `${n} need${n === 1 ? "s" : ""} attention` } : { level: "ok", attention: 0, text: "All systems normal" };
+  const ok = Math.max(0, watched.length - n), names = watched.filter((p) => bad.has(p.repo)).map((p) => p.name);
+  return n ? { level: "attn", attention: n, ok, names, text: `${n} need${n === 1 ? "s" : ""} attention` } : { level: "ok", attention: 0, ok, names, text: "All systems normal" };
 }
 
 /** Banner lines: stale data, token near expiry. Empty = hide the banner. */
@@ -31,6 +32,10 @@ export function bannerMessages(h: Stats["health"] | undefined, now = Date.now())
   if (typeof d === "number" && d <= 14) out.push(d <= 0 ? "GitHub token has expired" : `GitHub token expires in ${d} day${d === 1 ? "" : "s"}`);
   return out;
 }
+
+let summary = "";
+/** Plain-text status line for the palette's "Copy status summary" (public repo names only). Empty before the first load. */
+export const statusSummary = () => summary;
 
 const pill = () => document.getElementById("verdict")!;
 const banner = () => document.getElementById("banner")!;
@@ -52,6 +57,8 @@ export function renderHealth(projects: Res<Project[]>, stats: Res<Stats>, status
   if (projects.state === "ok") {
     const v = verdict(projects.data, status.state === "ok" ? status.data : null);
     setVerdict(v.level, v.text);
+    const when = document.getElementById("updated")?.textContent?.trim();
+    summary = v.level === "none" ? "" : `DevPulse: ${v.text}. ${v.ok} ok / ${v.attention} attention${v.names.length ? ` (${v.names.join(", ")})` : ""}.${when ? ` ${when}.` : ""}`;
   } else if (!pill().dataset.s || projects.state === "empty") setVerdict("none", projects.state === "error" ? "Status unavailable" : "No data yet");
   const b = banner();
   if (stats.state === "error") return; // a failed refresh keeps the last banner

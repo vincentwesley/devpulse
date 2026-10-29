@@ -1,6 +1,6 @@
 // Bento strip: Featured, Pulse, Contributions, Totals, Languages. Each renderer fills its #tile-* element.
 import "./bento.css";
-import { add, el, link, show, type Heat, type Languages, type Project, type Res, type Stats, type Status } from "./api";
+import { add, el, GAP_LABEL, link, show, type Gap, type Heat, type Languages, type Project, type Res, type Stats, type Status } from "./api";
 import { contribTile } from "./heatmap";
 import { totalsTile } from "./hero";
 import { ciFromState, initialOf, safeColor, sortFilter, tileBackground, tileColors } from "./hubutil";
@@ -174,4 +174,30 @@ export function renderTotals(stats: Res<Stats>, _projects: Res<Project[]>) {
 
 export function renderLangs(langs: Res<Languages>) {
   show("tile-langs", langs, langsTile);
+}
+
+/** Repo hygiene: README / About / Website / topics gaps across the public repos, with a filter shortcut into the ledger. */
+export function hygiene(ps: Project[], onShow: () => void) {
+  const out = el("div", "", "hyg");
+  const withGaps = ps.filter((p) => p.audit?.length);
+  const total = withGaps.reduce((n, p) => n + p.audit!.length, 0);
+  const head = el("p", "", "hyg__sum");
+  add(head, el("span", String(total), "hyg__n"), ` ${total === 1 ? "gap" : "gaps"} across ${withGaps.length} of ${ps.length} repos`);
+  add(out, head);
+  if (!total) { add(out, el("p", "Every repo has a README explanation, screenshot, About, Website and topics.", "meta")); return out; }
+  const by = new Map<Gap, number>();
+  for (const p of withGaps) for (const g of p.audit!) by.set(g, (by.get(g) ?? 0) + 1);
+  const ul = el("ul", "", "hyg__list", { "aria-label": "Gaps by kind" });
+  for (const [g, n] of [...by].sort((a, b) => b[1] - a[1])) add(ul, el("li", `${GAP_LABEL[g] ?? g}: ${n}`));
+  const b = el("button", "Show repos with gaps", "hs-btn hyg__btn", { type: "button" });
+  b.addEventListener("click", onShow);
+  add(out, ul, b);
+  return out;
+}
+export function renderHygiene(projects: Res<Project[]>, onShow: () => void) {
+  const tile = document.getElementById("tile-hygiene")!;
+  if (tile.contains(document.activeElement)) return;
+  // Older API responses have no audit field: nothing to say yet.
+  const known = projects.state === "ok" && projects.data.some((p) => Array.isArray(p.audit)) ? projects : projects.state === "ok" ? ({ state: "empty" } as const) : projects;
+  show("tile-hygiene", known, (ps) => hygiene(ps.filter((p) => !p.archived), onShow));
 }

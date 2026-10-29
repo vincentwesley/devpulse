@@ -1,9 +1,10 @@
 import { create, max as dmax } from "d3";
-import { add, COLLECTING, el, fmtDate, link, NODATA, type Commit, type Project, type Status } from "./api";
+import { add, COLLECTING, el, fmtDate, GAP_LABEL, link, NODATA, SOURCE_LABEL, staleText, type Commit, type Project, type Status } from "./api";
 import { icon } from "./icons";
 import { commitsFor, dayClass, firstLine, fmtPct, openIncidentRepos, readmeBlocks, relTime, rowState, safeColor, siteFor, STATE_TEXT } from "./hubutil";
 import { band, linear } from "./scale";
-import { actions, cover, langBar, pills } from "./showcase";
+import { actions, copyBlock, langBar, pills, snapshot } from "./showcase";
+import { stageChip, staleMark } from "./stage";
 import { lastBars, windowPct } from "./status";
 
 const narrow = () => matchMedia("(max-width: 639.98px)").matches;
@@ -109,6 +110,21 @@ function uptimeBlock(p: Project, st: Status | null) {
   return box;
 }
 
+const when = (iso: string | null | undefined) => (iso ? `${relTime(iso) || fmtDate(iso)}` : "");
+/** Last check / refresh times and where the live URL came from. Null when the API has none of them. */
+export function freshness(p: Project) {
+  const dl = el("dl", "", "dt-fresh");
+  const row = (k: string, v: string, title = "") => { if (!v) return; const g = el("div"); add(g, el("dt", k), el("dd", v, "", title ? { title } : {})); add(dl, g); };
+  row("Repo checked", when(p.checkedAt), p.checkedAt ?? "");
+  row("Showcase refreshed", when(p.detailAt), p.detailAt ?? "");
+  if (p.url) row("Uptime checked", when(p.uptimeAt), p.uptimeAt ?? "");
+  if (p.shot || p.shotAt) row("Snapshot taken", when(p.shotAt), p.shotAt ?? "");
+  if (p.url && p.urlSource) row("Live URL", `found via ${SOURCE_LABEL[p.urlSource] ?? p.urlSource}`);
+  if (p.stale) row("Stale", staleText(p.staleWhy) || "yes");
+  if (!dl.children.length) return null;
+  return dl;
+}
+
 export interface DetailOpts {
   /** Title heading level: 1 on the full page, 3 inside the pane (under the "Projects" h2). */
   lvl: 1 | 3;
@@ -137,12 +153,14 @@ export function buildDetail(p: Project, o: DetailOpts): HTMLElement {
     b.addEventListener("click", o.onClose);
     add(root, b);
   }
-  add(root, cover(p, "lg"));
+  add(root, snapshot(p, "lg", p.shot ? `Screenshot of ${p.name}'s live site` : ""));
 
   const head = el("div", "", "dt-head");
   add(head, el(`h${o.lvl}` as "h1", p.name, "dt-title", { tabindex: "-1" }));
   if (p.tagline) add(head, el("p", p.tagline, "dt-tag"));
   if (p.description && p.description !== p.tagline) add(head, el("p", p.description, "hub-desc"));
+  const st = stageChip(p), sm = staleMark(p);
+  if (st || sm) { const r = el("div", "", "lg-meta"); add(r, ...[st, sm].filter((x): x is HTMLElement => !!x)); add(head, r); }
   add(head, pills(p), uptimeBlock(p, o.status), actions(p, false));
   add(root, head);
 
@@ -235,6 +253,15 @@ export function buildDetail(p: Project, o: DetailOpts): HTMLElement {
     });
     add(root, sec("Topics", ul));
   }
+
+  const fresh = freshness(p);
+  if (fresh) add(root, sec("Freshness", fresh));
+  if (p.audit?.length) {
+    const ul = el("ul", "", "dt-gaps", { "aria-label": "Repo gaps" });
+    for (const g of p.audit) add(ul, el("li", GAP_LABEL[g] ?? g));
+    add(root, sec("Repo gaps", ul));
+  }
+  if (p.snippet) add(root, sec("README embed", el("p", "Paste into the repo's README: status card, live snapshot and links, kept current by DevPulse.", "muted"), copyBlock(`${p.name} README embed snippet`, p.snippet)));
 
   const n = encodeURIComponent(p.name);
   add(root, sec("Status badge", copyRow("badge", `![status](${location.origin}/badge/${n}.svg)`)),

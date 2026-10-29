@@ -1,7 +1,17 @@
 // Server limits and windows.
-export const MAX_REPOS = 50; // public repos kept per sync; subrequest budget is proven in tests/unit/budget.test.ts
-export const REPO_PAGE = 50; // GraphQL page size
-export const MAX_REPO_PAGES = 3; // so a sync is <= 3 GraphQL calls
+// Every slot: list pass (<= MAX_LIST_PAGES GraphQL calls) + detail pass (<= DETAIL_CALLS). Budget proven in tests/unit/budget.test.ts.
+export const LIST_PAGE = 100; // GraphQL page size of the light list
+export const MAX_LIST_PAGES = 5; // 500 repos (public + private); beyond that the list is flagged truncated in /api/health
+export const DETAIL_BATCH = 20; // repos per nodes(ids:) call
+export const DETAIL_CALLS = 2; // detail calls per slot (40 repos / 15 min)
+export const DETAIL_MIN_GAP_S = 86400; // a repo that already has detail data is re-read at most once a day, and only after it changed
+export const PROBES_PER_SLOT = 4; // live-site probes per non-hourly slot
+export const PROBE_RETRY_S = 7 * 86400; // a repo whose every candidate failed is re-probed after a week
+export const SHOTS_PER_SLOT = 2; // screenshots per non-hourly slot (one browser session)
+export const SHOT_DAILY_MS = 6 * 60_000; // 60% of the free 10 browser-minutes a day
+export const SHOT_MIN_GAP_S = 86400; // re-shoot only after a push, and at most once a day
+export const SHOT_MAX_BYTES = 1_500_000; // D1 row limit is 2 MB
+export const SHOT_MIN_BYTES = 8 * 1024; // smaller = near-blank (e.g. WebGL the headless browser could not render): keep the old image
 export const MAX_SITES = 30; // uptime / PSI targets per slot
 export const MAX_STATUS_ORIGINS = 8; // statuspage fetches per hourly slot
 export const CODEFREQ_MAX = 45; // repos per daily LOC slot (1 list call + 45 stats calls)

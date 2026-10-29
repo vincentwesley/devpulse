@@ -25,6 +25,14 @@ export const redirect = (location: string) =>
 export const image = (body: Uint8Array | null, type: string) =>
   new Response(body as BodyInit | null, { headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(86400), "Cross-Origin-Resource-Policy": "same-origin" } });
 
+/** Live screenshot: embeddable cross-origin (GitHub READMEs fetch it through camo), 6 h cache, ETag = capture time. */
+export const shotImage = (body: Uint8Array | null, type: string, etag: string, status = 200) =>
+  new Response(body as BodyInit | null, { status, headers: { ...SEC, "Content-Type": type, "Cache-Control": cc(21600), ETag: etag, "Cross-Origin-Resource-Policy": "cross-origin" } });
+
+/** 302 to a same-origin fallback (short public cache). */
+export const found = (location: string, ttl: number) =>
+  new Response(null, { status: 302, headers: { ...SEC, Location: location, "Cache-Control": cc(ttl), "Cross-Origin-Resource-Policy": "cross-origin" } });
+
 export const UA = "DevPulse/1.0 (uptime monitor for vincentwesley's own projects; +https://github.com/vincentwesley)";
 
 /** Body text, or null if it exceeds maxBytes. */

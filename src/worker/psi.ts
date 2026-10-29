@@ -1,6 +1,7 @@
 import type { Env } from "./env";
 import { MAX_SITES, PSI_TIMEOUT_MS } from "./config";
 import { pool } from "./lib/http";
+import { rotate } from "./uptime";
 
 const PSI = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
 const CATS = ["performance", "accessibility", "best-practices", "seo"] as const;
@@ -25,9 +26,10 @@ export function isoWeek(d: Date): string {
 
 /** Weekly (Mon 01:00 UTC): one PageSpeed Insights call per monitored site, upserted into `lighthouse`. */
 export async function runPsi(env: Env, now = new Date()): Promise<void> {
-  const { results } = await env.DB.prepare("SELECT repo, url FROM projects WHERE url IS NOT NULL ORDER BY pushed_at DESC").all<{ repo: string; url: string }>();
+  const { results } = await env.DB.prepare("SELECT repo, url FROM projects WHERE url IS NOT NULL ORDER BY pushed_at DESC, repo").all<{ repo: string; url: string }>();
   const week = isoWeek(now);
-  const stmts = await pool(results.slice(0, MAX_SITES), 5, async (p) => {
+  // More than MAX_SITES sites: rotate by week number, so each gets a score every ceil(n / MAX_SITES) weeks.
+  const stmts = await pool(rotate(results, MAX_SITES, Math.floor(+now / (7 * 864e5))), 5, async (p) => {
     const qs = new URLSearchParams({ url: p.url, strategy: "mobile" });
     for (const c of CATS) qs.append("category", c);
     if (env.PSI_KEY) qs.set("key", env.PSI_KEY);

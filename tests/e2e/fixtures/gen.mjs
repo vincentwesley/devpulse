@@ -7,7 +7,10 @@ const s = Date.parse("2025-10-10T00:00:00Z");
 for (let i = 0; i < 365; i++) days.push({ date: new Date(s + i * 864e5).toISOString().slice(0, 10), count: (i * 7) % 11 > 6 ? (i % 5) + 1 : 0 });
 w("heatmap.json", { days });
 const wk = (n) => Array.from({ length: 26 }, (_, i) => ({ week: 1760000000 + i * 604800, add: ((i * 37 + n) % 90) + 5, del: ((i * 53 + n) % 40) }));
-const hub = (o) => ({ ciState: null, description: null, topics: [], language: null, stars: 0, forks: 0, createdAt: "2025-01-01T00:00:00Z", pushedAt: null, release: null, license: null, commitCount: null, loc: null, languages: [], codeFreq: [], tagline: null, featured: false, cover: null, readme: null, links: [], ...o });
+const hub = (o) => ({ ciState: null, description: null, topics: [], language: null, stars: 0, forks: 0, createdAt: "2025-01-01T00:00:00Z", pushedAt: null, release: null, license: null, commitCount: null, loc: null, languages: [], codeFreq: [], tagline: null, featured: false, cover: null, readme: null, links: [],
+  archived: false, stage: "active", stale: false, staleWhy: [], checkedAt: "2026-10-20T09:45:00Z", detailAt: "2026-10-19T00:30:00Z", uptimeAt: null, shotAt: null,
+  urlSource: null, sheetId: null, audit: [], shot: null, snippet: "", showcase: { summary: null, highlights: [], runThrough: { steps: [], commands: [] }, images: [] }, ...o });
+const snip = (n, live) => `<!-- devpulse:start -->\n[![${n} status card](https://devpulse.example/card/${n}.svg)](https://devpulse.example/p/${n})\n[![${n} live snapshot](https://devpulse.example/shot/${n}.jpg)](${live ?? `https://devpulse.example/p/${n}`})\n${live ? `**Live:** ${live} · ` : ""}**Health:** [DevPulse](https://devpulse.example/p/${n})\n<!-- devpulse:end -->`;
 w("projects.json", [
   hub({ repo: "vincentwesley/alpha", name: "Alpha", url: "https://alpha.example.com", up: true, uptime30d: 99.87, latencyMs: [120, 140, 110, 300, 150, 130],
     ci: { status: "completed", conclusion: "success", url: "https://github.com/o/alpha/actions/runs/1" },
@@ -18,14 +21,22 @@ w("projects.json", [
     languages: [{ lang: "TypeScript", bytes: 700, color: "#3178c6", pct: 70 }, { lang: "CSS", bytes: 300, color: "red; background:url(x)", pct: 30 }], codeFreq: wk(1),
     tagline: "Alpha ships tiny tools fast", featured: true, cover: "/img/alpha?v=0a1b2c3d",
     readme: ["Alpha is a test project.", "- fast builds", "- <img src=x onerror=window.__pwn=1>", "Second paragraph with <b>markup</b>."].join("\n"),
-    links: [{ label: "Docs", url: "https://docs.example.com/alpha" }, { label: "Bad", url: "javascript:alert(1)" }] }),
+    links: [{ label: "Docs", url: "https://docs.example.com/alpha" }, { label: "Bad", url: "javascript:alert(1)" }],
+    stage: "live-up", uptimeAt: "2026-10-20T09:45:00Z", shotAt: "2026-10-19T02:15:00Z", shot: "/shot/Alpha.jpg?v=1760840100", urlSource: "website", sheetId: "TOOL-01",
+    snippet: snip("Alpha", "https://alpha.example.com"),
+    showcase: { summary: "Alpha is a fixture project that ships tiny tools fast.\n\nIt exists only in tests.",
+      highlights: ["Builds in under a second", "Zero <script>alert(1)</script> config", "Works offline"],
+      runThrough: { steps: ["Clone the repo", "Install dependencies", "Start the dev server"], commands: ["npm ci", "npm run dev"] },
+      images: [{ url: "/img/Alpha/0?v=0a1b2c3d", alt: "Alpha main screen" }, { url: "/img/Alpha/1?v=0a1b2c3d", alt: "Alpha settings" }] } }),
   hub({ repo: "vincentwesley/beta", name: "Beta <b>x</b>", url: "https://beta.example.com", up: false, uptime30d: 80.5, latencyMs: [200],
     ci: { status: "completed", conclusion: "failure", url: "https://github.com/o/beta/actions/runs/2" }, lighthouse: null, deps: [],
     language: "Go", stars: 20, pushedAt: "2026-10-10T10:00:00Z", languages: [{ lang: "Go", bytes: 10, color: "#00ADD8", pct: 100 }], codeFreq: wk(2),
-    tagline: "Beta has a broken cover", featured: true, cover: "/img/broken?v=deadbeef" }),
+    tagline: "Beta has a broken cover", featured: true, cover: "/img/broken?v=deadbeef",
+    stage: "live-down", stale: true, staleWhy: ["uptime"], uptimeAt: "2026-10-20T07:00:00Z", urlSource: "pages", audit: ["website", "topics"], snippet: snip("Beta", "https://beta.example.com") }),
   hub({ repo: "vincentwesley/nosite", name: "NoSite", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, ciState: "PENDING", lighthouse: null, deps: [],
-    language: "TypeScript", pushedAt: "2026-09-01T00:00:00Z" }),
-  hub({ repo: "vincentwesley/gamma", name: "Gamma", url: "https://gamma.example.com", up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [] }),
+    language: "TypeScript", pushedAt: "2026-09-01T00:00:00Z", stage: "quiet", audit: ["readme", "screenshot", "about", "website", "topics"], snippet: snip("NoSite", null) }),
+  hub({ repo: "vincentwesley/gamma", name: "Gamma", url: "https://gamma.example.com", up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    stage: "live-pending", urlSource: "readme", audit: ["screenshot"], snippet: snip("Gamma", "https://gamma.example.com") }),
 ]);
 w("commits.json", [{ repo: "alpha", sha: "abc1234", message: "Fix thing\n\nbody", author: "vin", ts: "2026-10-08T10:00:00Z", url: "https://github.com/o/alpha/commit/abc1234" },
   { repo: "beta", sha: "def5678", message: "Beta only", author: "vin", ts: "2026-10-07T10:00:00Z", url: "https://github.com/o/beta/commit/def5678" }]);

@@ -1,9 +1,11 @@
 import { create, extent, line } from "d3";
 import "./ledger.css";
-import { add, el, fmtDate, NODATA, show, type Commit, type Project, type Res, type Status } from "./api";
+import { add, el, fmtDate, NODATA, show, STAGE_LABEL, STAGES, type Commit, type Project, type Res, type Status } from "./api";
 import { icon } from "./icons";
-import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StatusFilter } from "./hubutil";
+import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StageFilter, type StatusFilter } from "./hubutil";
+import { keepMode, setMode } from "./mode";
 import { navigate, openDetail, wide } from "./nav";
+import { checkedText, metaLine } from "./stage";
 import { linear } from "./scale";
 import { lastBars, windowPct } from "./status";
 import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
@@ -11,7 +13,7 @@ import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } fro
 // Toolbar state, seeded from the URL, survives the periodic re-render.
 const { p: _p, ...seed } = parseUrl(location.search, "");
 const view: typeof DEFAULT_VIEW = seed;
-const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
+const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + keepMode(toSearch(view)) + location.hash);
 
 /** Sparkline of weekly churn; role=img so the cell has a text alternative. */
 function spark(vals: number[], label: string) {
@@ -64,7 +66,8 @@ function row(p: Project, st: Status | null, bad: Set<string>) {
   const a = el("a", p.name, "lg-name", { href: toProjectPath(p.name) });
   a.dataset.vp = p.name;
   const blurb = p.tagline ?? p.description;
-  td("c-name", a, ...(blurb ? [el("span", blurb, "lg-tag")] : []));
+  const ml = metaLine(p);
+  td("c-name", a, ...(blurb ? [el("span", blurb, "lg-tag")] : []), ...(ml ? [ml] : []));
 
   const lc = p.languages?.find((l) => l.lang === p.language)?.color;
   if (p.language) {
@@ -81,7 +84,10 @@ function row(p: Project, st: Status | null, bad: Set<string>) {
   if (ci) td("c-ci", el("span", ci.label, `hs-chip ci ci--${ci.cls}`));
   else empty("c-ci");
 
-  if (p.pushedAt) td("c-push", el("span", relTime(p.pushedAt), "meta", { title: fmtDate(p.pushedAt) }));
+  const chk = checkedText(p);
+  const chkEl = chk ? [el("span", chk, "meta lg-chk")] : [];
+  if (p.pushedAt) td("c-push", el("span", relTime(p.pushedAt), "meta", { title: fmtDate(p.pushedAt) }), ...chkEl);
+  else if (chkEl.length) td("c-push", ...chkEl);
   else empty("c-push");
 
   const up = uptimeCell(p, st);
@@ -111,11 +117,20 @@ export function markSelected(name: string | null, scroll = false) {
 export const topicNow = () => view.topic;
 /** Header verdict pill: show only the failing projects and jump to the ledger. */
 export function showFailing() {
+  setMode("dev"); // the ledger lives in developer mode
   view.status = "failing";
   if (document.body.dataset.view) navigate("/");
   draw?.();
   document.getElementById("projects")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   document.querySelector<HTMLElement>("#ledger .lg-chip[aria-pressed='true']")?.focus({ preventScroll: true });
+}
+/** Bento "Repo hygiene": list only the repos with gaps, then jump to the ledger. */
+export function showGaps() {
+  view.stage = "gaps";
+  if (document.body.dataset.view) navigate("/");
+  draw?.();
+  document.getElementById("projects")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  document.querySelector<HTMLElement>("#ledger .lg-stage")?.focus({ preventScroll: true });
 }
 /** Toggle a topic filter from the detail pane; returns the active topic. */
 export function toggleTopic(t: string) {
@@ -151,6 +166,9 @@ function build(ps: Project[]) {
   }
 
   const lsel = el("select", "", "lg-lang", { "aria-label": "Language", name: "lang" });
+  const gsel = el("select", "", "lg-stage", { "aria-label": "Stage", name: "stage" });
+  add(gsel, el("option", "All stages", "", { value: "" }), el("option", "Has repo gaps", "", { value: "gaps" }), ...STAGES.map((k) => el("option", STAGE_LABEL[k], "", { value: k })));
+  gsel.value = view.stage;
   const topicBtn = el("button", "", "lg-chip lg-topic", { type: "button" });
   const clear = el("button", "Clear filters", "lg-clear", { type: "button" });
   const count = el("p", "", "meta lg-count", { role: "status" });
@@ -159,7 +177,7 @@ function build(ps: Project[]) {
   for (const [k, label] of SORTS) add(ssel, el("option", label, "", { value: k }));
   const sortBox = el("div", "", "lg-sortsel");
   add(sortBox, el("label", "Sort", "meta", { for: "hub-sort" }), ssel);
-  add(bar, sw, sortBox, chips, lsel, topicBtn, clear, count);
+  add(bar, sw, sortBox, chips, lsel, gsel, topicBtn, clear, count);
 
   const table = el("table", "", "lg-table", { role: "table" });
   add(table, el("caption", "Projects: status, activity, CI and uptime. Column headers sort the list.", "sr-only"));
@@ -205,7 +223,7 @@ function build(ps: Project[]) {
     open(e, tr.dataset.name);
   });
 
-  const active = () => Boolean(view.q || view.lang || view.topic || view.status !== "all" || view.sort !== "active");
+  const active = () => Boolean(view.q || view.lang || view.topic || view.stage || view.status !== "all" || view.sort !== "active");
   const syncLangs = () => {
     const langs = [...new Set(cur.ps.map((p) => p.language).filter(Boolean) as string[])].sort();
     if (view.lang && !langs.includes(view.lang)) langs.push(view.lang);
@@ -215,7 +233,8 @@ function build(ps: Project[]) {
   function paint() {
     const { ps: all, status } = cur;
     const bad = openIncidentRepos(status);
-    const list = sortFilter(all, view.sort, view.lang, view.status, view.q, view.topic, bad);
+    const list = sortFilter(all, view.sort, view.lang, view.status, view.q, view.topic, bad, view.stage);
+    gsel.value = view.stage;
     const focused = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("lg-name") ? document.activeElement.dataset.vp : null;
     tbody.replaceChildren();
     // A column nobody has data for is dropped instead of showing a dash on every row.
@@ -238,7 +257,7 @@ function build(ps: Project[]) {
     for (const [k, th] of ths) th.setAttribute("aria-sort", view.sort === k ? sortAria(k) : "none");
     for (const [k, { b, n }] of chipEls) {
       b.setAttribute("aria-pressed", String(view.status === k));
-      n.textContent = String(sortFilter(all, "active", view.lang, k, view.q, view.topic, bad).length);
+      n.textContent = String(sortFilter(all, "active", view.lang, k, view.q, view.topic, bad, view.stage).length);
     }
     topicBtn.hidden = !view.topic;
     topicBtn.textContent = `Topic: ${view.topic} ✕`;
@@ -253,12 +272,14 @@ function build(ps: Project[]) {
   };
   search.addEventListener("input", () => { view.q = search.value; paint(); });
   lsel.addEventListener("change", () => { view.lang = lsel.value; redraw(); });
+  gsel.addEventListener("change", () => { view.stage = gsel.value as StageFilter; redraw(); });
   ssel.addEventListener("change", () => { view.sort = ssel.value as Sort; paint(); });
   topicBtn.addEventListener("click", () => { view.topic = ""; syncPressed(); redraw(); });
   clear.addEventListener("click", () => {
     Object.assign(view, DEFAULT_VIEW);
     search.value = "";
     lsel.value = "";
+    gsel.value = "";
     syncPressed();
     redraw();
   });

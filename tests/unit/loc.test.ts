@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseCodeFreq, syncLoc } from "../../src/worker/loc";
 import type { Env } from "../../src/worker/env";
 import { fakeDb } from "./_db";
+import { sqliteDb } from "./_sqlite";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,7 +40,7 @@ describe("syncLoc", () => {
     await syncLoc({ DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o" } as unknown as Env, now);
     return { log, urls, stats: urls.filter((u) => u.includes("stats/")).map((u) => /repos\/(.+)\/stats/.exec(u)![1]) };
   };
-  const loc = (log: { sql: string; args: unknown[] }[]) => log.filter((q) => q.sql.startsWith("UPDATE projects SET loc")).map((q) => q.args);
+  const loc = (log: { sql: string; args: unknown[] }[]) => log.filter((q) => q.sql.startsWith("UPDATE projects SET loc")).map((q) => q.args.filter((a) => !(typeof a === "string" && /^\d{4}-\d\d-\d\dT/.test(a)))); // loc_at stamp dropped
   const agg = (log: { sql: string; args: unknown[] }[]) => log.find((q) => q.sql.includes("INTO private_agg"))?.args;
 
   it("200: stores loc + series for public, aggregate for private", async () => {
@@ -85,14 +86,24 @@ describe("syncLoc", () => {
   it("private list with hasNextPage keeps the old aggregate", async () => {
     expect(agg((await run({}, ["o/a"], ["o/pub"], undefined, true)).log)).toBeUndefined();
   });
-  it("rotates public repos by day so all get covered; stays <= 45 + 1 calls", async () => {
-    const pubs = Array.from({ length: 60 }, (_, i) => `o/u${i}`);
-    const seen = new Set<string>();
-    for (const d of [1, 2, 3]) {
-      const r = await run({}, [], pubs, new Date(Date.UTC(2026, 0, d)));
-      expect(r.urls.length).toBe(46);
-      r.stats.forEach((x) => seen.add(x));
-    }
-    expect(seen.size).toBe(60);
+  it("past the quota: never-counted and pushed-since repos first, then the longest-unchecked; <= 45 + 1 calls", async () => {
+    const { db, raw } = sqliteDb();
+    for (let i = 0; i < 60; i++) raw.prepare("INSERT INTO projects (repo,name,pushed_at) VALUES (?,?,?)").run(`o/u${i}`, `u${i}`, "2026-01-01T00:00:00Z");
+    const stats: string[] = [];
+    vi.stubGlobal("fetch", async (u: string) => {
+      if (u.endsWith("/graphql")) return new Response(JSON.stringify(priv([])));
+      stats.push(/repos\/(.+)\/stats/.exec(u)![1]);
+      return new Response(JSON.stringify([week(0, 1, -1)]));
+    });
+    const env = { DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o" } as unknown as Env;
+    await syncLoc(env, new Date("2026-01-02T00:30:00Z"));
+    expect(stats.length).toBe(45);
+    const first = new Set(stats);
+    stats.length = 0;
+    raw.prepare("UPDATE projects SET pushed_at='2026-01-02T12:00:00Z' WHERE repo='o/u0'").run(); // pushed after its count
+    await syncLoc(env, new Date("2026-01-03T00:30:00Z"));
+    expect(stats.filter((r) => !first.has(r)).length).toBe(15); // the 15 never counted
+    expect(stats).toContain("o/u0"); // changed since its count
+    expect(new Set([...first, ...stats]).size).toBe(60);
   });
 });

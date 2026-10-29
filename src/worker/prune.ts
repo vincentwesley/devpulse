@@ -20,5 +20,6 @@ export async function pruneChecks(env: Env): Promise<void> {
     env.DB.prepare("DELETE FROM uptime_summary WHERE updated_at < ?").bind(t - GRACE_S), // sites no longer monitored
     env.DB.prepare("DELETE FROM meta WHERE key LIKE 'loc_try:%' AND substr(key, 10) NOT IN (SELECT repo FROM projects)"), // substr from 10 = after 'loc_try:'
     env.DB.prepare("DELETE FROM repo_alias WHERE repo NOT IN (SELECT repo FROM projects)"),
+    env.DB.prepare("DELETE FROM shots WHERE repo NOT IN (SELECT repo FROM projects)"), // screenshots follow the public project list (no grace: never serve a vanished repo's image)
   ]);
 }

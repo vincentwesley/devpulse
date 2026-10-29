@@ -23,10 +23,12 @@ const world = { nodes: [] as object[], headers: {} as Record<string, string>, st
 const stub = () => {
   const queries: string[] = [];
   vi.stubGlobal("fetch", async (_u: string, init: RequestInit) => {
-    const q = JSON.parse(init.body as string).query as string;
+    const { query: q, variables } = JSON.parse(init.body as string) as { query: string; variables: { ids?: string[] } };
     queries.push(q);
     if (world.status !== 200) return new Response("", { status: world.status });
-    const body = q.includes("contributionCalendar") ? { data: { user: { contributionsCollection: { contributionCalendar: { weeks: [] } } } } } : { data: { viewer: { repositories: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: world.nodes } } } };
+    const body = q.includes("contributionCalendar") ? { data: { user: { contributionsCollection: { contributionCalendar: { weeks: [] } } } } }
+      : q.includes("nodes(ids") ? { data: { nodes: variables.ids!.map((id) => (world.nodes as any[]).find((n) => n.id === id) ?? null) } }
+      : { data: { viewer: { repositories: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: world.nodes } } } };
     return new Response(JSON.stringify(body), { headers: world.headers });
   });
   return queries;
@@ -35,27 +37,53 @@ const mk = () => { const s = sqliteDb(); return { ...s, env: { DB: s.db, GITHUB_
 const rows = (raw: any, sql: string) => (raw.prepare(sql).all() as object[]).map((r) => ({ ...r }));
 const projectNames = (raw: any) => rows(raw, "SELECT name FROM projects ORDER BY name").map((r: any) => r.name);
 
-describe("change check", () => {
-  it("full sync only when the fingerprint moved; hourly always syncs", async () => {
+describe("list + detail passes", () => {
+  const detailCalls = (q: string[]) => q.filter((x) => x.includes("nodes(ids")).length;
+  it("create, rename, archive and delete all land in one slot; unchanged repos write nothing", async () => {
     world.status = 200;
     const { env, raw } = mk();
-    world.nodes = [node("A", "alpha"), node("B", "beta")];
+    world.nodes = [node("A", "alpha"), node("B", "beta"), node("C", "gamma")];
     const q = stub();
-    await githubTick(env, T, false); // empty meta => changed => check + full sync
-    expect(projectNames(raw)).toEqual(["alpha", "beta"]);
-    expect(rows(raw, "SELECT value FROM meta WHERE key='fp'")[0]).toMatchObject({ value: expect.stringMatching(/^[0-9a-f]{64}$/) });
+    await githubTick(env, T);
+    expect(projectNames(raw)).toEqual(["alpha", "beta", "gamma"]);
+    expect(detailCalls(q)).toBe(1); // new repos are read right away
+    expect(rows(raw, "SELECT value FROM meta WHERE key='list_at'")).toEqual([{ value: T.toISOString() }]);
+    const fp = rows(raw, "SELECT repo, light_fp, updated_at FROM projects ORDER BY repo");
     q.length = 0;
-    await githubTick(env, T, false); // same data: the check alone, no full query
-    expect(q.length).toBe(1);
-    expect(q[0]).not.toContain("description");
+    await githubTick(env, new Date(+T + 900_000)); // same data
+    expect(q.filter((x) => x.includes("viewer{repositories")).length).toBe(1);
+    expect(detailCalls(q)).toBe(0);
+    expect(rows(raw, "SELECT repo, light_fp, updated_at FROM projects ORDER BY repo")).toEqual(fp); // nothing rewritten
+    // one slot later: alpha renamed, beta archived, gamma deleted, delta created
+    world.nodes = [node("A", "alpha2"), node("B", "beta", { isArchived: true }), node("D", "delta")];
+    await githubTick(env, new Date(+T + 1_800_000));
+    expect(rows(raw, "SELECT name, archived FROM projects ORDER BY name")).toEqual([{ name: "alpha2", archived: 0 }, { name: "beta", archived: 1 }, { name: "delta", archived: 0 }]);
+    expect(rows(raw, "SELECT old_name FROM repo_alias")).toEqual([{ old_name: "alpha" }]);
+  });
+
+  it("detail refresh: at most once a day per repo, and only after a change", async () => {
+    world.status = 200;
+    const { env, raw } = mk();
+    world.nodes = [node("A", "alpha", { readme: { text: "# alpha\n\nFirst text." } })];
+    const q = stub();
+    await githubTick(env, T);
+    expect(detailCalls(q)).toBe(1);
     q.length = 0;
-    world.nodes = [node("A", "alpha", { pushedAt: "2026-10-02T00:00:00Z" }), node("B", "beta")];
-    await githubTick(env, T, false);
-    expect(q.some((x) => x.includes("description"))).toBe(true);
+    await githubTick(env, new Date(+T + 3600_000)); // unchanged
+    expect(detailCalls(q)).toBe(0);
+    world.nodes = [node("A", "alpha", { pushedAt: "2026-10-05T04:00:00Z", readme: { text: "# alpha\n\nSecond text." } })];
+    await githubTick(env, new Date(+T + 7200_000)); // changed, but read < 24 h ago
+    expect(detailCalls(q)).toBe(0);
+    world.nodes = [node("A", "alpha", { pushedAt: "2026-10-05T05:00:00Z", readme: { text: "# alpha\n\nThird text." } })];
+    await githubTick(env, new Date(+T + 10800_000)); // changed again, still < 24 h
+    expect(detailCalls(q)).toBe(0);
+    expect(rows(raw, "SELECT readme_excerpt FROM projects")).toEqual([{ readme_excerpt: "First text." }]);
+    await githubTick(env, new Date(+T + 86400_000 + 60_000)); // 24 h later: one refresh picks up the latest
+    expect(detailCalls(q)).toBe(1);
+    expect(rows(raw, "SELECT readme_excerpt FROM projects")).toEqual([{ readme_excerpt: "Third text." }]);
     q.length = 0;
-    await githubTick(env, T, true); // hourly safety net: no check, straight to the sync
-    expect(q.filter((x) => x.includes("description")).length).toBe(1);
-    expect(q[0]).toContain("description");
+    await githubTick(env, new Date(+T + 2 * 86400_000 + 120_000)); // no change since: no refresh, ever
+    expect(detailCalls(q)).toBe(0);
   });
 });
 

@@ -82,10 +82,32 @@ main > section[hidden] { display: none; }
 /* ---- print: light ink-on-paper status report; no controls, banner, palette, pane or credits art ---- */
 @media print {
   :root, :root[data-theme] { --bg: #fff; --bg-elev: #fff; --fg: #000; --fg-muted: #333; --border: #bbb; --border-strong: #555; --accent: #0b4a28; color-scheme: light; }
-  .skip, .top__tools, #banner, #offline, .pal, .pal__toast, #detail-pane, .lg-search, .lg-chips, .lg-lang, .lg-sortsel, .lg-clear, .lg-topic, .act__more, .heat-toggle, .creator__fx, .creator__art { display: none !important; }
+  .skip, .top__tools, #banner, #offline, .pal, .pal__toast, #detail-pane, .lg-search, .lg-chips, .lg-lang, .lg-stage, .lg-sortsel, .lg-clear, .lg-topic, .act__more, .heat-toggle, .creator__fx, .creator__art { display: none !important; }
   .top, .lg-table th { position: static; }
   .lg-sort { border: 0; padding: 0; }
   .lg-sort .icon { display: none; }
   .lg-table tr, .tile, .act li, .st__site { break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
 }
+
+/* ---- Developer / Showcase mode ---- */
+.modesw { display: inline-flex; border: var(--rule-strong); }
+.modesw__b { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg-muted); background: transparent; border: 0; border-radius: 0; cursor: pointer; }
+.modesw__b + .modesw__b { border-inline-start: var(--rule-strong); }
+.modesw__b[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); }
+@media (hover: hover) { .modesw__b[aria-pressed="false"]:hover { color: var(--accent); } }
+.modesw__s { display: none; }
+@media (min-width: 640px) and (max-width: 719.98px) { .modesw__l { display: none; } .modesw__s { display: inline; } }
+/* Phones: the toggle sits at the top of the page (not sticky), full width; wider screens keep it in the header. */
+.modesw--top, .modebar { display: none; }
+@media (min-width: 640px) { .modesw--top { display: inline-flex; } }
+@media (max-width: 639.98px) {
+  .modebar { display: flex; margin-bottom: calc(var(--s3) - var(--s6)); }
+  html body[data-view="project"] main > div.modebar:not(#pp) { display: flex; }
+  .modesw--bar { flex: 1; }
+  .modesw--bar .modesw__b { flex: 1; }
+}
+html:not([data-mode="showcase"]) #showcase { display: none; }
+html[data-mode="showcase"] :is(#bento, #projects, main > .split) { display: none; }
+#showcase .skel { min-height: 40rem; }
+@media print { .modesw, .modebar { display: none !important; } }

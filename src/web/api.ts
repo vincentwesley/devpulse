@@ -18,7 +18,33 @@ export interface Project {
   // Showcase (from .devpulse.json + README). cover = same-origin `/img/<name>` or null; readme = plain-text excerpt (render via textContent).
   tagline: string | null; featured: boolean; cover: string | null; readme: string | null;
   links: { label: string; url: string }[];
+  // Round 5 (hub sync). Optional so older cached responses still render.
+  archived?: boolean; stage?: Stage; stale?: boolean; staleWhy?: StaleWhy[];
+  checkedAt?: string | null; detailAt?: string | null; uptimeAt?: string | null; shotAt?: string | null;
+  urlSource?: UrlSource | null; sheetId?: string | null;
+  audit?: Gap[]; // gaps: what the repo is missing
+  shot?: string | null; // same-origin `/shot/<name>.jpg?v=` or null
+  snippet?: string; // README embed block (markdown)
+  showcase?: ShowcaseData;
 }
+export type Stage = "archived" | "live-down" | "live-up" | "live-pending" | "released-extension" | "active" | "quiet";
+export type StaleWhy = "list" | "uptime" | "detail";
+export type UrlSource = "website" | "devpulse" | "package" | "wrangler" | "readme" | "pages";
+export type Gap = "readme" | "screenshot" | "about" | "website" | "topics";
+export interface ShowcaseData { summary: string | null; highlights: string[]; runThrough: { steps: string[]; commands: string[] }; images: { url: string; alt: string }[] }
+export const STAGE_LABEL: Record<Stage, string> = {
+  "live-up": "Live", "live-down": "Live, down", "live-pending": "Live, checking", "released-extension": "Released extension",
+  active: "Active", quiet: "Quiet 30d+", archived: "Archived",
+};
+export const STAGES = Object.keys(STAGE_LABEL) as Stage[];
+export const GAP_LABEL: Record<Gap, string> = { readme: "README explanation", screenshot: "README screenshot", about: "About description", website: "Website field", topics: "Topics" };
+export const SOURCE_LABEL: Record<UrlSource, string> = {
+  website: "GitHub Website field", devpulse: ".devpulse.json site", package: "package.json homepage", wrangler: "wrangler config", readme: "README link", pages: "GitHub Pages",
+};
+const STALE_LABEL: Record<StaleWhy, string> = { list: "repo list check overdue", uptime: "uptime check overdue", detail: "showcase refresh pending" };
+export const staleText = (w: StaleWhy[] | undefined) => (w ?? []).map((x) => STALE_LABEL[x] ?? x).join(", ");
+/** Same-origin image paths only (the API emits /shot/, /img/); anything else is dropped. */
+export const sameOriginImg = (u: string | null | undefined) => (u && /^\/(shot|img)\//.test(u) ? u : null);
 export interface Language { lang: string; bytes: number; color: string | null; pct: number }
 export interface Languages { all: Language[] }
 export interface Stats {

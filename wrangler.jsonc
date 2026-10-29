@@ -3,11 +3,16 @@
   "name": "devpulse",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-19",
+  // nodejs_compat: required by @cloudflare/puppeteer (Browser Run screenshots, src/worker/shots.ts).
+  "compatibility_flags": ["nodejs_compat"],
   // No SPA fallback: unknown paths get a plain 404.
   "assets": { "directory": "dist", "binding": "ASSETS" },
   "triggers": { "crons": ["*/15 * * * *"] },
   // ALERT_FROM must be an address on a domain with Email Routing enabled. The recipient is the secret ALERT_TO (a verified destination), so no address lives in this file.
-  "vars": { "GITHUB_OWNER": "vincentwesley", "ALERT_FROM": "alerts@vwesley.dev" },
+  // WORKERS_SUBDOMAIN: the account workers.dev subdomain, used to find live URLs of Workers that repos declare in wrangler config.
+  "vars": { "GITHUB_OWNER": "vincentwesley", "ALERT_FROM": "alerts@vwesley.dev", "WORKERS_SUBDOMAIN": "vwesley" },
+  // Browser Run (free: 10 browser-minutes/day; shots.ts uses <= 6). No token needed: the binding authenticates.
+  "browser": { "binding": "BROWSER" },
   "send_email": [{ "name": "ALERT" }],
   // Per-IP limit (per Cloudflare location): 60 requests / 10s on /api, /badge, /card, /p, /feed.xml (not /img: cached 24h, covers would trip it). Worker routes: /img/<name> cover proxy, /p/<name> project page. namespace_id is an account-unique integer string.
   "ratelimits": [{ "name": "RL", "namespace_id": "1001", "simple": { "limit": 60, "period": 10 } }],

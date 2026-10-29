@@ -74,10 +74,17 @@ export async function checkStatuspage(env: Env, urls: string | string[]): Promis
 
 const originOf = (u: string) => { try { return new URL(u).origin; } catch { return u; } };
 
-export async function runUptime(env: Env, withStatuspages = false): Promise<void> {
-  const { results } = await env.DB.prepare("SELECT repo, url, deps FROM projects ORDER BY pushed_at DESC").all<{ repo: string; url: string | null; deps: string | null }>();
-  // ponytail: only the MAX_SITES most recently pushed sites are monitored (subrequest cap); raise with a paid plan.
-  const checks = await pool(results.filter((p) => p.url).slice(0, MAX_SITES), CONCURRENCY, (p) => checkProject(p.repo, p.url!));
+/** `max` items of `xs` starting at window `i` (wrapping), so n items are all covered every ceil(n/max) windows. */
+export const rotate = <T>(xs: T[], max: number, i: number): T[] =>
+  xs.length <= max ? xs : Array.from({ length: max }, (_, k) => xs[(((i * max) % xs.length) + k) % xs.length]);
+
+/** Slot index of a 15-min cron slot (uptime rotation window). */
+export const slotOf = (ms: number) => Math.floor(ms / 900_000);
+
+export async function runUptime(env: Env, withStatuspages = false, slot = slotOf(Date.now())): Promise<void> {
+  const { results } = await env.DB.prepare("SELECT repo, url, deps FROM projects ORDER BY pushed_at DESC, repo").all<{ repo: string; url: string | null; deps: string | null }>();
+  // More than MAX_SITES sites (subrequest cap): rotate, so each site is checked every ceil(n / MAX_SITES) slots.
+  const checks = await pool(rotate(results.filter((p) => p.url), MAX_SITES, slot), CONCURRENCY, (p) => checkProject(p.repo, p.url!));
   await recordChecks(env, checks);
   if (!withStatuspages) return;
   const byOrigin = new Map<string, string[]>();

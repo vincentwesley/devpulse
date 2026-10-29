@@ -1,20 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runScheduled } from "../../src/worker/cron";
 import type { Env } from "../../src/worker/env";
+import type { Launch } from "../../src/worker/shots";
 import { fakeDb } from "./_db";
 
 afterEach(() => vi.unstubAllGlobals());
 
-// Free plan: 50 subrequests (fetch) and 50 D1 queries per invocation. Walk every 15-min slot of a week, worst case:
-// 50+ public repos all with sites + deps on 12 distinct status origins, 20 private repos, heatmap table empty (daily job every hour).
+// Free plan: 50 subrequests (fetch) and 50 D1 queries per invocation (a batch counts as one). Walk every 15-min slot of a week, worst case:
+// 500 public + 40 private repos (list truncated at 5 pages), 60 sites with deps on 12 distinct status origins, a full detail backlog,
+// probes due everywhere, shots due everywhere, heatmap table empty (daily job every slot). One Browser Run session counts as 1 subrequest.
 describe("per-slot subrequest budget", () => {
   const FREE_CAP = 50;
-  const pubs = Array.from({ length: 60 }, (_, i) => ({
-    nameWithOwner: `o/r${i}`, name: `r${i}`, isPrivate: false, isArchived: false, homepageUrl: `https://r${i}.test`, pushedAt: `2026-10-01T00:${String(i).padStart(2, "0")}:00Z`,
-    repositoryTopics: { nodes: [] }, defaultBranchRef: { target: { history: { totalCount: 5, nodes: [] } } },
+  const pubs = Array.from({ length: 500 }, (_, i) => ({
+    id: `R${i}`, nameWithOwner: `o/r${i}`, name: `r${i}`, isPrivate: false, isArchived: false, homepageUrl: i < 60 ? `https://r${i}.test` : null, pushedAt: `2026-10-01T00:00:00Z`,
+    repositoryTopics: { nodes: [] }, defaultBranchRef: { target: { history: { totalCount: 5 } } },
   }));
-  const privs = Array.from({ length: 20 }, (_, i) => ({ nameWithOwner: `o/p${i}`, name: `p${i}`, isPrivate: true, isArchived: false, repositoryTopics: { nodes: [] } }));
-  const projects = Array.from({ length: 60 }, (_, i) => ({ repo: `o/r${i}`, url: `https://r${i}.test`, deps: JSON.stringify([`https://s${i % 12}.status.test/x`]) }));
+  const privs = Array.from({ length: 40 }, (_, i) => ({ nameWithOwner: `o/p${i}`, name: `p${i}`, isPrivate: true, isArchived: false, repositoryTopics: { nodes: [] } }));
+  const projects = Array.from({ length: 500 }, (_, i) => ({ repo: `o/r${i}`, name: `r${i}`, repo_id: `R${i}`, url: i < 60 ? `https://r${i}.test` : null, deps: JSON.stringify([`https://s${i % 12}.status.test/x`]),
+    site_cands: JSON.stringify([{ src: "readme", url: `https://r${i}.pages.dev` }, { src: "pages", url: `https://o.github.io/r${i}/` }]), probe_url: null, probe_ok: null, probe_at: null }));
 
   it("never exceeds 50 fetches or 50 D1 queries in any slot", async () => {
     const fetched: string[] = [];
@@ -25,42 +28,55 @@ describe("per-slot subrequest budget", () => {
         const { query, variables } = JSON.parse(init!.body as string);
         if (query.includes("contributionCalendar")) return json({ data: { user: { contributionsCollection: { contributionCalendar: { weeks: [{ contributionDays: [{ date: "2026-10-01", contributionCount: 1 }] }] } } } } });
         if (query.includes("privacy:PRIVATE")) return json({ data: { viewer: { repositories: { nodes: privs } } } });
+        if (query.includes("nodes(ids")) return json({ data: { nodes: variables.ids.map((id: string) => ({ id, nameWithOwner: `o/r${id.slice(1)}`, isPrivate: false, readme: { text: "# x" } })) } });
         const i = variables.after ? Number(variables.after) : 0;
-        const nodes = [...pubs, ...privs].slice(i * 50, i * 50 + 50);
-        return json({ data: { viewer: { repositories: { pageInfo: { hasNextPage: i + 1 < 3 /* worst case: the full 3 pages */, endCursor: String(i + 1) }, nodes } } } });
+        const nodes = [...pubs, ...privs].slice(i * 100, i * 100 + 100);
+        return json({ data: { viewer: { repositories: { pageInfo: { hasNextPage: (i + 1) * 100 < 540, endCursor: String(i + 1) }, nodes } } } });
       }
       if (u.includes("stats/code_frequency")) return json([[1700000000, 5, -2]]);
       if (u.includes("pagespeedonline")) return json({ lighthouseResult: { categories: { performance: { score: 1 }, accessibility: { score: 1 }, "best-practices": { score: 1 }, seo: { score: 1 } } } });
       if (u.endsWith("/api/v2/status.json")) return json({ page: { name: "S" }, status: { indicator: "none", description: "ok" } });
+      if (u.includes(".pages.dev") || u.includes("github.io")) return new Response("", { status: 404 });
       return new Response("<rss><channel><item><title>t</title><link>https://p.test/1</link><pubDate>Mon, 05 Oct 2026 00:00:00 GMT</pubDate></item></channel></rss>");
     });
+    const launch: Launch = async () => {
+      fetched.push("browser-session");
+      return { newPage: async () => ({ setViewport: async () => {}, goto: async () => {}, screenshot: async () => new Uint8Array(20_000), close: async () => {} }), close: async () => {} };
+    };
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const start = Date.parse("2026-10-05T00:00:00Z"); // a Monday
-    let worstFetch = 0, worstDb = 0;
-    const seen = { loc: false, psi: false, hourly: false, check: false };
+    const worst = { hourly: [0, 0], quarter: [0, 0], loc: [0, 0], psi: [0, 0] };
+    const seen = { loc: false, psi: false, hourly: false, quarter: false, shot: false, probe: false };
     for (let i = 0; i < 7 * 96; i++) {
       const t = start + i * 15 * 60_000;
       fetched.length = 0;
-      const { db, ops } = (() => { const f = fakeDb({ "FROM projects": projects }); return f; })();
-      const env = { DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o", PORTFOLIO_RSS_URL: "https://p.test/rss" } as unknown as Env;
-      await runScheduled({ scheduledTime: t } as ScheduledController, env);
+      const { db, ops } = fakeDb({ "detail_at IS NULL": projects.slice(0, 40), "site_cands IS NOT NULL": projects, "LEFT JOIN shots": projects.slice(0, 60), "FROM projects": projects });
+      const env = { DB: db, GITHUB_TOKEN: "t", GITHUB_OWNER: "o", PORTFOLIO_RSS_URL: "https://p.test/rss", BROWSER: {} } as unknown as Env;
+      await runScheduled({ scheduledTime: t } as ScheduledController, env, launch);
       const label = new Date(t).toISOString();
       expect(fetched.length, `fetches @ ${label}`).toBeLessThanOrEqual(FREE_CAP);
       expect(ops.n, `D1 queries @ ${label}`).toBeLessThanOrEqual(FREE_CAP);
-      worstFetch = Math.max(worstFetch, fetched.length);
-      worstDb = Math.max(worstDb, ops.n);
-      const d = new Date(t);
-      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 30) { seen.loc = true; expect(fetched.some((u) => u.includes("code_frequency"))).toBe(true); }
-      if (d.getUTCDay() === 1 && d.getUTCHours() === 1 && d.getUTCMinutes() === 0) { seen.psi = true; expect(fetched.some((u) => u.includes("pagespeedonline"))).toBe(true); expect(fetched.length).toBe(30); }
-      if (d.getUTCHours() === 3 && d.getUTCMinutes() === 0) { seen.hourly = true; expect(fetched.filter((u) => u.includes("code_frequency")).length).toBe(4); /* retryLoc worst case (fakeDb answers its pending query with all 60 repos) */ expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(3 + 1); } // 3 repo pages + heatmap
-      // Worst case, fingerprint changed every slot (empty meta): 1 change check + 3 repo pages + heatmap, on top of <= 30 uptime fetches.
-      if (d.getUTCHours() === 3 && d.getUTCMinutes() === 15) { seen.check = true; expect(fetched.filter((u) => u.endsWith("/graphql")).length).toBe(1 + 3 + 1); }
+      const d = new Date(t), h = d.getUTCHours(), m = d.getUTCMinutes();
+      const kind = h === 0 && m === 30 ? "loc" : d.getUTCDay() === 1 && h === 1 && m === 0 ? "psi" : m === 0 ? "hourly" : "quarter";
+      worst[kind] = [Math.max(worst[kind][0], fetched.length), Math.max(worst[kind][1], ops.n)];
+      const gql = fetched.filter((u) => u.endsWith("/graphql")).length;
+      if (kind === "loc") { seen.loc = true; expect(fetched.some((u) => u.includes("code_frequency"))).toBe(true); }
+      if (kind === "psi") { seen.psi = true; expect(fetched.length).toBe(30); }
+      if (kind === "hourly") {
+        seen.hourly = true;
+        expect(fetched.some((u) => u.includes("code_frequency") || u.includes(".pages.dev") || u === "browser-session")).toBe(false); // no LOC retry, probes or shots
+        expect(gql).toBe(5 + 2 + 1); // 5 list pages + 2 detail calls + heatmap (empty table)
+      }
+      if (kind === "quarter") {
+        seen.quarter = true;
+        if (fetched.includes("browser-session")) seen.shot = true;
+        if (fetched.some((u) => u.includes(".pages.dev"))) seen.probe = true;
+        expect(fetched.filter((u) => u.includes(".pages.dev") || u.includes("github.io")).length).toBeLessThanOrEqual(4);
+      }
     }
-    expect(seen).toEqual({ loc: true, psi: true, hourly: true, check: true });
-    expect(worstFetch).toBeLessThanOrEqual(FREE_CAP);
-    expect(worstDb).toBeLessThanOrEqual(FREE_CAP);
-  }, 60_000);
+    expect(seen).toEqual({ loc: true, psi: true, hourly: true, quarter: true, shot: true, probe: true });
+  }, 120_000);
 });

@@ -1,12 +1,20 @@
 import { el } from "./api";
+import { keepMode } from "./mode";
 import { parseProjectPath, toProjectPath } from "./urlstate";
 
 let handler: () => void = () => {};
 /** The router registers itself here so links and the palette can navigate without importing it. */
 export const setRouteHandler = (f: () => void) => { handler = f; };
 
-/** Client-side navigation: push one history entry (unless already there) and re-route. */
+/** "/p/x?q=1#h" with the current ?mode kept in its query. */
+const moded = (path: string) => {
+  const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(path)!;
+  return m[1] + keepMode(m[2] ?? "") + (m[3] ?? "");
+};
+
+/** Client-side navigation: push one history entry (unless already there) and re-route. The current mode stays in the URL. */
 export function navigate(path: string) {
+  path = moded(path);
   if (location.pathname + location.search + location.hash !== path) history.pushState({ route: 1 }, "", path);
   handler();
 }
@@ -33,7 +41,7 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
  */
 export function openDetail(name: string) {
   if (parseProjectPath(location.pathname) === name) return;
-  const path = toProjectPath(name);
+  const path = moded(toProjectPath(name));
   if (wide() && parseProjectPath(location.pathname) !== null) {
     history.replaceState({ route: 1 }, "", path);
     dispatchEvent(new PopStateEvent("popstate"));

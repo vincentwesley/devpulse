@@ -1,4 +1,8 @@
 // Pure GitHub response parsers (no I/O).
+import { readmeGaps } from "./audit";
+import { parseReadmeShowcase, type ReadmeShowcase } from "./showcase-readme";
+import { cleanUrl, siteCandidates, type Cand } from "./site";
+
 export interface Repo { full_name: string; name: string; homepage: string | null; topics?: string[]; private?: boolean; fork?: boolean; archived?: boolean; pushed_at?: string; default_branch?: string }
 
 const IGNORE = "devpulse-ignore";
@@ -8,18 +12,8 @@ export const isHttps = (u: string | null | undefined): boolean => {
   try { return new URL(u ?? "").protocol === "https:"; } catch { return false; }
 };
 
-/** Valid https homepage or null (= no site to monitor). */
-export const siteUrl = (r: Repo): string | null => (isHttps(r.homepage?.trim()) ? r.homepage!.trim() : null);
-
 /** Non-fork, non-archived, not `devpulse-ignore` (public or private). */
 export const isEligible = (r: Pick<Repo, "fork" | "archived" | "topics">): boolean => !r.fork && !r.archived && !r.topics?.includes(IGNORE);
-
-/** Public, eligible; newest push first, capped at `max`. */
-export const selectProjects = (repos: Repo[], max = Infinity): Repo[] =>
-  repos
-    .filter((r) => !r.private && isEligible(r))
-    .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
-    .slice(0, max);
 
 /** `.devpulse.json` text (or the stored JSON array) -> valid dependency URLs (https only, max 10). Invalid -> []. */
 export function parseDeps(text: string): string[] {
@@ -87,7 +81,7 @@ export function readmeExcerpt(md: string | null | undefined): string | null {
   return out ? (out.length > EXCERPT ? out.slice(0, EXCERPT - 1).trimEnd() + "…" : out) : null;
 }
 
-// ---- GraphQL `viewer.repositories` -> public project rows + private aggregates ----
+// ---- GraphQL list pass (`viewer.repositories`, light fields) -> public rows + private aggregates ----
 
 export interface GqlRepo {
   id?: string; updatedAt?: string; nameWithOwner: string; name: string; isPrivate: boolean; isArchived?: boolean;
@@ -98,69 +92,102 @@ export interface GqlRepo {
   languages?: { edges?: ({ size: number; node: { name: string; color?: string | null } } | null)[] } | null;
   latestRelease?: { tagName: string; publishedAt?: string | null } | null;
   licenseInfo?: { spdxId?: string | null; name?: string | null } | null;
-  object?: { text?: string | null } | null;
-  readme?: { text?: string | null } | null;
-
-  defaultBranchRef?: { target?: {
-    statusCheckRollup?: { state?: string } | null;
-    history?: { totalCount?: number; nodes?: ({ oid: string; messageHeadline?: string; committedDate?: string; url?: string; author?: { name?: string | null; user?: { login?: string } | null } | null } | null)[] };
-  } | null } | null;
+  defaultBranchRef?: { target?: { statusCheckRollup?: { state?: string } | null; history?: { totalCount?: number } } | null } | null;
 }
 export interface ReposResp { data?: { viewer?: { repositories: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: (GqlRepo | null)[] } } } }
 
 export interface Lang { lang: string; bytes: number; color: string | null }
-export interface PubRepo extends Repo {
-  repo_id: string | null; description: string | null; language: string | null; stars: number; forks: number; created_at: string | null;
-  release_tag: string | null; release_at: string | null; license: string | null; commit_count: number; ci_state: string | null;
-  deps: string[]; langs: Lang[]; showcase: Showcase; readme: string | null;
-  commits: { repo: string; sha: string; message: string; author: string; ts: string; url: string }[];
+/** One public repo as the list pass sees it. Archived repos are kept (stage `archived`). */
+export interface LightRepo {
+  full_name: string; name: string; repo_id: string | null; archived: boolean; homepage: string | null; description: string | null; topics: string[];
+  language: string | null; stars: number; forks: number; created_at: string | null; pushed_at: string | null; updated_at_gh: string | null;
+  release_tag: string | null; release_at: string | null; license: string | null; commit_count: number; ci_state: string | null; langs: Lang[];
 }
 /** Everything kept about private repos: counts and language bytes. No name, URL or message. */
 export interface PrivAgg { repos: number; commits: number; langs: Lang[] }
 
 const langsOf = (n: GqlRepo): Lang[] =>
   (n.languages?.edges ?? []).flatMap((e) => (e ? [{ lang: e.node.name, bytes: e.size, color: e.node.color ?? null }] : []));
+const topicsOf = (n: GqlRepo) => (n.repositoryTopics?.nodes ?? []).flatMap((t) => (t ? [t.topic.name] : []));
 
-const toRepo = (n: GqlRepo): Repo => ({
-  full_name: n.nameWithOwner, name: n.name, homepage: n.homepageUrl ?? null, private: n.isPrivate, archived: !!n.isArchived,
-  topics: (n.repositoryTopics?.nodes ?? []).flatMap((t) => (t ? [t.topic.name] : [])), pushed_at: n.pushedAt ?? undefined,
-});
-
-function mapPublic(r: Repo, n: GqlRepo): PubRepo {
+function mapLight(n: GqlRepo): LightRepo {
   const t = n.defaultBranchRef?.target;
-  const text = n.object?.text;
   return {
-    ...r,
-    repo_id: n.id ?? null,
-    description: n.description?.trim() || null, language: n.primaryLanguage?.name ?? null,
-    stars: n.stargazerCount ?? 0, forks: n.forkCount ?? 0, created_at: n.createdAt ?? null,
+    full_name: n.nameWithOwner, name: n.name, repo_id: n.id ?? null, archived: !!n.isArchived, homepage: n.homepageUrl?.trim() || null,
+    description: n.description?.trim() || null, topics: topicsOf(n), language: n.primaryLanguage?.name ?? null,
+    stars: n.stargazerCount ?? 0, forks: n.forkCount ?? 0, created_at: n.createdAt ?? null, pushed_at: n.pushedAt ?? null, updated_at_gh: n.updatedAt ?? null,
     release_tag: n.latestRelease?.tagName ?? null, release_at: n.latestRelease?.publishedAt ?? null,
     license: n.licenseInfo?.spdxId && n.licenseInfo.spdxId !== "NOASSERTION" ? n.licenseInfo.spdxId : n.licenseInfo?.name ?? null,
-    commit_count: t?.history?.totalCount ?? 0, ci_state: t?.statusCheckRollup?.state ?? null,
-    deps: text && text.length <= MAX_DEPS_FILE ? parseDeps(text) : [],
-    langs: langsOf(n),
-    showcase: text && text.length <= MAX_DEPS_FILE ? parseShowcase(text) : parseShowcase(""),
-    readme: readmeExcerpt(n.readme?.text), // public repos only: mapPublic never runs for private ones
-    commits: (t?.history?.nodes ?? []).flatMap((c) =>
-      c ? [{ repo: n.nameWithOwner, sha: c.oid, message: (c.messageHeadline ?? "").split("\n")[0], url: c.url ?? "", author: c.author?.user?.login ?? c.author?.name ?? "unknown", ts: c.committedDate ?? "" }] : []),
+    commit_count: t?.history?.totalCount ?? 0, ci_state: t?.statusCheckRollup?.state ?? null, langs: langsOf(n),
   };
 }
 
-/** Split into public project rows (capped) and private aggregates; private details die here. */
-export function mapRepos(nodes: GqlRepo[], max = Infinity): { pub: PubRepo[]; priv: PrivAgg } {
-  const byName = new Map(nodes.map((n) => [n.nameWithOwner, n]));
-  const repos = nodes.map(toRepo);
-  const pub = selectProjects(repos, max).map((r) => mapPublic(r, byName.get(r.full_name)!));
+/** Split the list into public rows (every non-fork, non-ignored public repo, archived included; newest push first) and private aggregates; private details die here. */
+export function mapList(nodes: GqlRepo[]): { pub: LightRepo[]; priv: PrivAgg } {
+  const pub = nodes.filter((n) => !n.isPrivate && !topicsOf(n).includes(IGNORE)).map(mapLight).sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""));
   const bytes = new Map<string, Lang>();
   let count = 0, commits = 0;
-  for (const r of repos) {
-    if (!r.private || !isEligible(r)) continue;
-    const n = byName.get(r.full_name)!;
+  for (const n of nodes) {
+    if (!n.isPrivate || !isEligible({ archived: n.isArchived, topics: topicsOf(n) })) continue;
     count++;
     commits += n.defaultBranchRef?.target?.history?.totalCount ?? 0;
     for (const l of langsOf(n)) bytes.set(l.lang, { lang: l.lang, bytes: (bytes.get(l.lang)?.bytes ?? 0) + l.bytes, color: bytes.get(l.lang)?.color ?? l.color });
   }
-  return { pub, priv: { repos: count, commits, langs: [...bytes.values()] } };
+  return { pub, priv: { repos: count, commits, langs: [...bytes.values()].sort((a, b) => b.bytes - a.bytes || a.lang.localeCompare(b.lang)) } };
+}
+
+// ---- GraphQL detail pass (`nodes(ids:)`, public repos only) ----
+
+const blob = { text: "" } as { text?: string | null } | null;
+export interface GqlDetail {
+  id: string; nameWithOwner: string; isPrivate?: boolean;
+  object?: typeof blob; readme?: typeof blob; pkg?: typeof blob; wjsonc?: typeof blob; wjson?: typeof blob; wtoml?: typeof blob; manifest?: typeof blob;
+  defaultBranchRef?: { target?: { history?: { nodes?: ({ oid: string; messageHeadline?: string; committedDate?: string; url?: string; author?: { name?: string | null; user?: { login?: string } | null } | null } | null)[] } } | null } | null;
+}
+
+/** `.devpulse.json` hub fields: live-site override, sheet row id, project kind. Strict: invalid -> null. */
+export function parseHubMeta(text: string | null | undefined): { site: string | null; sheetId: string | null; kind: "extension" | null } {
+  const out = { site: null as string | null, sheetId: null as string | null, kind: null as "extension" | null };
+  try {
+    const j = JSON.parse(text ?? "null") as Record<string, unknown> | null;
+    if (!j || typeof j !== "object" || Array.isArray(j)) return out;
+    out.site = cleanUrl(j.site);
+    out.sheetId = typeof j.sheetId === "string" && /^[A-Z0-9]{2,5}-\d{2,3}$/.test(j.sheetId) ? j.sheetId : null;
+    out.kind = j.kind === "extension" ? "extension" : null;
+  } catch {}
+  return out;
+}
+
+/** Root manifest.json declares a WebExtension. */
+export const isManifest = (t: string | null | undefined) => { try { return Number.isInteger((JSON.parse(t ?? "null") as { manifest_version?: unknown } | null)?.manifest_version); } catch { return false; } };
+
+const small = (b: { text?: string | null } | null | undefined) => (b?.text && b.text.length <= MAX_DEPS_FILE ? b.text : null);
+export const README_PARSE_MAX = 32 * 1024;
+
+export interface DetailRow {
+  repo: string; deps: string[]; showcase: Showcase; readme: string | null; site_cands: Cand[]; sheet_id: string | null; kind: string | null;
+  readme_image: string | null; audit: string[]; showcase_json: ReadmeShowcase;
+  commits: { repo: string; sha: string; message: string; author: string; ts: string; url: string }[];
+}
+
+export function mapDetail(n: GqlDetail, owner: string, workersSub?: string): DetailRow {
+  const text = small(n.object), md = n.readme?.text ? n.readme.text.slice(0, README_PARSE_MAX) : null;
+  const meta = parseHubMeta(text), sc = parseReadmeShowcase(md);
+  const name = n.nameWithOwner.split("/").pop()!;
+  return {
+    repo: n.nameWithOwner,
+    deps: text ? parseDeps(text) : [],
+    showcase: parseShowcase(text ?? ""),
+    readme: readmeExcerpt(md), // public repos only: the detail pass never runs for private ones
+    site_cands: siteCandidates({ owner, name, devpulseSite: meta.site, pkg: small(n.pkg), wranglerJsonc: small(n.wjsonc), wranglerJson: small(n.wjson), wranglerToml: small(n.wtoml), readme: md, workersSub }),
+    sheet_id: meta.sheetId,
+    kind: meta.kind ?? (isManifest(small(n.manifest)) ? "extension" : null),
+    readme_image: sc.images[0]?.path ?? null,
+    audit: readmeGaps(md),
+    showcase_json: sc,
+    commits: (n.defaultBranchRef?.target?.history?.nodes ?? []).flatMap((c) =>
+      c ? [{ repo: n.nameWithOwner, sha: c.oid, message: (c.messageHeadline ?? "").split("\n")[0], url: c.url ?? "", author: c.author?.user?.login ?? c.author?.name ?? "unknown", ts: c.committedDate ?? "" }] : []),
+  };
 }
 
 export interface CalendarResp { data?: { user?: { contributionsCollection: { contributionCalendar: { weeks: { contributionDays: { date: string; contributionCount: number }[] }[] } } } } }

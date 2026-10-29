@@ -1,5 +1,5 @@
 import "./ledger.css";
-import { add, el, link, NODATA, type Project } from "./api";
+import { add, el, link, NODATA, sameOriginImg, type Project } from "./api";
 import { ciOf, initialOf, safeColor, tileBackground, tileColors } from "./hubutil";
 import { navLink } from "./nav";
 import { toProjectPath } from "./urlstate";
@@ -21,6 +21,43 @@ export function cover(p: Project, size: "lg" | "sm"): HTMLElement {
   // The Worker answers a missing cover with a 404 SVG placeholder (intrinsic 40x21), which browsers still render: swap it for the tile too.
   img.addEventListener("load", () => { if (img.naturalWidth === 40 && img.naturalHeight === 21) img.replaceWith(tile(p, size)); });
   return img;
+}
+
+/** The live-site snapshot (`/shot/<name>.jpg`, 1280x800) when there is one, else the cover / tile. Size reserved, no CLS. */
+export function snapshot(p: Project, size: "lg" | "sm", alt = ""): HTMLElement {
+  const src = sameOriginImg(p.shot);
+  if (!src) return cover(p, size);
+  const img = el("img", "", `sc-media sc-media--${size} sc-shot`, { src, alt, width: "1280", height: "800", loading: "lazy", decoding: "async" });
+  img.addEventListener("error", () => img.replaceWith(cover(p, size)), { once: true });
+  img.addEventListener("load", () => { if (img.naturalWidth === 40 && img.naturalHeight === 21) img.replaceWith(cover(p, size)); });
+  return img;
+}
+
+/** Text in a focusable <pre><code> with a Copy button; failure selects the text so the user can copy by hand. */
+export function copyBlock(label: string, text: string, cls = "snip") {
+  const box = el("div", "", cls);
+  const pre = el("pre", "", "", { tabindex: "0", "aria-label": label });
+  add(pre, el("code", text));
+  const note = el("span", "", "muted hub-note", { role: "status", "aria-live": "polite" });
+  const btn = el("button", "Copy", "hs-btn hub-btn", { type: "button", "aria-label": `Copy ${label}` });
+  btn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      note.textContent = "Copied";
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents(pre);
+      const sel = getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+      pre.focus();
+      note.textContent = "Copy blocked: text selected, press Ctrl+C";
+    }
+  });
+  const row = el("div", "", "hub-row");
+  add(row, btn, note);
+  add(box, pre, row);
+  return box;
 }
 
 export function langBar(p: Project) {

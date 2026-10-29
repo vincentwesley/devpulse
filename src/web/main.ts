@@ -1,11 +1,12 @@
 import "./style.css";
 import "./shell.css";
+import { getMode, initModeToggle, onMode } from "./mode"; // first: its popstate listener must run before the router's
 import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Project, type Res, type Stats } from "./api";
 import { renderActivity } from "./activity";
-import { renderContrib, renderFeatured, renderLangs, renderPulse, renderTotals } from "./bento";
+import { renderContrib, renderFeatured, renderHygiene, renderLangs, renderPulse, renderTotals } from "./bento";
 import { icon } from "./icons";
 import { renderPosts } from "./posts";
-import { renderProjects, showFailing } from "./projects";
+import { renderProjects, showFailing, showGaps } from "./projects";
 import { renderRoute, setProjects, setStatus } from "./projectpage";
 import { renderHealth, setAttnHandler } from "./shell";
 import { renderUptime } from "./status";
@@ -25,6 +26,25 @@ function setTheme(t: "dark" | "light", save = false) {
 setTheme(root.dataset.theme === "light" ? "light" : "dark"); // theme-init.js already set it before paint
 btn.addEventListener("click", () => setTheme(root.dataset.theme === "light" ? "dark" : "light", true));
 const kbd = document.querySelector<HTMLButtonElement>("#kbd")!;
+initModeToggle(document.querySelector(".top__tools")!, "modesw--top");
+const modebar = document.createElement("div");
+modebar.className = "modebar";
+const mainEl = document.querySelector("main")!;
+mainEl.insertBefore(modebar, mainEl.firstChild);
+initModeToggle(modebar, "modesw--bar"); // phones: below the header, so the sticky header keeps its height
+// Showcase gallery: its own chunk, loaded only in showcase mode (first toggle or a ?mode=showcase load).
+let SM: Promise<typeof import("./showcase-mode")> | undefined;
+const loadSM = () => (SM ??= import("./showcase-mode"));
+let lastProjects: Res<Project[]> | null = null;
+const paintGallery = () => {
+  if (getMode() !== "showcase") { document.querySelectorAll("#showcase > .skel").forEach((e) => e.remove()); return Promise.resolve(); } // hidden: drawn on the first switch
+  if (!lastProjects) return Promise.resolve();
+  const res = lastProjects;
+  return loadSM().then((m) => m.renderGallery(res));
+};
+onMode((m) => {
+  if (m === "showcase") void paintGallery().finally(() => settle("showcase", retry));
+});
 kbd.insertBefore(icon("command", 20), kbd.firstChild);
 // The palette loads on idle (so the first use is instant), or on the first shortcut / click, whichever comes first.
 let palProjects: Project[] = [];
@@ -82,6 +102,8 @@ const run = async (slow: boolean) => {
       setProjects(p, c.state === "ok" ? c.data : []);
     }),
     done("tile-featured", projects, renderFeatured),
+    done("tile-hygiene", projects, (p) => renderHygiene(p, showGaps)),
+    done("showcase", projects.then((p) => { lastProjects = p; return paintGallery(); }), () => {}),
     done("tile-pulse", Promise.all([projects, status]), ([p, st]) => renderPulse(p, st)),
     done("tile-totals", Promise.all([stats, projects]), ([s, p]) => renderTotals(s, p)),
     done("tile-contrib", Promise.all([heat, stats]), ([h, s]) => renderContrib(h, s)),

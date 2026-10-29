@@ -1,5 +1,6 @@
 import { add, el, NODATA, type Commit, type Project, type Res, type Status } from "./api";
 import { commitsFor, openIncidentRepos, siteFor } from "./hubutil";
+import { getMode, onMode } from "./mode";
 import { closeDetail, navigate, navLink, setRouteHandler, wide } from "./nav";
 import { markSelected, showTopic, toggleTopic, topicNow } from "./projects";
 import { parseProjectPath, parseUrl, toProjectPath } from "./urlstate";
@@ -13,6 +14,7 @@ let projState: "loading" | Res<unknown>["state"] = "loading";
 let status: Status | null = null;
 let shown: string | null = null; // name rendered into #pp (full page), "" while loading; so background refreshes don't redraw under the reader
 let pageKey = "";
+let pageMode = getMode();
 let paneName: string | null = null; // name rendered into #detail-pane (desktop)
 let paneKey = "";
 
@@ -23,6 +25,16 @@ const needDetail = () => {
   if (!D && !loadingD) { loadingD = true; import("./detail").then((m) => { D = m; renderRoute(); }, () => { loadingD = false; }); }
   return D;
 };
+
+// Showcase mode renders the generated showcase page (its own chunk) instead of the detail view.
+let S: typeof import("./showcase-mode") | undefined;
+let loadingS = false;
+const needShow = () => {
+  if (!S && !loadingS) { loadingS = true; import("./showcase-mode").then((m) => { S = m; renderRoute(); }, () => { loadingS = false; }); }
+  return S;
+};
+const showcase = () => getMode() === "showcase";
+const builder = () => (showcase() ? needShow() : needDetail());
 
 const pp = () => document.getElementById("pp")!;
 const pane = () => document.getElementById("detail-pane")!;
@@ -40,7 +52,7 @@ export function setStatus(res: Res<Status>) {
 }
 
 /** What the detail shows, so a background refresh only redraws when it changed. */
-const keyOf = (p: Project) => JSON.stringify([p, siteFor(p, status), openIncidentRepos(status).has(p.repo), commitsFor(p, commits).slice(0, 8).map((c) => c.sha)]);
+const keyOf = (p: Project) => JSON.stringify([getMode(), p, siteFor(p, status), openIncidentRepos(status).has(p.repo), commitsFor(p, commits).slice(0, 8).map((c) => c.sha)]);
 
 const detailOpts = (lvl: 1 | 3) => ({
   lvl, commits, status, topic: topicNow,
@@ -54,9 +66,10 @@ const detailOpts = (lvl: 1 | 3) => ({
 });
 
 const back = () => navLink("← All projects", "/", "hs-btn hub-btn hub-btn--alt pp-back");
-function pageEl(p: Project, d: NonNullable<typeof D>) {
+function pageEl(p: Project) {
   const root = el("div", "", "pp");
-  add(root, back(), d.buildDetail(p, detailOpts(1)));
+  if (showcase()) add(root, S!.buildShowcasePage(p, { commits, back: back() }));
+  else add(root, back(), D!.buildDetail(p, detailOpts(1)));
   return root;
 }
 
@@ -113,14 +126,16 @@ function paintPage(name: string, p: Project | undefined) {
   const root = pp();
   document.body.dataset.view = "project";
   root.hidden = false;
-  if (shown === name && p) {
-    const key = keyOf(p);
-    if (key === pageKey || root.contains(document.activeElement)) return;
+  if (shown === name && p && builder()) {
+    const key = keyOf(p), switched = pageMode !== getMode();
+    if (!switched && (key === pageKey || root.contains(document.activeElement))) return;
     pageKey = key;
-    root.replaceChildren(pageEl(p, D!));
+    pageMode = getMode();
+    root.replaceChildren(pageEl(p));
+    if (switched) root.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true }); // the mode button that had focus is gone
     return;
   }
-  if (projState === "loading" || (p && !needDetail())) {
+  if (projState === "loading" || (p && !builder())) {
     root.setAttribute("aria-busy", "true");
     if (shown === null) { const k = el("div", "", "skel body", { "aria-hidden": "true" }); add(k, el("i"), el("i"), el("i")); root.replaceChildren(back(), k); }
     shown = "";
@@ -129,7 +144,8 @@ function paintPage(name: string, p: Project | undefined) {
   root.removeAttribute("aria-busy");
   shown = name;
   pageKey = p ? keyOf(p) : "";
-  root.replaceChildren(p ? pageEl(p, D!) : notFound(name));
+  pageMode = getMode();
+  root.replaceChildren(p ? pageEl(p) : notFound(name));
   if (p) headFor(p);
   else head(`Not found · ${TITLE}`, DESC);
   live.textContent = p ? `${p.name} project page` : "Project not found";
@@ -143,7 +159,7 @@ export function renderRoute() {
   if (legacy && parseProjectPath(location.pathname) === null) history.replaceState(history.state, "", toProjectPath(legacy));
   const name = parseProjectPath(location.pathname);
   const p = name === null ? undefined : ps.find((x) => x.name === name);
-  if (name !== null && wide() && (projState === "loading" || p)) {
+  if (name !== null && wide() && !showcase() && (projState === "loading" || p)) {
     resetPage();
     paintPane(name, p);
     return;
@@ -168,6 +184,7 @@ export function renderRoute() {
 }
 
 addEventListener("popstate", renderRoute);
+onMode(() => renderRoute());
 addEventListener("hashchange", renderRoute);
 matchMedia("(min-width: 1024px)").addEventListener("change", renderRoute);
 setRouteHandler(renderRoute);

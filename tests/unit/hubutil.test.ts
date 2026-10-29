@@ -12,6 +12,14 @@ describe("hub helpers", () => {
     expect(relTime(null)).toBe("");
     expect(relTime("nope")).toBe("");
   });
+  it("stage filter: one stage, or repos with gaps; older rows without the fields never match", () => {
+    const ps = [P({ name: "a", stage: "live-up", audit: [] }), P({ name: "b", stage: "quiet", audit: ["topics"] }), P({ name: "c" })];
+    const f = (st: Parameters<typeof sortFilter>[7]) => sortFilter(ps, "name", "", "all", "", "", new Set(), st).map((p) => p.name);
+    expect(f("")).toEqual(["a", "b", "c"]);
+    expect(f("live-up")).toEqual(["a"]);
+    expect(f("gaps")).toEqual(["b"]);
+    expect(f("archived")).toEqual([]);
+  });
   it("safeColor", () => {
     expect(safeColor("#AbC123")).toBe("#AbC123");
     expect(safeColor("red; x:y")).toBe("var(--accent)");

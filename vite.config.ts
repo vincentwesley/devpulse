@@ -1,6 +1,6 @@
-// @ts-expect-error no @types/node in this repo; build-time only
+// @ts-ignore no @types/node in the app types (puppeteer pulls them in transitively); build-time only
 import { createHash } from "node:crypto";
-// @ts-expect-error no @types/node in this repo; build-time only
+// @ts-ignore no @types/node in the app types (puppeteer pulls them in transitively); build-time only
 import { readFileSync, writeFileSync } from "node:fs";
 import { defineConfig } from "vitest/config";
 

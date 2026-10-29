@@ -51,11 +51,11 @@ function apply(db: D1Database, outs: Out[], privListed: boolean, now: Date): D1P
       else if (!EMPTY.includes(o.code)) privOk = false;
     } else if (p) {
       stmts.push(
-        db.prepare("UPDATE projects SET loc=? WHERE repo=?").bind(p.loc, o.repo),
+        db.prepare("UPDATE projects SET loc=?, loc_at=? WHERE repo=?").bind(p.loc, now.toISOString().replace(/\.\d{3}Z$/, "Z"), o.repo),
         db.prepare("DELETE FROM code_freq WHERE repo=?").bind(o.repo),
         db.prepare(`INSERT INTO code_freq (repo,week,"add","del") SELECT ?1, json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]') FROM json_each(?2)`).bind(o.repo, JSON.stringify(p.series)),
       );
-    } else if (EMPTY.includes(o.code)) stmts.push(db.prepare("UPDATE projects SET loc=0 WHERE repo=? AND loc IS NULL").bind(o.repo)); // final: stop retrying it
+    } else if (EMPTY.includes(o.code)) stmts.push(db.prepare("UPDATE projects SET loc=COALESCE(loc,0), loc_at=? WHERE repo=?").bind(now.toISOString().replace(/\.\d{3}Z$/, "Z"), o.repo)); // final: stop retrying it
   }
   if (privOk) stmts.push(db.prepare("INSERT INTO private_agg (id,loc) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET loc=excluded.loc").bind(privLoc), setMeta(db, "loc_priv_done", day(now)));
   return stmts;
@@ -65,20 +65,18 @@ function apply(db: D1Database, outs: Out[], privListed: boolean, now: Date): D1P
  * Daily 00:30 UTC slot: code_frequency for public (from D1) and private (listed in memory, never stored) repos.
  * 202 (still computing) keeps the old value and is finished by retryLoc; 204/404/422 count as 0; other errors skip the repo.
  * Private repos only ever update the single aggregate row, and only when every private repo answered (and there are <= PRIV_QUOTA).
- * Public repos beyond the remaining quota rotate by day of year so each gets covered over several days.
+ * Public repos beyond the remaining quota: changed ones first (never counted, or pushed since `loc_at`), then the longest-unchecked.
  */
 export async function syncLoc(env: Env, now = new Date()): Promise<void> {
   if (!env.GITHUB_TOKEN) return console.warn("GITHUB_TOKEN missing, skipping LOC sync");
   const db = env.DB;
-  const { results } = await db.prepare("SELECT repo FROM projects ORDER BY pushed_at DESC").all<{ repo: string }>();
+  const { results } = await db.prepare("SELECT repo FROM projects ORDER BY (loc_at IS NULL OR pushed_at > loc_at) DESC, loc_at, pushed_at DESC").all<{ repo: string }>();
   const priv = await listPrivate(env);
 
   // Over-quota private lists are not sampled (a partial sum would be wrong): their budget goes to public repos.
   const privT = priv && priv.length <= PRIV_QUOTA ? priv : [];
   const pubQ = CODEFREQ_MAX - privT.length;
-  const doy = Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 0)) / 864e5);
-  const start = results.length > pubQ ? (doy * pubQ) % results.length : 0;
-  const pubT = results.length > pubQ ? Array.from({ length: pubQ }, (_, i) => results[(start + i) % results.length]) : results;
+  const pubT = results.slice(0, pubQ);
   const outs = await fetchFreq(env, [...pubT.map((r) => ({ repo: r.repo, priv: false })), ...privT.map((repo) => ({ repo, priv: true }))]);
   const stmts = apply(db, outs, priv !== null && priv.length <= PRIV_QUOTA, now);
   if (stmts.length) await db.batch(stmts);

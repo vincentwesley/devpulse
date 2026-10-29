@@ -19,7 +19,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     const [days, active, totals, priv, jobs, exp] = (await db.batch([
       db.prepare("SELECT date, count FROM commits_daily WHERE date >= ? ORDER BY date ASC").bind(iso(+now - HEATMAP_DAYS * 864e5).slice(0, 10)),
       db.prepare("SELECT c.repo AS repo, p.name AS name, COUNT(*) AS commits FROM commits_recent c JOIN projects p ON p.repo = c.repo WHERE c.ts >= ? GROUP BY c.repo ORDER BY commits DESC, c.repo LIMIT 1").bind(iso(+now - 30 * 864e5)),
-      db.prepare("SELECT COUNT(*) AS repos, COALESCE(SUM(commit_count), 0) AS commits, COALESCE(SUM(loc), 0) AS loc, MAX(updated_at) AS synced FROM projects"),
+      db.prepare("SELECT COUNT(*) AS repos, COALESCE(SUM(commit_count), 0) AS commits, COALESCE(SUM(loc), 0) AS loc, COALESCE((SELECT value FROM meta WHERE key='list_at'), MAX(updated_at)) AS synced FROM projects"),
       db.prepare("SELECT repos, commit_count, loc FROM private_agg WHERE id = 1"),
       db.prepare("SELECT job, last_ok, last_err_code, last_err_at, alerted_at FROM jobs"),
       db.prepare("SELECT value FROM meta WHERE key='token_exp'"),

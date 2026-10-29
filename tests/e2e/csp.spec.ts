@@ -1,4 +1,4 @@
-// @ts-expect-error no @types/node in this repo
+// @ts-ignore no @types/node in the app types
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import projects from "./fixtures/projects.json" with { type: "json" };

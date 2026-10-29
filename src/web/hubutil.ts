@@ -1,8 +1,10 @@
-import type { Commit, Project, Status } from "./api";
+import type { Commit, Project, Stage, Status } from "./api";
 
 export type Sort = "active" | "stars" | "name" | "status" | "lang" | "ci" | "uptime";
 /** Ledger filter chips. live = healthy, failing = needs attention, wip = in progress or no signal. */
 export type StatusFilter = "all" | "live" | "failing" | "wip";
+/** Ledger stage select: "" = any, "gaps" = repos missing README/About/Website/topics, else one derived stage. */
+export type StageFilter = "" | "gaps" | Stage;
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60],
@@ -63,7 +65,7 @@ const cmp: Record<Sort, (a: Project, b: Project, bad: Set<string>) => number> = 
   ci: (a, b) => ciRank(a) - ciRank(b),
   uptime: (a, b) => lowFirst(a.url ? a.uptime30d : null, b.url ? b.uptime30d : null),
 };
-export function sortFilter(ps: Project[], sort: Sort, lang: string, status: StatusFilter, q = "", topic = "", bad: Set<string> = new Set()): Project[] {
+export function sortFilter(ps: Project[], sort: Sort, lang: string, status: StatusFilter, q = "", topic = "", bad: Set<string> = new Set(), stage: StageFilter = ""): Project[] {
   const needle = q.trim().toLowerCase();
   const hay = (p: Project) => [p.name, p.tagline, p.description, p.language, ...(p.topics ?? [])].join(" ").toLowerCase();
   const inState = (p: Project) => {
@@ -73,6 +75,7 @@ export function sortFilter(ps: Project[], sort: Sort, lang: string, status: Stat
   return ps
     .filter((p) => (!lang || p.language === lang) && inState(p))
     .filter((p) => !topic || (p.topics ?? []).includes(topic))
+    .filter((p) => !stage || (stage === "gaps" ? !!p.audit?.length : p.stage === stage))
     .filter((p) => !needle || hay(p).includes(needle))
     .sort((a, b) => cmp[sort](a, b, bad) || a.name.localeCompare(b.name));
 }

@@ -35,7 +35,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const canon = NAME.test(name) ? await canonicalName(env, name) : null;
   if (canon && canon !== name) return redirect(`/p/${canon}`);
   const p = canon
-    ? await env.DB.prepare("SELECT name, description, tagline, cover_path FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
+    ? await env.DB.prepare("SELECT name, description, tagline, COALESCE(cover_path, readme_image) AS cover_path FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
     : null;
   const headers = new Headers(shell.headers); // keeps the static CSP / HSTS from public/_headers
   headers.delete("Content-Length"); headers.delete("ETag");

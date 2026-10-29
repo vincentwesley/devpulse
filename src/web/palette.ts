@@ -1,4 +1,5 @@
 ﻿import "./palette.css";
+import { getMode, setMode } from "./mode";
 import { add, el, type Project } from "./api";
 import { rankBy } from "./hubutil";
 import { navigate } from "./nav";
@@ -29,15 +30,17 @@ const copy = (text: string, ok: string) => navigator.clipboard?.writeText(text).
 /** Projects offered by the palette; called by renderProjects on each load. */
 export const setPaletteProjects = (p: Project[]) => { projects = p; };
 
+const DEV_ONLY = new Set(["bento", "projects", "activity", "status"]); // hidden in showcase mode
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function items(): Item[] {
   const out: Item[] = projects.map((p) => ({ label: p.name, group: "Project", run: () => navigate(toProjectPath(p.name)) }));
   for (const [id, label] of SECTIONS)
     if (document.getElementById(id) && !document.getElementById(id)!.hidden)
-      out.push({ label, group: "Section", run: () => { if (document.body.dataset.view) navigate("/"); document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }); } });
+      out.push({ label, group: "Section", run: () => { if (DEV_ONLY.has(id)) setMode("dev"); if (document.body.dataset.view) navigate("/"); document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }); } });
   out.push(
     { label: "Toggle theme", group: "Action", run: () => document.querySelector<HTMLButtonElement>("#theme")?.click() },
+    { label: getMode() === "showcase" ? "Switch to developer mode" : "Switch to showcase mode", group: "Action", run: () => setMode(getMode() === "showcase" ? "dev" : "showcase") },
     { label: "Copy feed URL", group: "Action", run: () => copy(`${location.origin}/feed.xml`, "Feed URL copied") },
     { label: "Copy status summary", group: "Action", run: () => { const s = statusSummary(); if (s) copy(s, "Status summary copied"); else say("No status yet"); } },
     { label: "Show keyboard shortcuts", group: "Action", run: () => open(true) },

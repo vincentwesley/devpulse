@@ -131,3 +131,12 @@
   .lang__seg { transform-origin: left; animation: lang-grow 0.6s var(--fx-ease) both; }
   @keyframes lang-grow { from { transform: scaleX(0); } }
 }
+
+/* ---- Repo hygiene ---- */
+#tile-hygiene { grid-column: 1 / -1; min-height: 12rem; }
+@media (min-width: 900px) { #tile-hygiene { grid-column: 1 / -1; grid-row: 4; min-height: 8.5rem; } }
+.hyg { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
+.hyg__sum { margin: 0; font: 400 var(--fs-meta)/1.4 var(--font-data); }
+.hyg__n { font: 700 var(--fs-h2)/1 var(--font-head); color: var(--fg); }
+.hyg__list { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0; padding: 0; list-style: none; font: 400 var(--fs-meta)/1.4 var(--font-data); color: var(--fg-muted); }
+.hyg__btn { margin-inline-start: auto; min-height: 44px; font-size: var(--fs-meta); }

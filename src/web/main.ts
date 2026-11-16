@@ -1,6 +1,7 @@
 import "./style.css";
 import "./shell.css";
 import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Project, type Res, type Stats } from "./api";
+import "./brand/logo-resize";
 import { renderActivity } from "./activity";
 import { renderContrib, renderFeatured, renderLangs, renderPulse, renderTotals } from "./bento";
 import { icon } from "./icons";

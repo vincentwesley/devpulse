@@ -67,3 +67,6 @@ Privacy: private repos contribute combined numbers only. `/api/stats` rounds tot
 
 ## Notice
 Provided as is, without warranty. Licensed under MIT (see `LICENSE`).
+
+## Credits
+Designed and built by Vin, Vin's Atelier (https://vwesley.dev). Logo by @portus_workstation / @wason25_pz (Instagram); the logo is all rights reserved (see NOTICE.md), not covered by the MIT licence.

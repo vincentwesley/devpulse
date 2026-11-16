@@ -43,3 +43,5 @@ Freshness (round 3, migration 0006, deployed): 15-min GraphQL change check with 
 Report outcomes tersely.
 
 
+
+- 2026-11-16: Vin's Atelier draggable logo + sign-off + Logo radios in the credits section (branch vin-atelier-brand, unpushed); pre-paint is external public/logo-init.js so the inline theme script hash is unchanged.

@@ -46,3 +46,4 @@ Report outcomes tersely.
 
 - 2026-11-16: Vin's Atelier draggable logo + sign-off + Logo radios in the credits section (branch vin-atelier-brand, unpushed); pre-paint is external public/logo-init.js so the inline theme script hash is unchanged.
 - 2026-11-17 hygiene sweep: qa-output/ gitignored.
+- 2026-11-17: logo spec waits for the --logo-x transition before measuring (15s polls).

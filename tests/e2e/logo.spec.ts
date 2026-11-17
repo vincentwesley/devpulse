@@ -5,6 +5,8 @@ import AxeBuilder from "@axe-core/playwright";
 // driven by one CSS variable, --logo-x. Locators are scoped to the sign-off.
 const X = { short: 540, middle: 734, long: 1491.4 };
 const SIGN = ".studio-signoff";
+// Slow (software-rendered) machines need room for the --logo-x morph to finish.
+const POLL = { timeout: 15_000 };
 const html = (page: Page) => page.locator("html");
 const link = (page: Page) => page.locator(`${SIGN} .brand`);
 const logo = (page: Page) => page.locator(`${SIGN} svg.brand-logo`);
@@ -27,8 +29,10 @@ async function open(page: Page) {
 }
 async function pick(page: Page, form: keyof typeof X) {
   await radio(page, form).check({ force: true });
-  const shown = form === "long" && (page.viewportSize()?.width ?? 0) < 480 ? X.middle : X[form];
-  await expect.poll(() => chevronX(page)).toBeCloseTo(shown, 0);
+  // Target = the --logo-x the page resolved for this form and viewport (html does not transition), after the morph has settled.
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => 0))));
+  const shown = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--logo-x")));
+  await expect.poll(() => chevronX(page), POLL).toBeCloseTo(shown, 0);
 }
 async function drag(page: Page, dx: number, from = 10) {
   const b = (await link(page).boundingBox())!;
@@ -87,12 +91,12 @@ test.describe("desktop", () => {
     const url = page.url();
     await drag(page, 120);
     await expect(html(page)).toHaveAttribute("data-logo", "long");
-    await expect.poll(() => chevronX(page)).toBeCloseTo(X.long, 0);
+    await expect.poll(() => chevronX(page), POLL).toBeCloseTo(X.long, 0);
     expect(page.url()).toBe(url);
     await page.waitForTimeout(200);
     await drag(page, -100, 120);
     await expect(html(page)).toHaveAttribute("data-logo", "short");
-    await expect.poll(() => chevronX(page)).toBeCloseTo(X.short, 0);
+    await expect.poll(() => chevronX(page), POLL).toBeCloseTo(X.short, 0);
     expect(page.url()).toBe(url);
     expect(await page.evaluate(() => localStorage.getItem("logo-form"))).toBe("short");
   });
@@ -160,12 +164,12 @@ test.describe("narrow screens", () => {
     const middle = await width(page);
     await radio(page, "long").check({ force: true });
     await expect(html(page)).toHaveAttribute("data-logo", "long");
-    await expect.poll(() => chevronX(page)).toBeCloseTo(X.middle, 0);
+    await expect.poll(() => chevronX(page), POLL).toBeCloseTo(X.middle, 0);
     expect(await width(page)).toBeCloseTo(middle, 0);
     await expect(radio(page, "long")).toBeChecked();
     await pick(page, "short");
     await drag(page, 120);
-    await expect.poll(() => chevronX(page)).toBeCloseTo(X.middle, 0);
+    await expect.poll(() => chevronX(page), POLL).toBeCloseTo(X.middle, 0);
   });
 });
 

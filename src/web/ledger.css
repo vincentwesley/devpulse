@@ -12,7 +12,7 @@ body[data-view="project"] main > :not(#pp):not(.creator) { display: none; }
 .hub-langs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font: 400 var(--fs-meta)/1.4 var(--font-data); }
 .hub-langs a { display: inline-flex; align-items: center; min-height: 44px; }
 .hub-dot { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: var(--s2); }
-.hub-langbar { display: flex; height: 8px; background: var(--border); overflow: hidden; }
+.hub-langbar { display: flex; height: 8px; background: var(--border-soft); overflow: hidden; }
 .hub-langbar span { display: block; height: 100%; }
 .hub-topics { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
 .hub-topic { position: relative; min-height: 32px; padding: var(--s1) var(--s3); cursor: pointer; font: 400 var(--fs-meta)/1.2 var(--font-data); }
@@ -99,7 +99,7 @@ th[aria-sort="descending"] .lg-sort .icon { transform: scaleY(-1); }
 .up-bar i[data-c="ok"] { background: var(--live); }
 .up-bar i[data-c="warn"] { background: color-mix(in srgb, var(--attn) 55%, var(--border-strong)); }
 .up-bar i[data-c="bad"] { background: var(--attn); }
-.up-bar i[data-c="none"] { background: var(--border); }
+.up-bar i[data-c="none"] { background: var(--border-soft); }
 .up-bar--lg { display: flex; height: 20px; gap: 1px; }
 .up-bar--lg i { flex: 1 1 0; width: auto; }
 

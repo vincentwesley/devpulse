@@ -2,6 +2,7 @@ import "./style.css";
 import "./shell.css";
 import { getMode, initModeToggle, onMode } from "./mode"; // first: its popstate listener must run before the router's
 import { getCommits, getHeatmap, getLanguages, getPosts, getProjects, getStats, getStatus, type Commit, type Heat, type Languages, type Post, type Project, type Res, type Stats } from "./api";
+import "./brand/logo-resize";
 import { renderActivity } from "./activity";
 import { renderContrib, renderFeatured, renderHygiene, renderLangs, renderPulse, renderTotals } from "./bento";
 import { icon } from "./icons";

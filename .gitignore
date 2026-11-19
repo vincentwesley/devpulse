@@ -16,3 +16,4 @@ playwright-report/
 data/
 coverage/
 *.log
+qa-output/

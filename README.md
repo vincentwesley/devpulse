@@ -2,6 +2,8 @@
 
 Public, read-only dashboard for the health of vincentwesley's deployed projects: commits and heatmap, CI, uptime, languages, lines-of-code estimate, weekly Lighthouse scores and latest blog posts. Runs on Cloudflare Workers + D1. Live data only: projects are discovered from GitHub and nothing is mocked outside tests.
 
+Live: https://devpulse.vwesley.workers.dev
+
 ## Run
 ```
 npm ci
@@ -89,3 +91,6 @@ Privacy: private repos contribute combined numbers only. `/api/stats` rounds tot
 
 ## Notice
 Provided as is, without warranty. Licensed under MIT (see `LICENSE`).
+
+## Credits
+Designed and built by Vin, Vin's Atelier (https://vwesley.dev). Logo by @portus_workstation / @wason25_pz (Instagram); the logo is all rights reserved (see NOTICE.md), not covered by the MIT licence.

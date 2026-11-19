@@ -53,6 +53,7 @@
 :root[data-theme="light"] {
   --attn-fg: #9a4a1f;
   --wip-fg: #5b43b0;
+  --select: color-mix(in srgb, var(--fx-3) 14%, transparent); /* kit-synced light bg: 22% left selected-row text under 4.5:1 */
 }
 :root[data-density="compact"] { --row-pad: var(--s2); }
 

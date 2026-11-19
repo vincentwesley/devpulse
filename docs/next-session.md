@@ -1,4 +1,4 @@
-﻿> Update at the end of any session that changed state. Keep it lean.
+> Update at the end of any session that changed state. Keep it lean.
 
 Continue work on **DevPulse**, the public project hub at https://devpulse.vwesley.workers.dev (workers.dev subdomain renamed vincentwesleybiz → vwesley on 2026-10-24; Atom entry ids keep the `tag:devpulse.vincentwesleybiz.workers.dev` prefix on purpose). Repo is PUBLIC. Only do what the owner asks.
 
@@ -71,3 +71,9 @@ Worst case per slot, as fetches / D1 queries (free cap 50 each):
 3. The `meta` `fp` row from the old change check is unused (harmless).
 
 Report outcomes tersely.
+
+## Log
+- 2026-11-16: Vin's Atelier draggable logo + sign-off + Logo radios in the credits section; pre-paint is external public/logo-init.js so the inline theme script hash is unchanged.
+- 2026-11-17 hygiene sweep: qa-output/ gitignored.
+- 2026-11-17: logo spec waits for the --logo-x transition before measuring (15s polls).
+- 2026-11-18: kit sync (tokens.css, credits.css re-copied per UPGRADING.md); soft fills (heatmap, uptime/lang bars) moved to --border-soft in project CSS; tokens-app.css still overrides --s1..6 (px) and --font-mono.

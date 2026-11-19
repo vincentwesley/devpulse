@@ -1,6 +1,6 @@
-# One-off repo clean-up (proposal, not applied)
+# One-off repo clean-up
 
-Generated 2026-10-29 from public GitHub data, using the same audit and live-site discovery code DevPulse now runs (`src/worker/lib/audit.ts`, `src/worker/lib/site.ts`). Nothing here has been applied: DevPulse never edits other repos. Run the commands after you've reviewed them. Once DevPulse is deployed, `/sync.md` (gaps column) and the dashboard's *Repo hygiene* tile show the live state.
+Refreshed 2026-11-19 for all 18 public repos, using the same audit and live-site discovery code DevPulse runs (`src/worker/lib/audit.ts`, `src/worker/lib/site.ts`); every live URL below answered a GET today. DevPulse never edits other repos, and this session's GitHub access can't change repo settings, so the changes are packed into one script you run: **`docs/repo-cleanup.ps1`**. It only fills fields that are empty today and only adds topics (never removes or overwrites anything, never touches code or READMEs). Preview with `-DryRun`.
 
 Gap codes:
 - `readme`: no README with a real explanation (at least 200 characters of prose).
@@ -9,81 +9,51 @@ Gap codes:
 - `website`: no Website field.
 - `topics`: no topics.
 
-## Live URLs
+## Live URLs (DevPulse finds these on its own after deploy)
 
 | Repo | Live URL | Found via |
 |---|---|---|
 | MetaLensVGC | https://metalensvgc.pages.dev | Website field |
+| safe-regex | https://vincentwesley.github.io/safe-regex/ | Website field |
 | synthwave-drive | https://vincentwesley.github.io/synthwave-drive/ | Website field |
-| black-hole | https://vincentwesley.github.io/black-hole/ | package.json `homepage` (probe 200) |
-| koi-pond | https://vincentwesley.github.io/koi-pond/ | README link (probe 200) |
-| devpulse | https://devpulse.vwesley.workers.dev | wrangler.jsonc name (probe 200) |
+| black-hole | https://vincentwesley.github.io/black-hole/ | package.json `homepage` |
+| sdf-forge | https://vincentwesley.github.io/sdf-forge/ | package.json `homepage` |
+| devpulse | https://devpulse.vwesley.workers.dev | wrangler config |
+| pagehold | https://pagehold.vwesley.workers.dev | wrangler config |
+| glass-compiler | https://vincentwesley.github.io/glass-compiler/ | README link |
+| koi-pond | https://vincentwesley.github.io/koi-pond/ | README link |
+| sg-time-machine | https://vincentwesley.github.io/sg-time-machine/ | README link |
 
-**No live URL found:** DueReminder, access-ease, tldr-panel, glass-compiler, llm-microscope, earth-through-time. access-ease and tldr-panel are Chrome extensions; when they're in the Chrome Web Store, set the store URL as their Website. If llm-microscope or earth-through-time are deployed somewhere (their READMEs describe browser apps), add a `"site"` to their `.devpulse.json` or set the Website field.
+The script also writes the discovered URL into the Website field of black-hole, sdf-forge, devpulse, pagehold, glass-compiler, koi-pond and sg-time-machine.
 
-## Gaps per repo
+**No live URL found (8):** DueReminder, access-ease, clearslip, tldr-panel, earth-through-time, little-sql, llm-microscope, squeeze. access-ease, clearslip and tldr-panel are Chrome extensions: once they're in the Chrome Web Store, put the store link in their Website field. DueReminder's wrangler config points at `due-reminder.vwesley.workers.dev`, which doesn't answer, so it isn't deployed there. earth-through-time's Website field links to its own GitHub page (DevPulse ignores github.com links); the script leaves it alone because it isn't empty.
 
-| Repo | Gaps |
-|---|---|
-| glass-compiler | readme, screenshot, about, website, topics (the README is only a title) |
-| DueReminder | screenshot, about, website, topics |
-| devpulse | screenshot, about, website, topics |
-| earth-through-time | about, website, topics (its Website field points at github.com, which doesn't count) |
-| black-hole | about, website, topics |
-| llm-microscope | about, website, topics |
-| koi-pond | screenshot, website, topics |
-| MetaLensVGC | screenshot, topics |
-| access-ease | website, topics |
-| tldr-panel | website |
-| synthwave-drive | none |
+## Gaps per repo (before the script)
 
-## gh commands (review, then run)
+| Repo | Gaps | Script fixes |
+|---|---|---|
+| squeeze | readme, screenshot, about, website, topics | about, topics |
+| DueReminder | screenshot, about, website, topics | about, topics |
+| devpulse | screenshot, about, website, topics | about, website, topics |
+| little-sql | screenshot, about, website, topics | nothing: its README has no project explanation yet |
+| pagehold | readme, screenshot, website, topics | website, topics |
+| black-hole | about, website, topics | all three |
+| earth-through-time | about, website, topics | about, topics |
+| glass-compiler | about, website, topics | all three |
+| llm-microscope | about, website, topics | about, topics |
+| sdf-forge | about, website, topics | all three |
+| clearslip | screenshot, website, topics | topics |
+| koi-pond | screenshot, website, topics | website, topics |
+| sg-time-machine | screenshot, website, topics | website, topics |
+| MetaLensVGC | screenshot, topics | topics |
+| access-ease | website, topics | topics |
+| tldr-panel | website | nothing (needs the store link) |
+| safe-regex | none | |
+| synthwave-drive | none | |
 
-Descriptions come from each README's own first paragraph. Topics come from what the README says the project uses.
+Descriptions are taken from each README's own first paragraph; topics name what the README says the project uses. Adding `chrome-extension` to access-ease and clearslip also files them under *Extensions* on the Project Hub.
 
-```bash
-gh repo edit vincentwesley/black-hole --description "Real-time Schwarzschild black hole you can fly around in the browser: every pixel ray-traced through curved spacetime (WebGL2)." --homepage "https://vincentwesley.github.io/black-hole/" --add-topic webgl2,raytracing,black-hole,general-relativity,shader,physics-simulation
-```
-
-```bash
-gh repo edit vincentwesley/koi-pond --homepage "https://vincentwesley.github.io/koi-pond/" --add-topic webgl2,interactive,water-simulation,generative-art,canvas
-```
-
-```bash
-gh repo edit vincentwesley/devpulse --description "Live public hub for my projects: uptime, CI, activity, snapshots and auto-generated showcases. Cloudflare Workers + D1." --homepage "https://devpulse.vwesley.workers.dev" --add-topic cloudflare-workers,cloudflare-d1,dashboard,uptime-monitor,typescript,github-api
-```
-
-```bash
-gh repo edit vincentwesley/MetaLensVGC --add-topic pokemon,vgc,metagame,analytics,dashboard,cloudflare-pages
-```
-
-```bash
-gh repo edit vincentwesley/llm-microscope --description "Look inside GPT-2 small running in your browser: next-word predictions, all 144 attention heads, logit lens, head ablation." --add-topic interpretability,gpt-2,transformers,attention,logit-lens,webworker
-```
-
-```bash
-gh repo edit vincentwesley/earth-through-time --description "3D globe that rewinds the continents 750 million years with a real plate-tectonic reconstruction." --homepage "" --add-topic plate-tectonics,paleogeography,globe,threejs,data-visualization
-```
-
-```bash
-gh repo edit vincentwesley/DueReminder --description "Reminder PWA with two-way Google Calendar sync, recurrence, natural-language quick-add and offline support." --add-topic pwa,reminders,google-calendar,offline-first,typescript
-```
-
-```bash
-gh repo edit vincentwesley/access-ease --add-topic chrome-extension,accessibility,a11y,dyslexia,side-panel,manifest-v3
-```
-
-`earth-through-time --homepage ""` clears the github.com link; replace it with the real URL if the app is deployed. glass-compiler needs a README before a description is worth writing; tell me what it is and I'll draft both.
-
-For the Website fields of the extensions (Chrome Web Store URLs, once you have them):
-
-```bash
-gh repo edit vincentwesley/tldr-panel --homepage "<chrome web store url>"
-```
-
-```bash
-gh repo edit vincentwesley/access-ease --homepage "<chrome web store url>"
-```
+`screenshot` gaps close by pasting the DevPulse snippet below (its live snapshot counts as the README picture once the site is deployed); `readme` gaps (squeeze, pagehold, little-sql) need README text only you can write.
 
 ## README snippet (paste near the top of each README)
 

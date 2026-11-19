@@ -7,7 +7,8 @@ Continue work on **DevPulse**, the public project hub at https://devpulse.vwesle
 - Round 6: two pages. **Project Hub** at `/` (portfolio-style gallery, `/p/<name>` story pages from README content; no CI/uptime/stars/commits/LOC/%, only release version and "updated N ago") and **Developer** at `/dev/` (the dashboard, `/dev/p/<name>`). Header switch on both; old dashboard links on `/` are sent to `/dev/` by `public/hub-redirect.js`. `/api/health` jobs now carry `code` (fixed error enum).
 - Round 5: list pass every 15 min + detail pass once a day on change, live-URL discovery, stages/freshness, audit gaps, `/sync.md|json|csv`, `/sync/snippets.md`, Browser Run snapshots `/shot/:name.jpg` (D1), `/img/:name/:i`, `/grid.svg`. Migration **0008** (additive).
 - Live 2026-11-19: 18 public + 22 private repos; the github job showed `ok:false` (round-4 code has no error code in health). After deploy, read `/api/health` `jobs.github.code`.
-- Expected after deploy: black-hole (package.json), koi-pond (README link), devpulse (wrangler) get live URLs automatically; repos created since 2026-10-29 are audited live (see `/sync.md`). Clean-up proposals: `docs/repo-cleanup.md` (not applied).
+- Expected after deploy: 10 of 18 public repos get a live URL automatically (Website field, package.json, wrangler or README link; list in `docs/repo-cleanup.md`). 8 have none (DueReminder, access-ease, clearslip, tldr-panel, earth-through-time, little-sql, llm-microscope, squeeze).
+- Repo clean-up: this session can't write repo settings (proxy 403), so it is `docs/repo-cleanup.ps1` for the owner (fills only empty description/website, adds topics; `-DryRun` to preview). Not run yet.
 - Accounts: all repos are under `vincentwesley`; `Pincenw` is not included (would need a second token + `EXTRA_OWNERS`). access-ease CI FAILURE (hands-off).
 
 ## Deploy order (owner's PC, PowerShell, from this branch)
@@ -43,8 +44,8 @@ Worst case per slot, as fetches / D1 queries (free cap 50 each):
 2. Browser Run needs no new secret (Workers binding). Check the dashboard shows usage after deploy.
 3. Optional:
    - `.devpulse.json` `sheetId`/`site`/`kind` per repo;
-   - the `gh` clean-up commands and README snippets in `docs/repo-cleanup.md`;
-   - make `vincentwesley/vincentwesley` public and paste the profile README (uses `/grid.svg`).
+   - run `docs/repo-cleanup.ps1` (needs `gh auth login`); README snippets from `/sync/snippets.md`;
+   - profile README: owner said skip (2026-11-19).
 4. Optional, carried over: `ALERT_TO` + Email Routing, `PSI_KEY`, `PORTFOLIO_RSS_URL`. Regenerate the GitHub token before expiry (banner at 14 days).
 5. Proposal, not built: an Access-protected private status Worker (Cloudflare Access self-hosted app on a vwesley.dev subdomain, a separate Worker reading private status live, storing nothing).
 

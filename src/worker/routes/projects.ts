@@ -91,7 +91,7 @@ export async function loadProjects(env: Env, origin: string, now = Date.now()) {
       shot: shot ? `/shot/${p.name}.jpg?v=${shot.taken_at}` : null,
       snippet: snippet(origin, p.name, p.url),
       showcase: {
-        summary: sc.summary, highlights: sc.highlights, runThrough: sc.runThrough,
+        title: sc.title, summary: sc.summary, highlights: sc.highlights, howItWorks: sc.howItWorks, runThrough: sc.runThrough,
         images: sc.images.map((x, i) => ({ url: `/img/${p.name}/${i}?v=${imgTag}`, alt: x.alt })),
       },
     };

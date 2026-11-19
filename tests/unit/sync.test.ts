@@ -3,7 +3,7 @@ import page from "../fixtures/github/repos-graphql.json";
 import { handleApi } from "../../src/worker/api";
 import { runScheduled } from "../../src/worker/cron";
 import { syncGithub } from "../../src/worker/github";
-import { runShots, type Launch } from "../../src/worker/shots";
+import { runShots, shotTiming, type Launch } from "../../src/worker/shots";
 import type { Env } from "../../src/worker/env";
 import { sqliteDb } from "./_sqlite";
 
@@ -82,11 +82,11 @@ describe("sheet sync", () => {
 describe("/api/projects hub fields", () => {
   it("stage, freshness, audit, snippet, showcase and fallback cover", async () => {
     const { get, raw } = await world();
-    raw.prepare("UPDATE projects SET readme_image='docs/a.png', showcase_json=? WHERE name='bare'").run(JSON.stringify({ summary: "S", highlights: ["h"], runThrough: { steps: ["s"], commands: ["npm i"] }, images: [{ path: "docs/a.png", alt: "A" }] }));
+    raw.prepare("UPDATE projects SET readme_image='docs/a.png', showcase_json=? WHERE name='bare'").run(JSON.stringify({ title: "Bare Bones", summary: "S", highlights: ["h"], howItWorks: ["w"], runThrough: { steps: ["s"], commands: ["npm i"] }, images: [{ path: "docs/a.png", alt: "A" }] }));
     const ps = await (await get("/api/projects")).json() as any[];
     const bare = ps.find((p) => p.name === "bare"), ml = ps.find((p) => p.name === "metalens");
     expect(bare).toMatchObject({ stage: "active", archived: false, urlSource: null, sheetId: null, shot: null, cover: expect.stringMatching(/^\/img\/bare\?v=[0-9a-f]{8}$/), checkedAt: T.toISOString(), detailAt: "2026-10-09T05:15:00Z" });
-    expect(bare.showcase).toEqual({ summary: "S", highlights: ["h"], runThrough: { steps: ["s"], commands: ["npm i"] }, images: [{ url: expect.stringMatching(/^\/img\/bare\/0\?v=[0-9a-f]{8}$/), alt: "A" }] });
+    expect(bare.showcase).toEqual({ title: "Bare Bones", summary: "S", highlights: ["h"], howItWorks: ["w"], runThrough: { steps: ["s"], commands: ["npm i"] }, images: [{ url: expect.stringMatching(/^\/img\/bare\/0\?v=[0-9a-f]{8}$/), alt: "A" }] });
     expect(ml).toMatchObject({ stage: "live-pending", urlSource: "website", stale: true, staleWhy: ["uptime"], audit: ["readme", "screenshot"], uptimeAt: null, shotAt: null });
     expect(ml.snippet).toContain("(http://x/shot/metalens.jpg)](https://metalens.example.dev)");
     expect(ps.find((p) => p.name === "old").stage).toBe("archived");
@@ -137,6 +137,22 @@ describe("/shot and /img/<name>/<i>", () => {
 });
 
 describe("snapshots", () => {
+  afterEach(() => { shotTiming.settleMs = 0; });
+  it("waits the settle delay after navigation (also after a navigation timeout) before taking the screenshot", async () => {
+    const { env } = await world();
+    const e = { ...env, BROWSER: {} } as unknown as Env;
+    shotTiming.settleMs = 40;
+    const ev: [string, number][] = [];
+    const launch: Launch = async () => ({
+      newPage: async () => ({ setViewport: async () => {}, goto: async () => { ev.push(["goto", performance.now()]); const err = new Error("slow"); err.name = "TimeoutError"; throw err; },
+        screenshot: async () => { ev.push(["shot", performance.now()]); return new Uint8Array(20_000); }, close: async () => {} }),
+      close: async () => {},
+    });
+    await runShots(e, T, launch);
+    expect(ev.map((x) => x[0])).toEqual(["goto", "shot", "goto", "shot"]); // both due sites, each shot only after its settle
+    expect(ev[1][1] - ev[0][1]).toBeGreaterThanOrEqual(35);
+    expect(ev[3][1] - ev[2][1]).toBeGreaterThanOrEqual(35);
+  });
   const browser = (sizes: number[], log: string[]): Launch => async () => {
     log.push("launch");
     let i = 0;

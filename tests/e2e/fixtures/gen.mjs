@@ -11,7 +11,7 @@ const hub = (o) => ({ ciState: null, description: null, topics: [], language: nu
   archived: false, stage: "active", stale: false, staleWhy: [], checkedAt: "2026-10-20T09:45:00Z", detailAt: "2026-10-19T00:30:00Z", uptimeAt: null, shotAt: null,
   urlSource: null, sheetId: null, audit: [], shot: null, snippet: "", showcase: { summary: null, highlights: [], runThrough: { steps: [], commands: [] }, images: [] }, ...o });
 const snip = (n, live) => `<!-- devpulse:start -->\n[![${n} status card](https://devpulse.example/card/${n}.svg)](https://devpulse.example/p/${n})\n[![${n} live snapshot](https://devpulse.example/shot/${n}.jpg)](${live ?? `https://devpulse.example/p/${n}`})\n${live ? `**Live:** ${live} · ` : ""}**Health:** [DevPulse](https://devpulse.example/p/${n})\n<!-- devpulse:end -->`;
-w("projects.json", [
+const PROJECTS = [
   hub({ repo: "vincentwesley/alpha", name: "Alpha", url: "https://alpha.example.com", up: true, uptime30d: 99.87, latencyMs: [120, 140, 110, 300, 150, 130],
     ci: { status: "completed", conclusion: "success", url: "https://github.com/o/alpha/actions/runs/1" },
     lighthouse: { week: "2026-W40", performance: 95, accessibility: 100, best_practices: 72, seo: 40 },
@@ -37,6 +37,36 @@ w("projects.json", [
     language: "TypeScript", pushedAt: "2026-09-01T00:00:00Z", stage: "quiet", audit: ["readme", "screenshot", "about", "website", "topics"], snippet: snip("NoSite", null) }),
   hub({ repo: "vincentwesley/gamma", name: "Gamma", url: "https://gamma.example.com", up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
     stage: "live-pending", urlSource: "readme", audit: ["screenshot"], snippet: snip("Gamma", "https://gamma.example.com") }),
+];
+w("projects.json", PROJECTS);
+// Project Hub gallery fixture: the four above plus one of every kind (extension, library, tool, experiment, web apps, archived),
+// some with and some without pictures, highlights and steps. Used by the hub specs only, so the dashboard specs keep their four rows.
+const sc = (o) => ({ title: null, summary: null, highlights: [], howItWorks: [], runThrough: { steps: [], commands: [] }, images: [], ...o });
+const TS = { lang: "TypeScript", bytes: 800, color: "#3178c6", pct: 80 }, CSS = { lang: "CSS", bytes: 200, color: "#563d7c", pct: 20 };
+w("hub-projects.json", [...PROJECTS,
+  hub({ repo: "vincentwesley/delta", name: "Delta", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    description: "A browser side panel fixture that tidies pages.", topics: ["chrome-extension", "manifest-v3", "privacy"], pushedAt: "2026-10-16T08:00:00Z",
+    release: { tag: "v2.0.1", at: "2026-10-12T00:00:00Z" }, languages: [{ lang: "JavaScript", bytes: 900, color: "#f1e05a", pct: 90 }, { lang: "HTML", bytes: 100, color: "#e34c26", pct: 10 }],
+    tagline: "Tidy any page from the side panel", stage: "released-extension", cover: "/img/Delta?v=11112222",
+    links: [{ label: "Chrome Web Store", url: "https://chromewebstore.google.com/detail/delta/fixture" }],
+    showcase: sc({ summary: "Delta is a fixture extension.", highlights: ["Reader view: strips clutter from the page", "Pause on this site: one click turns it off for a domain", "No account and no tracking"],
+      images: [{ url: "/img/Delta/0?v=11112222", alt: "Delta side panel" }] }) }),
+  hub({ repo: "vincentwesley/epsilon", name: "Epsilon", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    topics: ["library", "typescript", "parser"], pushedAt: "2026-10-14T08:00:00Z", languages: [TS],
+    showcase: sc({ title: "Epsilon Parser", summary: "Epsilon parses things in tests. It is a fixture.", howItWorks: ["It tokenises the input.", "Then it builds a tree."], runThrough: { steps: ["Install the package", "Import the parser"], commands: ["npm install epsilon-fixture"] } }) }),
+  hub({ repo: "vincentwesley/zeta", name: "Zeta", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    pushedAt: "2026-08-01T08:00:00Z", languages: [{ lang: "Python", bytes: 10, color: "#3572A5", pct: 100 }], stage: "quiet" }),
+  hub({ repo: "vincentwesley/eta", name: "Eta", url: "https://eta.example.com", up: true, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    description: "A fixture web app with only a cover image.", topics: ["webgl2", "visualization"], pushedAt: "2026-10-17T08:00:00Z", languages: [TS, CSS],
+    cover: "/img/Eta?v=33334444", stage: "live-up", urlSource: "package" }),
+  hub({ repo: "vincentwesley/theta", name: "Theta", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    description: "A command-line tool fixture.", topics: ["cli", "compression"], pushedAt: "2026-09-20T08:00:00Z", languages: [TS],
+    readme: "Theta squeezes files in tests.\n- Fast\n- Small" }),
+  hub({ repo: "vincentwesley/iota", name: "Iota", url: "https://iota.example.com", up: true, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    tagline: "A fixture web app with a live snapshot", topics: ["maps", "open-data"], pushedAt: "2026-07-01T08:00:00Z", languages: [{ lang: "JavaScript", bytes: 10, color: "#f1e05a", pct: 100 }],
+    shot: "/shot/Iota.jpg?v=1", stage: "live-up", urlSource: "readme" }),
+  hub({ repo: "vincentwesley/old", name: "OldThing", url: null, up: null, uptime30d: null, latencyMs: [], ci: null, lighthouse: null, deps: [],
+    description: "An archived fixture.", pushedAt: "2025-03-01T00:00:00Z", archived: true, stage: "archived" }),
 ]);
 w("commits.json", [{ repo: "alpha", sha: "abc1234", message: "Fix thing\n\nbody", author: "vin", ts: "2026-10-08T10:00:00Z", url: "https://github.com/o/alpha/commit/abc1234" },
   { repo: "beta", sha: "def5678", message: "Beta only", author: "vin", ts: "2026-10-07T10:00:00Z", url: "https://github.com/o/beta/commit/def5678" }]);

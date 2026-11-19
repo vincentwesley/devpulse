@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { gapsOf, readmeGaps, relImage } from "../../src/worker/lib/audit";
-import { parseReadmeShowcase, readShowcase } from "../../src/worker/lib/showcase-readme";
+import { firstSentence, parseReadmeShowcase, readShowcase } from "../../src/worker/lib/showcase-readme";
 import { snippet } from "../../src/worker/lib/snippet";
 import { stageOf, staleOf } from "../../src/worker/lib/stage";
 
@@ -109,7 +109,9 @@ $ npm run dev
 MIT <img src="docs/screens/day.jpg" alt="Daytime">
 `;
   it("summary, highlights, run-through and images from real README text only", () => {
-    expect(parseReadmeShowcase(md)).toEqual({
+    expect(parseReadmeShowcase(md, "koi-pond")).toEqual({
+      title: "Koi Pond",
+      howItWorks: [],
       summary: "An interactive WebGL2 koi pond: ripples, lily pads and fish that follow your cursor.\n\nIt runs in any modern browser with no install.",
       highlights: ["Real-time ripples on a height field", "Lily pads you can drag", "Day and night themes"],
       runThrough: { steps: ["Clone the repo", "Install dependencies"], commands: ["npm install", "npm run dev"] },
@@ -120,14 +122,39 @@ MIT <img src="docs/screens/day.jpg" alt="Daytime">
     const p = parseReadmeShowcase("# t\n\nIntro line.\n\n- one\n- two‮\n\n## Notes\n\nmore");
     expect(p.highlights).toEqual(["one", "two"]);
     expect(p.runThrough).toEqual({ steps: [], commands: [] });
-    expect(parseReadmeShowcase(null)).toEqual({ summary: null, highlights: [], runThrough: { steps: [], commands: [] }, images: [] });
+    expect(parseReadmeShowcase(null)).toEqual({ title: null, summary: null, highlights: [], howItWorks: [], runThrough: { steps: [], commands: [] }, images: [] });
     const long = parseReadmeShowcase(`# t\n\n${"word ".repeat(300)}\n\n## Features\n\n${Array.from({ length: 12 }, (_, i) => `- item ${i} ${"x".repeat(200)}`).join("\n")}`);
     expect(long.summary!.length).toBeLessThanOrEqual(600);
     expect(long.highlights).toHaveLength(8);
     expect(long.highlights.every((h) => h.length <= 160)).toBe(true);
   });
+  it("title: first H1 as plain text (badges, emoji, markup stripped, <= 60 chars); null when it is just the repo name", () => {
+    expect(parseReadmeShowcase("# 🔬 **LLM** Microscope ![b](https://img.shields.io/x.svg)\n\nText.", "llm-microscope").title).toBe("LLM Microscope");
+    expect(parseReadmeShowcase("Glass Compiler\n==============\n\nText.", "glass-compiler").title).toBe("Glass Compiler");
+    expect(parseReadmeShowcase("# glass-compiler\n\nText.", "Glass-Compiler").title).toBeNull();
+    expect(parseReadmeShowcase("Intro only.\n\n## Usage\n\n- x", "x").title).toBeNull();
+    expect(parseReadmeShowcase(`# ${"Long ".repeat(30)}`, "x").title!.length).toBeLessThanOrEqual(60);
+  });
+  it("how it works is its own section (bullets, else first-paragraph sentences), never mixed into the run-through", () => {
+    const md = "# LLM Microscope\n\nLook inside a model.\n\n## How to use it\n\n- Type a prompt\n- Press Run\n\n## How it works\n\nThe model runs in a Web Worker. Attention is read from each layer! Nothing leaves the page.\n\nSecond paragraph.";
+    const p = parseReadmeShowcase(md, "llm-microscope");
+    expect(p.runThrough.steps).toEqual(["Type a prompt", "Press Run"]);
+    expect(p.howItWorks).toEqual(["The model runs in a Web Worker.", "Attention is read from each layer!", "Nothing leaves the page."]);
+    expect(p.highlights).toEqual([]); // the only list is usage steps: not highlights
+    expect(parseReadmeShowcase("# t\n\n## Architecture\n\n- Worker\n- D1\n", "x").howItWorks).toEqual(["Worker", "D1"]);
+    expect(parseReadmeShowcase("# t\n\n## Under the hood\n\n```\ncode\n```\n\nIt uses a Pike VM.", "x").howItWorks).toEqual(["It uses a Pike VM."]);
+  });
+  it("firstSentence: one sentence, <= 160 chars, cut at a word boundary otherwise", () => {
+    expect(firstSentence("Look inside a model. It runs locally.\n\nMore.")).toBe("Look inside a model.");
+    expect(firstSentence("No full stop here")).toBe("No full stop here");
+    const long = firstSentence(`${"word ".repeat(60)}end.`)!;
+    expect(long.length).toBeLessThanOrEqual(160);
+    expect(long.endsWith("word…")).toBe(true);
+    expect(firstSentence(null)).toBeNull();
+    expect(firstSentence("  ")).toBeNull();
+  });
   it("readShowcase tolerates junk and drops unsafe image paths", () => {
     expect(readShowcase("nope").images).toEqual([]);
-    expect(readShowcase(JSON.stringify({ summary: "s", images: [{ path: "../x.png", alt: "a" }, { path: "a.png", alt: 1 }] }))).toEqual({ summary: "s", highlights: [], runThrough: { steps: [], commands: [] }, images: [{ path: "a.png", alt: "" }] });
+    expect(readShowcase(JSON.stringify({ summary: "s", images: [{ path: "../x.png", alt: "a" }, { path: "a.png", alt: 1 }] }))).toEqual({ title: null, summary: "s", highlights: [], howItWorks: [], runThrough: { steps: [], commands: [] }, images: [{ path: "a.png", alt: "" }] });
   });
 });

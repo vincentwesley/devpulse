@@ -22,13 +22,17 @@ describe("project hub helpers", () => {
     expect(bestImage(P({ showcase: { summary: null, highlights: [], runThrough: { steps: [], commands: [] }, images: [{ url: "/img/x/0", alt: "" }] } }))).toBe("/img/x/0");
     expect(bestImage(P({}))).toBeNull();
   });
-  it("kind: extension (stage or topic) wins over a live URL, then live site, else other", async () => {
+  it("kind: extension (stage or topic) wins over a live URL, then web app, then library/tool by topic, else experiment", async () => {
     const { kindOf } = await import("../../src/web/hub/hub");
-    expect(kindOf({ url: "https://x.test", stage: "live-up", topics: [] } as unknown as Project)).toBe("live");
-    expect(kindOf({ url: null, stage: "released-extension", topics: [] } as unknown as Project)).toBe("ext");
-    expect(kindOf({ url: "https://chromewebstore.google.com/x", stage: "live-up", topics: ["chrome-extension"] } as unknown as Project)).toBe("ext");
-    expect(kindOf({ url: null, stage: "quiet", topics: ["firefox-addon"] } as unknown as Project)).toBe("ext");
-    expect(kindOf({ url: null, stage: "active", topics: [] } as unknown as Project)).toBe("other");
+    const k = (o: object) => kindOf({ url: null, stage: "active", topics: [], ...o } as unknown as Project);
+    expect(k({ url: "https://x.test", stage: "live-up" })).toBe("web");
+    expect(k({ stage: "released-extension" })).toBe("ext");
+    expect(k({ url: "https://chromewebstore.google.com/x", stage: "live-up", topics: ["chrome-extension"] })).toBe("ext");
+    expect(k({ topics: ["firefox-addon"] })).toBe("ext");
+    expect(k({ topics: ["library", "typescript"] })).toBe("lib");
+    expect(k({ topics: ["cli"] })).toBe("lib");
+    expect(k({ url: "https://x.test", topics: ["library"] })).toBe("web");
+    expect(k({ topics: ["webgl2"] })).toBe("exp");
   });
   it("updated: friendly relative wording, no clock numbers", async () => {
     const { updated } = await import("../../src/web/hub/hub");

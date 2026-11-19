@@ -1,9 +1,12 @@
-// Project story page (/p/<name>): what it is, what it can do, pictures, what it's built with, how to try it.
+// Project story page (/p/<name>), laid out like a short case study / store page: outcome-first hero with the ways in and a small
+// info strip, a picture gallery, then the same sections in the same order for every project (Overview, Highlights, How to try it,
+// Built with), an on-page index on wide screens, and previous / next / related projects at the end.
 // Real repo content only (README sections, description, topics, languages, release); a section without data is left out.
 import { add, el, fmtDate, link, sameOriginImg, type Project } from "../api";
 import { readmeBlocks } from "../hubutil";
 import { toProjectPath } from "../urlstate";
-import { bestImage, media, tags, updated } from "./hub";
+import { grid, heading, kindLabel, media, storyLink, updated } from "./hub";
+import { getIt, KIND_TAG, kindOf, neighbours, pitchOf, related, splitHighlight, titleOf } from "./kind";
 
 let lbx: HTMLDialogElement | null = null;
 /** Picture viewer: native <dialog> (Esc closes, focus stays inside), arrow keys page, focus returns to the opener. */
@@ -52,7 +55,7 @@ function copyBlock(label: string, text: string) {
   const pre = el("pre", "", "", { tabindex: "0", "aria-label": label });
   add(pre, el("code", text));
   const note = el("span", "", "hb-note", { role: "status", "aria-live": "polite" });
-  const btn = el("button", "Copy", "hs-btn hb-btn hb-btn--alt", { type: "button", "aria-label": `Copy ${label}` });
+  const btn = el("button", "Copy", "hs-btn hb-btn hb-btn--alt hb-copy", { type: "button", "aria-label": `Copy ${label}` });
   btn.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(text); note.textContent = "Copied"; }
     catch {
@@ -71,33 +74,111 @@ function copyBlock(label: string, text: string) {
   return box;
 }
 
-export function buildStory(p: Project, back: HTMLElement): HTMLElement {
-  const root = el("article", "", "hb-story");
-  const sc = p.showcase;
-  const sec = (id: string, title: string, ...kids: (Node | string)[]) => {
-    const s = el("section", "", `hb-ssec hb-s-${id}`, { "aria-labelledby": `hb-sh-${id}` });
-    add(s, el("h2", title, "hb-sh", { id: `hb-sh-${id}` }), ...kids);
-    add(root, s);
-  };
+/** Pictures for the gallery: live snapshot, declared cover, README screenshots (same-origin only, de-duplicated). */
+export function pictures(p: Project): { url: string; alt: string }[] {
+  const out: { url: string; alt: string }[] = [];
+  const push = (u: string | null | undefined, alt: string) => { const s = sameOriginImg(u); if (s && !out.some((x) => x.url === s)) out.push({ url: s, alt }); };
+  push(p.shot, `Screenshot of ${p.name}`);
+  push(p.cover, `${p.name} preview`);
+  for (const x of p.showcase?.images ?? []) push(x.url, x.alt || `${p.name} screenshot`);
+  return out;
+}
 
-  // Hero: name, what it is in one line, the picture, and the ways in.
+/** Index of the sections on the page; the one in view is marked aria-current. */
+function pageIndex(sections: { id: string; title: string }[]) {
+  const nav = el("nav", "", "hb-toc", { "aria-label": "On this page" });
+  add(nav, el("p", "On this page", "hb-eyebrow"));
+  const ul = el("ul");
+  const links = sections.map((s) => {
+    const a = el("a", s.title, "", { href: `#hb-s-${s.id}` });
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const t = document.getElementById(`hb-s-${s.id}`);
+      t?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      t?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+    });
+    const li = el("li");
+    add(li, a);
+    add(ul, li);
+    return a;
+  });
+  add(nav, ul);
+  if (typeof IntersectionObserver !== "undefined") {
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting) {
+        const id = e.target.id.replace(/^hb-s-/, "");
+        links.forEach((a, i) => (sections[i].id === id ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current")));
+      }
+    }, { rootMargin: "-30% 0px -60% 0px" });
+    queueMicrotask(() => sections.forEach((s) => { const t = document.getElementById(`hb-s-${s.id}`); if (t) io.observe(t); }));
+  }
+  return nav;
+}
+
+export function buildStory(p: Project, all: Project[], back: HTMLElement): HTMLElement {
+  const root = el("article", "", "hb-story");
+  root.dataset.kind = kindOf(p);
+  const sc = p.showcase;
+
+  // ---- hero: what it is in one line, and the ways in ----
   const hero = el("header", "", "hb-hero");
-  const txt = el("div", "", "hb-hero__txt");
-  add(txt, el("h1", p.name, "hb-title", { tabindex: "-1" }));
-  const line = p.tagline ?? p.description;
-  if (line) add(txt, el("p", line, "hb-tagline"));
-  add(txt, tags(p));
+  add(hero, kindLabel(p), ...heading(p, "h1", "hb-title", "hb-title", { tabindex: "-1" }));
+  const line = pitchOf(p);
+  if (line) add(hero, el("p", line, "hb-tagline"));
+  const acts = el("div", "", "hb-acts hb-acts--hero");
+  const ext = getIt(p);
+  if (p.url && (!ext || ext.url !== p.url)) add(acts, link("Try it live", p.url, "hs-btn hb-btn hb-btn--lg"));
+  if (ext) add(acts, link(ext.label, ext.url, `hs-btn hb-btn hb-btn--lg${p.url && ext.url !== p.url ? " hb-btn--alt" : ""}`));
+  add(acts, link("Source on GitHub", `https://github.com/${p.repo}`, "hs-btn hb-btn hb-btn--alt hb-btn--lg"));
+  add(hero, acts);
+  // Info strip (store-page style): kind, built with, latest release, updated.
+  const dl = el("dl", "", "hb-facts");
+  const fact = (k: string, v: string) => { const d = el("div", "", "hb-fact"); add(d, el("dt", k), el("dd", v)); add(dl, d); };
+  fact("Kind", KIND_TAG[kindOf(p)]);
+  const langs = (p.languages ?? []).map((l) => l.lang);
+  if (langs.length) fact("Built with", langs.slice(0, 3).join(", "));
+  if (p.release) fact("Latest release", p.release.at ? `${p.release.tag} · ${fmtDate(p.release.at)}` : p.release.tag);
   const when = updated(p.pushedAt);
-  if (when) add(txt, el("p", when, "hb-when"));
-  const acts = el("div", "", "hb-acts");
-  if (p.url) add(acts, link("Try it", p.url, "hs-btn hb-btn"));
-  add(acts, link("Source on GitHub", `https://github.com/${p.repo}`, "hs-btn hb-btn hb-btn--alt"));
-  add(acts, el("a", "Developer view", "hs-btn hb-btn hb-btn--alt", { href: toProjectPath(p.name) }));
-  add(txt, acts);
-  add(hero, txt, media(p, "hb-hero__img", true));
+  if (when) fact("Activity", when);
+  add(hero, dl);
+  const dev = el("a", "Developer view", "hb-devlink", { href: toProjectPath(p.name) });
+  add(hero, dev);
   add(root, back, hero);
 
-  // What it is
+  // ---- media: big main picture + thumbnails (or the name tile when there is none) ----
+  const pics = pictures(p);
+  const gal = el("section", "", "hb-media-sec", { "aria-label": "Pictures" });
+  if (pics.length) {
+    const main = el("button", "", "hb-main-pic", { type: "button", "aria-label": `View larger: ${pics[0].alt}` });
+    add(main, media(p, "hb-media", true, pics[0].url, pics[0].alt, false)); // inside a labelled button: colour-only tile, no text
+    main.addEventListener("click", () => lightbox(pics, 0, main));
+    add(gal, main);
+    if (pics.length > 1) {
+      const ul = el("ul", "", "hb-thumbs", { "aria-label": "More pictures" });
+      pics.slice(1).forEach((x, j) => {
+        const li = el("li");
+        const b = el("button", "", "hb-thumb", { type: "button", "aria-label": `View larger: ${x.alt}` });
+        const im = el("img", "", "", { src: x.url, alt: "", width: "1280", height: "800", loading: "lazy", decoding: "async" });
+        im.addEventListener("error", () => li.remove(), { once: true });
+        add(b, im);
+        b.addEventListener("click", () => lightbox(pics, j + 1, b));
+        add(li, b);
+        add(ul, li);
+      });
+      add(gal, ul);
+    }
+  } else add(gal, media(p, "hb-media hb-main-tile", true, null));
+  gal.querySelector<HTMLElement>(".hb-media")?.style.setProperty("view-transition-name", "hb-pic");
+  add(root, gal);
+
+  // ---- sections, always in this order ----
+  const sections: { id: string; title: string; node: HTMLElement }[] = [];
+  const sec = (id: string, title: string, ...kids: (Node | string)[]) => {
+    const s = el("section", "", `hb-ssec hb-s-${id}`, { id: `hb-s-${id}`, "aria-labelledby": `hb-sh-${id}` });
+    add(s, el("h2", title, "hb-sh", { id: `hb-sh-${id}`, tabindex: "-1" }), ...kids);
+    sections.push({ id, title, node: s });
+  };
+
   const summary = sc?.summary?.trim();
   const box = el("div", "", "hb-prose");
   if (summary) for (const para of summary.split(/\n{2,}/)) { if (para.trim()) add(box, el("p", para.trim())); }
@@ -108,57 +189,71 @@ export function buildStory(p: Project, back: HTMLElement): HTMLElement {
       else { ul = null; add(box, el("p", b.text)); }
     }
   } else if (p.description && p.description !== line) add(box, el("p", p.description));
-  if (box.children.length) sec("what", "What it is", box);
+  if (box.children.length) sec("overview", "Overview", box);
 
-  // What it can do
   if (sc?.highlights?.length) {
     const ul = el("ul", "", "hb-feats");
-    for (const h of sc.highlights) add(ul, el("li", h));
-    sec("can", "What it can do", ul);
-  }
-
-  // Gallery: README screenshots, plus the live snapshot when the hero shows something else.
-  const hero1 = bestImage(p);
-  const pics = [
-    ...(sameOriginImg(p.shot) && p.shot !== hero1 ? [{ url: p.shot!, alt: `Screenshot of ${p.name}` }] : []),
-    ...(sc?.images ?? []).filter((x) => sameOriginImg(x.url) && x.url !== hero1),
-  ];
-  if (pics.length) {
-    const ul = el("ul", "", "hb-gal");
-    pics.forEach((x, i) => {
-      const li = el("li");
-      const b = el("button", "", "hb-pic", { type: "button", "aria-label": `View larger: ${x.alt || `picture ${i + 1}`}` });
-      const im = el("img", "", "", { src: x.url, alt: "", width: "1280", height: "800", loading: "lazy", decoding: "async" });
-      im.addEventListener("error", () => li.remove(), { once: true });
-      add(b, im);
-      add(li, b);
-      if (x.alt) add(li, el("p", x.alt, "hb-cap"));
-      b.addEventListener("click", () => lightbox(pics, i, b));
+    for (const h of sc.highlights) {
+      const { label, text } = splitHighlight(h);
+      const li = el("li", "", "hb-feat");
+      if (label) add(li, el("p", label, "hb-feat__t"));
+      add(li, el("p", text, "hb-feat__d"));
       add(ul, li);
-    });
-    sec("gallery", "Gallery", ul);
+    }
+    sec("highlights", "Highlights", ul);
   }
 
-  // Built with: names only, no percentages.
-  const langs = (p.languages ?? []).map((l) => l.lang), topics = p.topics ?? [];
-  if (langs.length || topics.length || p.license) {
-    const kids: Node[] = [];
-    if (langs.length) { const ul = el("ul", "", "hb-chips", { "aria-label": "Languages" }); for (const l of langs) add(ul, el("li", l, "hb-tag")); kids.push(ul); }
-    if (topics.length) { const ul = el("ul", "", "hb-chips", { "aria-label": "Topics" }); for (const t of topics) add(ul, el("li", t, "hb-tag hb-tag--topic")); kids.push(ul); }
-    if (p.license) kids.push(el("p", `${p.license} license`, "hb-fine"));
-    sec("built", "Built with", ...kids);
+  if (sc?.howItWorks?.length) {
+    const ul = el("ul", "", "hb-how");
+    for (const h of sc.howItWorks) add(ul, el("li", h));
+    sec("how", "How it works", ul);
   }
 
-  // Try it yourself
   const steps = sc?.runThrough?.steps ?? [], cmds = sc?.runThrough?.commands ?? [];
   if (steps.length || cmds.length) {
     const kids: Node[] = [];
     if (steps.length) { const ol = el("ol", "", "hb-steps"); for (const s of steps) add(ol, el("li", s)); kids.push(ol); }
     if (cmds.length) kids.push(copyBlock(`${p.name} commands`, cmds.join("\n")));
-    sec("try", "Try it yourself", ...kids);
+    sec("try", "How to try it", ...kids);
   }
 
-  // Latest release
-  if (p.release) sec("release", "Latest release", el("p", p.release.at ? `${p.release.tag}, released ${fmtDate(p.release.at)}` : p.release.tag, "hb-fine"));
+  const topics = (p.topics ?? []).filter((t) => t !== "devpulse-ignore");
+  if (langs.length || topics.length || p.license) {
+    const kids: Node[] = [];
+    if (langs.length) { kids.push(el("p", "Languages", "hb-sub")); const ul = el("ul", "", "hb-chips", { "aria-label": "Languages" }); for (const l of langs) add(ul, el("li", l, "hb-chip")); kids.push(ul); }
+    if (topics.length) { kids.push(el("p", "Topics", "hb-sub")); const ul = el("ul", "", "hb-chips", { "aria-label": "Topics" }); for (const t of topics) add(ul, el("li", t, "hb-chip hb-chip--topic")); kids.push(ul); }
+    if (p.license) kids.push(el("p", `${p.license} license`, "hb-fine"));
+    sec("built", "Built with", ...kids);
+  }
+
+  const layout = el("div", "", `hb-layout${sections.length >= 2 ? " hb-layout--toc" : ""}`);
+  const content = el("div", "", "hb-content");
+  for (const s of sections) add(content, s.node);
+  if (sections.length >= 2) add(layout, pageIndex(sections));
+  add(layout, content);
+  if (sections.length) add(root, layout);
+
+  // ---- keep going: previous / next and related projects ----
+  const nb = neighbours(p, all);
+  if (nb) {
+    const nav = el("nav", "", "hb-pn", { "aria-label": "More projects" });
+    const pn = (q: Project, dir: "prev" | "next") => {
+      const a = storyLink("", q, `hb-pn__a hb-pn__a--${dir}`);
+      const d = el("span", "", "hb-pn__dir");
+      if (dir === "prev") add(d, el("span", "← ", "", { "aria-hidden": "true" }), "Previous project");
+      else add(d, "Next project", el("span", " →", "", { "aria-hidden": "true" }));
+      add(a, d, el("span", titleOf(q), "hb-pn__name"));
+      return a;
+    };
+    add(nav, pn(nb.prev, "prev"));
+    if (nb.next.name !== nb.prev.name) add(nav, pn(nb.next, "next"));
+    add(root, nav);
+  }
+  const rel = related(p, all, nb ? [nb.prev.name, nb.next.name] : []);
+  if (rel.length) {
+    const s = el("section", "", "hb-ssec hb-related", { "aria-labelledby": "hb-sh-more" });
+    add(s, el("h2", "More like this", "hb-sh", { id: "hb-sh-more" }), grid(rel, { compact: true }));
+    add(root, s);
+  }
   return root;
 }

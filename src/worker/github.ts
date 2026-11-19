@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import { COMMITS_KEPT, COMMITS_PER_REPO, DETAIL_BATCH, DETAIL_CALLS, DETAIL_MIN_GAP_S, HEATMAP_DAYS, LIST_PAGE, MAX_LIST_PAGES } from "./config";
+import { COMMITS_KEPT, COMMITS_PER_REPO, DETAIL_BATCH, DETAIL_CALLS, DETAIL_MIN_GAP_S, HEATMAP_DAYS, LIST_PAGE, MAX_LIST_PAGES, SHOWCASE_PARSER_V } from "./config";
 import { mapCalendar, mapDetail, mapList, type CalendarResp, type DetailRow, type GqlDetail, type GqlRepo, type ReposResp } from "./lib/github-parse";
 import { websiteUrl } from "./lib/site";
 import { TIMEOUT_MS } from "./lib/http";
@@ -146,20 +146,34 @@ export async function syncGithub(env: Env, now = new Date()): Promise<void> {
  * Detail pass: README, .devpulse.json, package.json, wrangler config, manifest.json and recent commits for public repos that changed.
  * Due = never read (immediately), or pushed/updated on GitHub after the last read AND that read is >= DETAIL_MIN_GAP_S old (owner rule: at most daily, only on change).
  * <= DETAIL_CALLS x DETAIL_BATCH repos per slot, never-read first; the rest wait for the next slot.
+ * Parser upgrade: when meta 'showcase_v' differs from SHOWCASE_PARSER_V, every repo read before the upgrade started ('showcase_v_since')
+ * is due regardless of changes (same per-slot cap); once none is left, 'showcase_v' is set and the once-a-day-on-change rule resumes.
  */
 export async function syncDetail(env: Env, now = new Date()): Promise<void> {
-  const db = env.DB;
-  const due = (await db.prepare(
-    "SELECT repo, repo_id FROM projects WHERE repo_id IS NOT NULL AND (detail_at IS NULL OR ((pushed_at > detail_at OR updated_at_gh > detail_at) AND detail_at <= ?)) ORDER BY detail_at IS NOT NULL, pushed_at DESC LIMIT ?",
-  ).bind(isoS(new Date(+now - DETAIL_MIN_GAP_S * 1000)), DETAIL_BATCH * DETAIL_CALLS).all<{ repo: string; repo_id: string }>()).results.slice(0, DETAIL_BATCH * DETAIL_CALLS);
-  if (!due.length) return;
+  const db = env.DB, ver = String(SHOWCASE_PARSER_V);
+  const m = new Map((await db.prepare("SELECT key, value FROM meta WHERE key IN ('showcase_v','showcase_v_since')").all<{ key: string; value: string }>()).results.map((r) => [r.key, r.value]));
+  const upgrading = m.get("showcase_v") !== ver, since = m.get("showcase_v_since") ?? isoS(now);
+  const due = (await (upgrading
+    ? db.prepare("SELECT repo, repo_id FROM projects WHERE repo_id IS NOT NULL AND (detail_at IS NULL OR detail_at < ?) ORDER BY detail_at IS NOT NULL, pushed_at DESC LIMIT ?").bind(since, DETAIL_BATCH * DETAIL_CALLS)
+    : db.prepare(
+      "SELECT repo, repo_id FROM projects WHERE repo_id IS NOT NULL AND (detail_at IS NULL OR ((pushed_at > detail_at OR updated_at_gh > detail_at) AND detail_at <= ?)) ORDER BY detail_at IS NOT NULL, pushed_at DESC LIMIT ?",
+    ).bind(isoS(new Date(+now - DETAIL_MIN_GAP_S * 1000)), DETAIL_BATCH * DETAIL_CALLS)
+  ).all<{ repo: string; repo_id: string }>()).results.slice(0, DETAIL_BATCH * DETAIL_CALLS);
+  const setMeta = (k: string, v: string) => db.prepare("INSERT INTO meta (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(k, v);
+  // Upgrade bookkeeping: remember when it started; finish when nothing read before then is left.
+  const finishUpgrade = async () => {
+    if (!upgrading) return;
+    const left = await db.prepare("SELECT COUNT(*) AS n FROM projects WHERE repo_id IS NOT NULL AND (detail_at IS NULL OR detail_at < ?)").bind(since).first<{ n: number }>();
+    await db.batch(left?.n === 0 ? [setMeta("showcase_v", ver), db.prepare("DELETE FROM meta WHERE key='showcase_v_since'")] : m.has("showcase_v_since") ? [] : [setMeta("showcase_v_since", since)]).catch(() => {});
+  };
+  if (!due.length) return finishUpgrade();
   const stamp = isoS(now);
   const out: DetailRow[] = [];
   for (let i = 0; i < due.length; i += DETAIL_BATCH) {
     const j = await gql<{ data?: { nodes?: (GqlDetail | null)[] } }>(env, DETAIL_QUERY, { ids: due.slice(i, i + DETAIL_BATCH).map((d) => d.repo_id) }, true);
     out.push(...(j.data?.nodes ?? []).flatMap((n) => (n?.id && n.nameWithOwner && n.isPrivate === false ? [mapDetail(n, env.GITHUB_OWNER, env.WORKERS_SUBDOMAIN)] : [])));
   }
-  if (!out.length) return;
+  if (!out.length) return finishUpgrade();
   await db.batch([
     ...out.flatMap((d) => {
       const cands = JSON.stringify(d.site_cands);
@@ -173,4 +187,5 @@ export async function syncDetail(env: Env, now = new Date()): Promise<void> {
     }),
     db.prepare("DELETE FROM commits_recent WHERE sha NOT IN (SELECT sha FROM commits_recent ORDER BY ts DESC LIMIT ?) AND sha NOT IN (SELECT sha FROM (SELECT sha, ROW_NUMBER() OVER (PARTITION BY repo ORDER BY ts DESC) AS rn FROM commits_recent) WHERE rn <= ?)").bind(COMMITS_KEPT, COMMITS_PER_REPO),
   ]);
+  await finishUpgrade();
 }

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runScheduled } from "../../src/worker/cron";
 import type { Env } from "../../src/worker/env";
-import type { Launch } from "../../src/worker/shots";
+import { shotTiming, type Launch } from "../../src/worker/shots";
 import { fakeDb } from "./_db";
 
 afterEach(() => vi.unstubAllGlobals());
+shotTiming.settleMs = 0; // the 3 s settle is time, not a subrequest; keep the week walk fast
 
 // Free plan: 50 subrequests (fetch) and 50 D1 queries per invocation (a batch counts as one). Walk every 15-min slot of a week, worst case:
 // 500 public + 40 private repos (list truncated at 5 pages), 60 sites with deps on 12 distinct status origins, a full detail backlog,

@@ -31,7 +31,7 @@ export type Stage = "archived" | "live-down" | "live-up" | "live-pending" | "rel
 export type StaleWhy = "list" | "uptime" | "detail";
 export type UrlSource = "website" | "devpulse" | "package" | "wrangler" | "readme" | "pages";
 export type Gap = "readme" | "screenshot" | "about" | "website" | "topics";
-export interface ShowcaseData { summary: string | null; highlights: string[]; runThrough: { steps: string[]; commands: string[] }; images: { url: string; alt: string }[] }
+export interface ShowcaseData { title?: string | null; summary: string | null; highlights: string[]; howItWorks?: string[]; runThrough: { steps: string[]; commands: string[] }; images: { url: string; alt: string }[] }
 export const STAGE_LABEL: Record<Stage, string> = {
   "live-up": "Live", "live-down": "Live, down", "live-pending": "Live, checking", "released-extension": "Released extension",
   active: "Active", quiet: "Quiet 30d+", archived: "Archived",

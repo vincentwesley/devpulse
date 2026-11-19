@@ -8,7 +8,7 @@ import { initOffline } from "../swreg";
 import { initTheme } from "../theme";
 import { settle } from "../ui";
 import { parseHubPath } from "../urlstate";
-import { buildHubPage, hubNotFound, renderHub } from "./hub";
+import { buildHubPage, hubNotFound, pitchOf, renderHub, titleOf } from "./hub";
 
 initTheme();
 initOffline(document.getElementById("offline")!);
@@ -38,8 +38,8 @@ function route() {
   if (shown === name && p) return;
   if (!projects) { const k = el("div", "", "skel body", { "aria-hidden": "true" }); add(k, el("i"), el("i"), el("i")); pp().replaceChildren(k); return; }
   shown = name;
-  pp().replaceChildren(p ? buildHubPage(p) : hubNotFound(name, projects.state));
-  head(p ? `${p.name} · DevPulse` : `Not found · ${TITLE}`, p ? p.tagline ?? p.description ?? DESC : DESC);
+  pp().replaceChildren(p ? buildHubPage(p, projects.state === "ok" ? projects.data : []) : hubNotFound(name, projects.state));
+  head(p ? `${titleOf(p)} · DevPulse` : `Not found · ${TITLE}`, p ? pitchOf(p) ?? DESC : DESC);
   scrollTo(0, 0);
   pp().querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
 }

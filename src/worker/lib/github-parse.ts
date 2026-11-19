@@ -172,7 +172,7 @@ export interface DetailRow {
 
 export function mapDetail(n: GqlDetail, owner: string, workersSub?: string): DetailRow {
   const text = small(n.object), md = n.readme?.text ? n.readme.text.slice(0, README_PARSE_MAX) : null;
-  const meta = parseHubMeta(text), sc = parseReadmeShowcase(md);
+  const meta = parseHubMeta(text), sc = parseReadmeShowcase(md, n.nameWithOwner.split("/").pop());
   const name = n.nameWithOwner.split("/").pop()!;
   return {
     repo: n.nameWithOwner,

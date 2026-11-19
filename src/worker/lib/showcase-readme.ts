@@ -2,15 +2,16 @@
 import { readmeImages, relImage } from "./audit";
 
 export interface ReadmeShowcase {
-  summary: string | null; highlights: string[];
+  title: string | null; summary: string | null; highlights: string[]; howItWorks: string[];
   runThrough: { steps: string[]; commands: string[] };
   images: { path: string; alt: string }[];
 }
-export const EMPTY_SHOWCASE: ReadmeShowcase = { summary: null, highlights: [], runThrough: { steps: [], commands: [] }, images: [] };
+export const EMPTY_SHOWCASE: ReadmeShowcase = { title: null, summary: null, highlights: [], howItWorks: [], runThrough: { steps: [], commands: [] }, images: [] };
 
 export const README_MAX = 32 * 1024;
 const HIGHLIGHT = /features|highlights|what it does|why|cool/i;
-const RUN = /getting started|quick ?start|usage|how to (run|use)|install|run locally|walkthrough|how it works/i;
+const RUN = /getting started|quick ?start|usage|how to (run|use)|install|run locally|walkthrough/i;
+const HOW = /how it works|architecture|under the hood/i;
 // eslint-disable-next-line no-control-regex
 const BAD = /[\x00-\x08\x0B-\x1F\x7F‪-‮⁦-⁩]/g;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
@@ -84,7 +85,34 @@ function summary(ls: Line[]): string | null {
   return s ? clip(s, 600) : null;
 }
 
-export function parseReadmeShowcase(md: string | null | undefined): ReadmeShowcase {
+/** First H1 (ATX or setext) as plain text: markup, badges and emoji stripped, <= 60 chars; null when empty or just the repo name. */
+function title(ls: Line[], name?: string): string | null {
+  const h = ls.find((l) => l.heading != null && l.level === 1)?.heading ?? "";
+  const t = h.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+  if (!hasText(t) || (name && t.toLowerCase() === name.toLowerCase())) return null;
+  return clip(t, 60);
+}
+
+/** "How it works" / "Architecture" / "Under the hood": up to 8 bullets, else the sentences of its first paragraph (<= 4). */
+function howItWorks(ls: Line[]): string[] {
+  const sec = section(ls, HOW);
+  if (!sec) return [];
+  const b = bullets(sec, 8, 200);
+  if (b.length) return b;
+  const para: string[] = [];
+  for (const l of sec) {
+    if (l.fence || l.inFence || l.heading != null || /^\s*\|/.test(l.raw)) { if (para.length) break; continue; }
+    if (!l.raw.trim()) { if (para.length) break; continue; }
+    const t = inline(l.raw.replace(/^\s*>\s?/, ""));
+    if (hasText(t)) para.push(t);
+  }
+  return (para.join(" ").match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) ?? []).map((x) => clip(x.trim(), 200)).filter(hasText).slice(0, 4);
+}
+
+/** Heading text a line sits under (nearest preceding heading), or null. */
+const headingOf = (ls: Line[], i: number) => { for (let j = i; j >= 0; j--) if (ls[j].heading != null) return ls[j].heading; return null; };
+
+export function parseReadmeShowcase(md: string | null | undefined, name?: string): ReadmeShowcase {
   if (!md) return EMPTY_SHOWCASE;
   const ls = lines(md);
   const hl = section(ls, HIGHLIGHT);
@@ -94,9 +122,14 @@ export function parseReadmeShowcase(md: string | null | undefined): ReadmeShowca
   const commands = fi < 0 ? [] : run.slice(fi + 1, fe < 0 ? undefined : fe).map((l) => l.raw.replace(BAD, "").replace(/^\s*\$\s+/, "").trimEnd()).filter((l) => l.trim()).slice(0, 6).map((l) => clip(l, 120));
   const seen = new Set<string>();
   const images = readmeImages(md.slice(0, README_MAX)).flatMap((x) => { const path = relImage(x.src); return path && !seen.has(path) ? (seen.add(path), [{ path, alt: clip(inline(x.alt), 120) }]) : []; }).slice(0, 6);
+  // No Features-style section: fall back to the first bullet list, unless it is setup/usage steps or internals (those are not highlights).
+  const fl = firstList(ls), under = fl.length ? headingOf(ls, ls.indexOf(fl[0])) : null;
+  const fallback = under && (RUN.test(under) || HOW.test(under)) ? [] : fl;
   return {
+    title: title(ls, name),
     summary: summary(ls),
-    highlights: bullets(hl && bullets(hl, 8, 160).length ? hl : firstList(ls), 8, 160),
+    highlights: bullets(hl && bullets(hl, 8, 160).length ? hl : fallback, 8, 160),
+    howItWorks: howItWorks(ls),
     runThrough: { steps: bullets(run, 8, 160), commands },
     images,
   };
@@ -109,9 +142,21 @@ export function readShowcase(j: string | null | undefined): ReadmeShowcase {
     if (!o || typeof o !== "object") return EMPTY_SHOWCASE;
     const strs = (a: unknown) => (Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : []);
     return {
-      summary: typeof o.summary === "string" ? o.summary : null, highlights: strs(o.highlights),
+      title: typeof o.title === "string" ? o.title : null,
+      summary: typeof o.summary === "string" ? o.summary : null, highlights: strs(o.highlights), howItWorks: strs(o.howItWorks),
       runThrough: { steps: strs(o.runThrough?.steps), commands: strs(o.runThrough?.commands) },
       images: Array.isArray(o.images) ? o.images.filter((x) => typeof x?.path === "string" && relImage(x.path)).map((x) => ({ path: x.path, alt: typeof x.alt === "string" ? x.alt : "" })) : [],
     };
   } catch { return EMPTY_SHOWCASE; }
+}
+
+/** First sentence of a summary, <= max chars, cut at a sentence end, else a word boundary (with "…"). Null when empty. */
+export function firstSentence(text: string | null | undefined, max = 160): string | null {
+  const t = (text ?? "").split(/\n{2,}/)[0].replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  const m = /^(.+?[.!?])(\s|$)/.exec(t);
+  const s = m ? m[1] : t;
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1), sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s,;:.!?-]+$/, "") + "…";
 }

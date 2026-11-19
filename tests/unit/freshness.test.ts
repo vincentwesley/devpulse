@@ -87,6 +87,31 @@ describe("list + detail passes", () => {
   });
 });
 
+describe("showcase parser upgrade", () => {
+  const detailCalls = (q: string[]) => q.filter((x) => x.includes("nodes(ids")).length;
+  it("a new SHOWCASE_PARSER_V re-reads every repo once (capped per slot), then the change-only rule resumes", async () => {
+    const { SHOWCASE_PARSER_V } = await import("../../src/worker/config");
+    world.status = 200;
+    const { env, raw } = mk();
+    world.nodes = [node("A", "alpha", { readme: { text: "# Alpha App\n\nText." } }), node("B", "beta", { readme: { text: "# Beta Tool\n\nText." } })];
+    const q = stub();
+    await githubTick(env, T);
+    expect(detailCalls(q)).toBe(1); // first read of both
+    expect(rows(raw, "SELECT value FROM meta WHERE key='showcase_v'")).toEqual([{ value: String(SHOWCASE_PARSER_V) }]);
+    // Simulate an older parser: stored version behind, data read under it.
+    raw.prepare("UPDATE meta SET value='0' WHERE key='showcase_v'").run();
+    raw.prepare("UPDATE projects SET showcase_json='{}'").run();
+    q.length = 0;
+    await githubTick(env, new Date(+T + 3600_000)); // nothing changed on GitHub, but the parser did
+    expect(detailCalls(q)).toBe(1);
+    expect(rows(raw, "SELECT name, json_extract(showcase_json,'$.title') AS t FROM projects ORDER BY name")).toEqual([{ name: "alpha", t: "Alpha App" }, { name: "beta", t: "Beta Tool" }]);
+    expect(rows(raw, "SELECT key, value FROM meta WHERE key LIKE 'showcase_v%'")).toEqual([{ key: "showcase_v", value: String(SHOWCASE_PARSER_V) }]);
+    q.length = 0;
+    await githubTick(env, new Date(+T + 7200_000));
+    expect(detailCalls(q)).toBe(0); // done: back to once-a-day-on-change
+  });
+});
+
 describe("wipe guard", () => {
   it("refuses an empty or less-than-half result, keeps every row, allows exactly half", async () => {
     const { env, raw } = mk();

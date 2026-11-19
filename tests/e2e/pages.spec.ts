@@ -5,6 +5,7 @@ import heatmap from "./fixtures/heatmap.json" with { type: "json" };
 import posts from "./fixtures/posts.json" with { type: "json" };
 import languages from "./fixtures/languages.json" with { type: "json" };
 import projects from "./fixtures/projects.json" with { type: "json" };
+import hubProjects from "./fixtures/hub-projects.json" with { type: "json" };
 import stats from "./fixtures/stats.json" with { type: "json" };
 import status from "./fixtures/status.json" with { type: "json" };
 
@@ -39,7 +40,7 @@ for (const width of [390, 1280]) {
     const hub = sitenav(page).getByRole("link", { name: "Project Hub" }), dev = sitenav(page).getByRole("link", { name: "Developer" });
     await expect(hub).toHaveAttribute("aria-current", "page");
     await expect(dev).not.toHaveAttribute("aria-current", /.*/);
-    await expect(page.locator("#hub .hb-card")).toHaveCount(4);
+    await expect(page.locator("#hub .hb-card, #hub .hb-spot")).toHaveCount(4); // 2 in the spotlight (featured) + the other 2
     await expect(page.locator("#projects, #bento, #activity, #status")).toHaveCount(0); // developer sections live on /dev/ only
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await dev.click();
@@ -52,7 +53,7 @@ for (const width of [390, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await sitenav(page).getByRole("link", { name: "Project Hub" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator("#hub .hb-card").first()).toBeVisible();
+    await expect(page.locator("#hub .hb-spot").first()).toBeVisible();
     expect(bad).toEqual([]);
   });
 }
@@ -68,7 +69,7 @@ test("old dashboard links on / go to /dev/, keeping query and hash; ?mode=showca
   await expect(page).toHaveURL(/\/dev\/p\/Gamma$/); // the dev router turns the legacy hash into its path
   await open(page, "/?mode=showcase");
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator("#hub .hb-card").first()).toBeVisible();
+  await expect(page.locator("#hub .hb-spot").first()).toBeVisible();
   await open(page, "/p/Alpha");
   await expect(page).toHaveURL(/\/p\/Alpha$/);
 });
@@ -81,92 +82,151 @@ async function noNumbers(page: Page, sel: string) {
   expect(t).not.toMatch(/\d\s?%/);
 }
 
-test("hub home: featured, more projects, archive; pictures or a name tile; two clear actions per card", async ({ page }) => {
+test("hub home: intro, spotlight bento, gallery of the rest, archive; pictures or a name tile; clear actions", async ({ page }) => {
   const bad = errors(page);
-  const ps = [...projects, { ...projects[2], repo: "vincentwesley/old", name: "OldThing", archived: true, stage: "archived" }] as P[];
-  await open(page, "/", ps);
-  await expect(page.locator("#hub .hb-count")).toHaveText("4 projects");
-  const feat = page.locator(".hb-sec", { has: page.getByRole("heading", { name: "Featured" }) });
-  await expect(feat.locator(".hb-name")).toHaveText(["Alpha", "Beta <b>x</b>"]);
-  const more = page.locator(".hb-sec", { has: page.getByRole("heading", { name: "More projects" }) });
-  await expect(more.locator(".hb-name")).toHaveText(["NoSite", "Gamma"]);
-  const alpha = feat.locator(".hb-card").first();
-  await expect(alpha.locator("img.hb-media")).toHaveAttribute("src", /^\/shot\/Alpha\.jpg/); // snapshot wins
-  await expect(alpha.locator("img.hb-media")).toHaveAttribute("alt", "Screenshot of Alpha");
-  await expect(alpha.locator(".hb-tag")).toHaveText(["Live site", "v1.2.0"]);
-  await expect(alpha.locator(".hb-langs li")).toHaveText(["TypeScript", "CSS"]);
-  await expect(alpha.locator(".hb-when")).toHaveText(/^Updated /);
+  await open(page, "/", hubProjects);
+  await expect(page.locator(".hb-display")).toHaveText("Projects by Vin");
+  await expect(page.locator(".hb-count")).toHaveText("10 projects"); // archived not counted
+  const spot = page.locator(".hb-spotlight");
+  await expect(spot.locator(".hb-name")).toHaveText(["Alpha", "Beta <b>x</b>"]); // featured, in gallery order
+  await expect(spot.locator(".hb-spot--big .hb-name")).toHaveText("Alpha");
+  const alpha = spot.locator(".hb-spot").first();
+  await expect(alpha.locator(".hb-media img")).toHaveAttribute("src", /^\/shot\/Alpha\.jpg/); // snapshot wins
+  await expect(alpha.locator(".hb-media img")).toHaveAttribute("alt", "Screenshot of Alpha");
+  await expect(alpha.locator(".hb-media .hb-tile")).toHaveCount(1); // the name tile sits under the picture while it loads
+  await expect(alpha.locator(".hb-kind")).toHaveText("Web app");
   const tryIt = alpha.getByRole("link", { name: "Try it" });
   await expect(tryIt).toHaveAttribute("href", "https://alpha.example.com");
   await expect(tryIt).toHaveAttribute("target", "_blank");
   await expect(tryIt).toHaveAttribute("rel", /noopener/);
-  const nosite = more.locator(".hb-card").first();
-  await expect(nosite.locator(".hb-tile")).toContainText("NoSite"); // no image: typographic tile, never a fake picture
-  await expect(nosite.locator(".hb-tag")).toHaveText(["Project"]);
-  await expect(nosite.getByRole("link", { name: "Try it" })).toHaveCount(0);
+  // Gallery: everything else, newest first; spotlight projects are not repeated.
+  await expect(page.locator(".hb-results .hb-h")).toHaveText("More projects");
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Eta", "Delta", "Epsilon Parser", "Theta", "NoSite", "Zeta", "Iota", "Gamma"]);
+  const delta = page.locator(".hb-results .hb-card", { hasText: "Delta" });
+  await expect(delta.locator(".hb-kind")).toHaveText("Browser extension");
+  await expect(delta.locator(".hb-chip")).toHaveText(["JavaScript", "HTML", "chrome-extension", "manifest-v3"]); // names, never percentages
+  await expect(delta.locator(".hb-when")).toHaveText(/^Updated /);
+  await expect(delta.getByRole("link", { name: "Try it" })).toHaveCount(0);
+  await expect(delta.getByRole("link", { name: "View project: Delta" })).toHaveAttribute("href", "/p/Delta");
+  const zeta = page.locator(".hb-results .hb-card", { hasText: "Zeta" });
+  await expect(zeta.locator(".hb-tile")).toContainText("Zeta"); // no picture: typographic tile, never a fake one
+  await expect(zeta.locator(".hb-kind")).toHaveText("Experiment");
+  const eps = page.locator(".hb-results .hb-card", { hasText: "Epsilon" });
+  await expect(eps.locator(".hb-kind")).toHaveText("Library or tool");
+  await expect(eps.locator(".hb-repo")).toHaveText("Epsilon"); // README title as the heading, repo name beneath
+  await expect(eps.locator(".hb-blurb")).toHaveText("Epsilon parses things in tests."); // no description: the summary's first sentence
   const arch = page.locator(".hb-arch");
   await expect(arch.locator(".hb-card")).toBeHidden();
   await arch.locator("summary").click();
   await expect(arch.locator(".hb-name")).toHaveText("OldThing");
   await noNumbers(page, "#hub");
-  await alpha.getByRole("link", { name: "Read more about Alpha" }).click();
+  // The whole card opens the story page; so does its link.
+  await zeta.locator(".hb-blurb, .hb-card__body").first().click();
+  await expect(page).toHaveURL(/\/p\/Zeta$/);
+  await expect(page.locator("#pp h1")).toHaveText("Zeta");
+  await page.getByRole("link", { name: "← All projects" }).click();
+  await alpha.getByRole("link", { name: "Details about Alpha" }).click();
   await expect(page).toHaveURL(/\/p\/Alpha$/);
-  await expect(page.locator("#pp h1")).toHaveText("Alpha");
   await expect(page).toHaveTitle("Alpha · DevPulse");
   expect(bad).toEqual([]);
 });
 
-test("hub home: kind filter chips (aria-pressed, ?kind= in the URL, survives the story page round trip)", async ({ page }) => {
-  await open(page, "/");
-  const chips = page.getByRole("group", { name: "Show" }).getByRole("button");
-  await expect(chips).toHaveText(["All", "Live sites", "Other"]); // no extensions in the fixture: no empty chip
-  await expect(chips.first()).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Other" }).click();
-  await expect(page).toHaveURL(/\/\?kind=other$/);
-  await expect(page.getByRole("button", { name: "Other" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Other" })).toBeFocused();
-  await expect(page.locator("#hub .hb-name")).toHaveText(["NoSite"]);
-  await expect(page.getByRole("heading", { name: "Featured" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Live sites" }).click();
-  await expect(page.locator("#hub .hb-name")).toHaveText(["Alpha", "Beta <b>x</b>", "Gamma"]);
-  await page.getByRole("link", { name: "Read more about Gamma" }).click();
+test("hub home: kind tabs, search and order (URL round trip, back from a story page, empty state, / shortcut)", async ({ page }) => {
+  await open(page, "/", hubProjects);
+  const tabs = page.getByRole("group", { name: "Show" }).getByRole("button");
+  await expect(tabs).toHaveText(["All", "Web apps", "Extensions", "Libraries & tools", "Experiments"]);
+  await expect(tabs.first()).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Experiments" }).click();
+  await expect(page).toHaveURL(/\/\?kind=exp$/);
+  await expect(page.getByRole("button", { name: "Experiments" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".hb-spotlight")).toBeHidden();
+  await expect(page.locator(".hb-results .hb-h")).toHaveText("Experiments");
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["NoSite", "Zeta"]);
+  await expect(page.locator(".hb-count")).toHaveText("2 of 10 projects");
+  await page.getByRole("button", { name: "Web apps" }).click();
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Alpha", "Eta", "Beta <b>x</b>", "Iota", "Gamma"]);
+  await page.getByRole("combobox", { name: "Sort" }).selectOption("az");
+  await expect(page).toHaveURL(/kind=web&order=az$/);
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Alpha", "Beta <b>x</b>", "Eta", "Gamma", "Iota"]);
+  await page.getByRole("link", { name: "Details about Eta" }).click();
   await page.getByRole("link", { name: "← All projects" }).click();
-  await expect(page).toHaveURL(/\/\?kind=live$/);
-  await expect(page.locator("#hub .hb-name")).toHaveText(["Alpha", "Beta <b>x</b>", "Gamma"]);
-  await open(page, "/?kind=other"); // direct load keeps the filter (hub-redirect.js leaves ?kind alone)
-  await expect(page).toHaveURL(/\/\?kind=other$/);
-  await expect(page.locator("#hub .hb-name")).toHaveText(["NoSite"]);
+  await expect(page).toHaveURL(/\/\?kind=web&order=az$/);
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Alpha", "Beta <b>x</b>", "Eta", "Gamma", "Iota"]);
+  // Search (debounced), "/" focuses it, Escape clears; ?search= survives a reload and is not sent to /dev/.
+  await open(page, "/", hubProjects);
+  await page.keyboard.press("/");
+  const box = page.getByRole("searchbox", { name: "Search projects" });
+  await expect(box).toBeFocused();
+  await box.fill("parser");
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Epsilon Parser"]);
+  await expect(page).toHaveURL(/\/\?search=parser$/);
+  await expect(page.locator(".hb-results .hb-h")).toHaveText("Search results");
+  await box.fill("no such thing");
+  await expect(page.locator(".hb-empty")).toContainText("No projects match that.");
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(box).toHaveValue("");
+  await expect(page.locator(".hb-spotlight")).toBeVisible();
+  await open(page, "/?search=webgl2", hubProjects);
+  await expect(page).toHaveURL(/\/\?search=webgl2$/);
+  await expect(page.locator(".hb-results .hb-name")).toHaveText(["Eta"]);
+  await box.press("Escape");
+  await expect(page.locator(".hb-results .hb-name")).toHaveCount(8);
 });
 
-test("story page: real sections for a rich repo, none invented for a bare repo, no health numbers", async ({ page }) => {
+test("story page: case-study layout with real sections for a rich repo, none invented for a bare repo, no health numbers", async ({ page }) => {
   const bad = errors(page);
-  await open(page, "/p/Alpha");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page, "/p/Alpha", hubProjects);
   const pp = page.locator("#pp");
   await expect(pp.locator("h1")).toHaveText("Alpha");
+  await expect(pp.locator(".hb-kind").first()).toHaveText("Web app");
   await expect(pp.locator(".hb-tagline")).toHaveText("Alpha ships tiny tools fast");
-  await expect(pp.locator(".hb-sh")).toHaveText(["What it is", "What it can do", "Gallery", "Built with", "Try it yourself", "Latest release"]);
-  await expect(pp.locator(".hb-feats li").nth(1)).toHaveText("Zero <script>alert(1)</script> config"); // text, never markup
-  await expect(pp.locator(".hb-gal li")).toHaveCount(2); // README screenshots; the snapshot is already the hero
-  await expect(pp.locator(".hb-s-built .hb-tag")).toHaveText(["TypeScript", "CSS", "vite", "cloudflare"]);
-  await expect(pp.locator(".hb-s-built")).toContainText("MIT license");
-  await expect(pp.locator(".hb-steps li")).toHaveCount(3);
-  await expect(pp.locator(".hb-code code")).toHaveText("npm ci\nnpm run dev");
-  await expect(pp.locator(".hb-s-release")).toContainText("v1.2.0, released 2026-10-01");
-  const tryIt = pp.getByRole("link", { name: "Try it" });
+  const tryIt = pp.getByRole("link", { name: "Try it live" });
   await expect(tryIt).toHaveAttribute("href", "https://alpha.example.com");
   await expect(tryIt).toHaveAttribute("rel", /noopener/);
   await expect(pp.getByRole("link", { name: "Source on GitHub" })).toHaveAttribute("href", "https://github.com/vincentwesley/alpha");
+  await expect(pp.locator(".hb-fact dt")).toHaveText(["Kind", "Built with", "Latest release", "Activity"]);
+  await expect(pp.locator(".hb-fact dd").nth(2)).toHaveText("v1.2.0 · 2026-10-01");
+  await expect(pp.locator(".hb-main-pic img")).toHaveAttribute("src", /^\/shot\/Alpha\.jpg/);
+  await expect(pp.locator(".hb-thumb")).toHaveCount(3); // cover + 2 README screenshots
+  await expect(pp.locator(".hb-content .hb-sh")).toHaveText(["Overview", "Highlights", "How to try it", "Built with"]);
+  await expect(pp.getByRole("navigation", { name: "On this page" }).getByRole("link")).toHaveText(["Overview", "Highlights", "How to try it", "Built with"]);
+  await expect(pp.locator(".hb-feat").nth(1)).toHaveText("Zero <script>alert(1)</script> config"); // text, never markup
+  await expect(pp.locator(".hb-s-built .hb-chip")).toHaveText(["TypeScript", "CSS", "vite", "cloudflare"]);
+  await expect(pp.locator(".hb-s-built")).toContainText("MIT license");
+  await expect(pp.locator(".hb-steps li")).toHaveCount(3);
+  await expect(pp.locator(".hb-code code")).toHaveText("npm ci\nnpm run dev");
+  await expect(pp.getByRole("navigation", { name: "More projects" }).getByRole("link")).toHaveCount(2);
+  await expect(pp.locator(".hb-related .hb-name")).not.toHaveCount(0);
   await noNumbers(page, "#pp");
   expect(await page.evaluate(() => (window as { __pwn?: number }).__pwn)).toBeUndefined();
+  await pp.getByRole("navigation", { name: "On this page" }).getByRole("link", { name: "Built with" }).click();
+  await expect(pp.locator("#hb-sh-built")).toBeFocused();
 
-  await open(page, "/p/NoSite");
-  await expect(pp.locator("h1")).toHaveText("NoSite");
-  await expect(pp.locator(".hb-sh")).toHaveCount(0); // no README, highlights, pictures, languages, steps or release: nothing made up
-  await expect(pp.getByRole("link", { name: "Try it" })).toHaveCount(0);
-  await expect(pp.locator(".hb-tile")).toHaveCount(1);
+  await open(page, "/p/Delta", hubProjects); // extension: store link instead of "Try it live"; "Label: text" highlights get a title
+  await expect(pp.getByRole("link", { name: "Get the extension" })).toHaveAttribute("href", "https://chromewebstore.google.com/detail/delta/fixture");
+  await expect(pp.getByRole("link", { name: "Try it live" })).toHaveCount(0);
+  await expect(pp.locator(".hb-feat__t")).toHaveText(["Reader view", "Pause on this site"]);
+
+  await open(page, "/p/Epsilon", hubProjects); // README title + repo name, pitch from the summary, how it works before how to try it
+  await expect(pp.locator("h1")).toHaveText("Epsilon Parser");
+  await expect(pp.locator(".hb-hero .hb-repo")).toHaveText("Epsilon");
+  await expect(pp.locator(".hb-tagline")).toHaveText("Epsilon parses things in tests.");
+  await expect(page).toHaveTitle("Epsilon Parser · DevPulse");
+  await expect(pp.locator(".hb-content .hb-sh")).toHaveText(["Overview", "How it works", "How to try it", "Built with"]);
+  await expect(pp.locator(".hb-how li")).toHaveText(["It tokenises the input.", "Then it builds a tree."]);
+
+  await open(page, "/p/Zeta", hubProjects);
+  await expect(pp.locator("h1")).toHaveText("Zeta");
+  await expect(pp.locator(".hb-content .hb-sh")).toHaveText(["Built with"]); // only what the repo has
+  await expect(pp.getByRole("navigation", { name: "On this page" })).toHaveCount(0);
+  await expect(pp.getByRole("link", { name: "Try it live" })).toHaveCount(0);
+  await expect(pp.locator(".hb-main-tile")).toHaveCount(1); // no picture: a banner in the project's colours
   await noNumbers(page, "#pp");
+  await pp.getByRole("link", { name: /^Next project/ }).click();
+  await expect(page).toHaveURL(/\/p\/Iota$/);
 
-  await open(page, "/p/Nope");
+  await open(page, "/p/Nope", hubProjects);
   await expect(pp.locator("h1")).toHaveText("Project not found");
   await expect(page).toHaveTitle(/^Not found/);
   expect(bad).toEqual([]);
@@ -195,13 +255,15 @@ test("picture viewer: opens, arrows page, Escape closes, focus returns", async (
   await first.click();
   const dlg = page.getByRole("dialog", { name: "Picture viewer" });
   await expect(dlg).toBeVisible();
-  await expect(dlg.locator(".lbx__pos")).toHaveText("1 of 2");
+  await expect(dlg.locator(".lbx__pos")).toHaveText("3 of 4"); // snapshot, cover, then the README screenshots
   await expect(dlg.getByRole("button", { name: "Close" })).toBeFocused();
   await page.keyboard.press("ArrowRight");
-  await expect(dlg.locator(".lbx__pos")).toHaveText("2 of 2");
+  await expect(dlg.locator(".lbx__pos")).toHaveText("4 of 4");
   await expect(dlg.locator(".lbx__cap")).toHaveText("Alpha settings");
+  await page.keyboard.press("ArrowRight");
+  await expect(dlg.locator(".lbx__pos")).toHaveText("1 of 4");
   await page.keyboard.press("ArrowLeft");
-  await expect(dlg.locator(".lbx__pos")).toHaveText("1 of 2");
+  await expect(dlg.locator(".lbx__pos")).toHaveText("4 of 4");
   expect((await new AxeBuilder({ page }).include(".lbx").analyze()).violations).toEqual([]);
   await page.keyboard.press("Escape");
   await expect(dlg).toHaveCount(0);
@@ -272,7 +334,7 @@ for (const url of ["/", "/p/Alpha", "/dev/"]) {
     await open(page, url);
     const small = await page.evaluate(() => {
       const bad: string[] = [];
-      for (const e of document.querySelectorAll<HTMLElement>(".sitenav a, .hb-card a, .hb-chip, .hb-story a, .hb-story button, .hb-arch summary, .lg-stage, .hyg__btn, .snip button")) {
+      for (const e of document.querySelectorAll<HTMLElement>(".sitenav a, .hb-card a, .hb-spot a, .hb-tab, .hb-search__in, .hb-order__sel, .hb-me a, .hb-story a:not(.hb-toc a), .hb-story button, .hb-arch summary, .lg-stage, .hyg__btn, .snip button")) {
         const cs = getComputedStyle(e);
         if (cs.display === "none" || cs.visibility === "hidden" || e.closest("[hidden]")) continue;
         e.scrollIntoView({ block: "center", behavior: "instant" });
@@ -305,6 +367,6 @@ test("Project Hub raises no CSP / Trusted Types violations", async ({ page, requ
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Copy Alpha commands" }).click();
   await page.getByRole("link", { name: "← All projects" }).click();
-  await expect(page.locator("#hub .hb-card")).toHaveCount(4);
+  await expect(page.locator("#hub .hb-card, #hub .hb-spot")).toHaveCount(4);
   expect(bad).toEqual([]);
 });

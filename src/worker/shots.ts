@@ -1,5 +1,8 @@
 import type { Env } from "./env";
-import { SHOT_DAILY_MS, SHOT_MAX_BYTES, SHOT_MIN_BYTES, SHOT_MIN_GAP_S, SHOTS_PER_SLOT } from "./config";
+import { SHOT_DAILY_MS, SHOT_MAX_BYTES, SHOT_MIN_BYTES, SHOT_MIN_GAP_S, SHOT_SETTLE_MS, SHOTS_PER_SLOT } from "./config";
+
+/** Settle delay before each screenshot; tests set it to 0 (or a few ms). */
+export const shotTiming = { settleMs: SHOT_SETTLE_MS };
 
 // The slice of @cloudflare/puppeteer used here; tests inject a fake launcher.
 export interface ShotPage { setViewport(v: { width: number; height: number }): Promise<unknown>; goto(url: string, o: { waitUntil: "networkidle2"; timeout: number }): Promise<unknown>; screenshot(o: { type: "jpeg"; quality: number }): Promise<Uint8Array>; close(): Promise<unknown> }
@@ -40,6 +43,9 @@ export async function runShots(env: Env, now = new Date(), launch: Launch = laun
           await page.setViewport({ width: 1280, height: 800 });
           // A page that never goes network-idle (websockets, streaming) is still shot once the timeout hits; real navigation errors throw.
           await page.goto(s.url, { waitUntil: "networkidle2", timeout: 25_000 }).catch((e: Error) => { if (e?.name !== "TimeoutError") throw e; });
+          // Network-idle can fire before client-side data renders (charts still saying "Loading…"): give the page a fixed settle time.
+          // It runs inside the session, so it is counted in the session time that SHOT_DAILY_MS caps.
+          if (shotTiming.settleMs > 0) await new Promise((r) => setTimeout(r, shotTiming.settleMs));
           const b = new Uint8Array(await page.screenshot({ type: "jpeg", quality: 75 }));
           bytes = b.byteLength >= SHOT_MIN_BYTES && b.byteLength <= SHOT_MAX_BYTES ? b : null;
         } finally { await page.close().catch(() => {}); }

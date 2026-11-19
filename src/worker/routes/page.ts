@@ -1,6 +1,7 @@
 import type { Env } from "../env";
 import { canonicalName } from "../lib/alias";
 import { json, redirect } from "../lib/http";
+import { firstSentence, readShowcase } from "../lib/showcase-readme";
 import { NAME } from "./badge";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -41,7 +42,7 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
   const canon = NAME.test(name) ? await canonicalName(env, name) : null;
   if (canon && canon !== name) return redirect(`${base}${canon}`);
   const p = canon
-    ? await env.DB.prepare("SELECT name, description, tagline, COALESCE(cover_path, readme_image) AS cover_path FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
+    ? await env.DB.prepare("SELECT name, description, tagline, COALESCE(cover_path, readme_image) AS cover_path, showcase_json FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null; showcase_json: string | null }>()
     : null;
   const headers = new Headers(shell.headers); // keeps the static CSP / HSTS from public/_headers
   headers.delete("Content-Length"); headers.delete("ETag");
@@ -49,9 +50,10 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     headers.set("Cache-Control", "no-store");
     return new Response(req.method === "HEAD" ? null : shell.body, { status: 404, headers });
   }
+  const sc = readShowcase(p.showcase_json);
   const html = injectMeta(await shell.text(), {
-    title: dev ? `${p.name} · DevPulse Developer` : `${p.name} · DevPulse`,
-    description: clip(p.tagline || p.description || (dev ? `Live health of ${p.name}: uptime, CI, activity.` : `${p.name}, a project by Vin.`), 200),
+    title: dev ? `${p.name} · DevPulse Developer` : `${sc.title ?? p.name} · DevPulse`,
+    description: clip(p.tagline || p.description || firstSentence(sc.summary) || (dev ? `Live health of ${p.name}: uptime, CI, activity.` : `${p.name}, a project by Vin.`), 200),
     url: `${origin}${base}${p.name}`,
     image: `${origin}${p.cover_path ? `/img/${p.name}` : "/og.png"}`,
   });

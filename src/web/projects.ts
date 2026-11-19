@@ -3,17 +3,16 @@ import "./ledger.css";
 import { add, el, fmtDate, NODATA, show, STAGE_LABEL, STAGES, type Commit, type Project, type Res, type Status } from "./api";
 import { icon } from "./icons";
 import { ciOf, dayClass, fmtPct, openIncidentRepos, plural, relTime, rowState, safeColor, siteFor, sortFilter, STATE_TEXT, type Sort, type StageFilter, type StatusFilter } from "./hubutil";
-import { keepMode, setMode } from "./mode";
 import { navigate, openDetail, wide } from "./nav";
 import { checkedText, metaLine } from "./stage";
 import { linear } from "./scale";
 import { lastBars, windowPct } from "./status";
-import { DEFAULT_VIEW, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
+import { DEFAULT_VIEW, DEV_HOME, parseProjectPath, parseUrl, toProjectPath, toSearch } from "./urlstate";
 
 // Toolbar state, seeded from the URL, survives the periodic re-render.
 const { p: _p, ...seed } = parseUrl(location.search, "");
 const view: typeof DEFAULT_VIEW = seed;
-const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + keepMode(toSearch(view)) + location.hash);
+const saveUrl = () => parseProjectPath(location.pathname) === null && history.replaceState(history.state, "", location.pathname + toSearch(view) + location.hash);
 
 /** Sparkline of weekly churn; role=img so the cell has a text alternative. */
 function spark(vals: number[], label: string) {
@@ -117,9 +116,8 @@ export function markSelected(name: string | null, scroll = false) {
 export const topicNow = () => view.topic;
 /** Header verdict pill: show only the failing projects and jump to the ledger. */
 export function showFailing() {
-  setMode("dev"); // the ledger lives in developer mode
   view.status = "failing";
-  if (document.body.dataset.view) navigate("/");
+  if (document.body.dataset.view) navigate(DEV_HOME);
   draw?.();
   document.getElementById("projects")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   document.querySelector<HTMLElement>("#ledger .lg-chip[aria-pressed='true']")?.focus({ preventScroll: true });
@@ -127,7 +125,7 @@ export function showFailing() {
 /** Bento "Repo hygiene": list only the repos with gaps, then jump to the ledger. */
 export function showGaps() {
   view.stage = "gaps";
-  if (document.body.dataset.view) navigate("/");
+  if (document.body.dataset.view) navigate(DEV_HOME);
   draw?.();
   document.getElementById("projects")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   document.querySelector<HTMLElement>("#ledger .lg-stage")?.focus({ preventScroll: true });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Project } from "../../src/web/api";
 import { initialOf, readmeBlocks, sortFilter, tileBackground, tileColors } from "../../src/web/hubutil";
-import { parseProjectPath, toProjectPath } from "../../src/web/urlstate";
+import { parseHubPath, parseProjectPath, toHubPath, toProjectPath } from "../../src/web/urlstate";
 
 const mk = (name: string, featured: boolean, pushedAt: string | null) => ({ name, featured, pushedAt, stars: 0, topics: [], up: true }) as unknown as Project;
 
@@ -45,19 +45,15 @@ describe("readmeBlocks", () => {
 });
 
 describe("project path", () => {
-  it("parses and round-trips /p/<name>", () => {
-    expect(parseProjectPath("/p/Alpha")).toBe("Alpha");
-    expect(parseProjectPath("/p/Alpha/")).toBe("Alpha");
+  it("parses and round-trips /dev/p/<name> (developer) and /p/<name> (hub)", () => {
+    expect(parseProjectPath("/dev/p/Alpha")).toBe("Alpha");
+    expect(parseProjectPath("/dev/p/Alpha/")).toBe("Alpha");
     expect(parseProjectPath(toProjectPath("Beta <b>x</b>"))).toBe("Beta <b>x</b>");
-    expect(toProjectPath("a b")).toBe("/p/a%20b");
+    expect(toProjectPath("a b")).toBe("/dev/p/a%20b");
+    expect(parseHubPath(toHubPath("Beta <b>x</b>"))).toBe("Beta <b>x</b>");
   });
   it("rejects everything else", () => {
-    for (const p of ["/", "/p", "/p/", "/p/a/b", "/x/p/a", "/p/%E0%A4%A"]) expect(parseProjectPath(p), p).toBeNull();
+    for (const p of ["/", "/dev/", "/dev/p", "/dev/p/", "/dev/p/a/b", "/p/a", "/x/dev/p/a", "/dev/p/%E0%A4%A"]) expect(parseProjectPath(p), p).toBeNull();
+    for (const p of ["/", "/p", "/p/", "/p/a/b", "/x/p/a", "/dev/p/a", "/p/%E0%A4%A"]) expect(parseHubPath(p), p).toBeNull();
   });
-});
-
-describe("featured sorts first under the default sort", () => {
-  const ps = [mk("new", false, "2026-10-20T00:00:00Z"), mk("old-featured", true, "2026-01-01T00:00:00Z"), mk("legacy", false, null)];
-  it("default sort", () => expect(sortFilter(ps, "active", "", "all").map((p) => p.name)).toEqual(["old-featured", "new", "legacy"]));
-  it("other sorts ignore it", () => expect(sortFilter(ps, "name", "", "all").map((p) => p.name)).toEqual(["legacy", "new", "old-featured"]));
 });

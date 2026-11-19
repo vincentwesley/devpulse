@@ -12,7 +12,7 @@ import status from "./fixtures/status.json" with { type: "json" };
 test.use({ serviceWorkers: "block" });
 
 const bodies: Record<string, unknown> = { projects, heatmap, commits, posts, stats, languages, status };
-async function open(page: Page, url = "/") {
+async function open(page: Page, url = "/dev/") {
   await page.route("**/api/*", (route) => {
     const name = new URL(route.request().url()).pathname.split("/").pop()!;
     return route.fulfill({ json: bodies[name] ?? [] });
@@ -88,7 +88,7 @@ test("filter chips, language select, search and clear drive the URL", async ({ p
 });
 
 test("filters restore from the URL (legacy status=up too)", async ({ page }) => {
-  await open(page, "/?sort=lang&lang=TypeScript&status=up");
+  await open(page, "/dev/?sort=lang&lang=TypeScript&status=up");
   expect(await names(page)).toEqual(["Alpha"]);
   await expect(page.locator(".lg-lang")).toHaveValue("TypeScript");
   await expect(page.getByRole("button", { name: /^Live/ })).toHaveAttribute("aria-pressed", "true");
@@ -104,12 +104,12 @@ test("keyboard: j/k move rows, Enter opens the pane, f searches, Esc closes", as
   await page.keyboard.press("k");
   await expect(page.locator("a.lg-name").first()).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/p\/Alpha$/);
+  await expect(page).toHaveURL(/\/dev\/p\/Alpha$/);
   await expect(pane(page).getByRole("heading", { level: 3, name: "Alpha" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(pane(page)).toBeHidden();
   await expect(page.locator("a.lg-name").first()).toBeFocused();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dev\/$/);
   await page.keyboard.press("f");
   await expect(page.getByRole("searchbox", { name: "Search" })).toBeFocused();
   await page.keyboard.type("jk"); // typing in the field is not a shortcut
@@ -123,9 +123,9 @@ test("pane: row click fills it, URL /p/<name>, Back closes, Forward reopens, swi
   await page.locator(".proj", { hasText: "Alpha" }).click();
   await expect(pane(page)).toBeVisible();
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Alpha");
-  await expect(page).toHaveURL(/\/p\/Alpha$/);
+  await expect(page).toHaveURL(/\/dev\/p\/Alpha$/);
   await expect(page.locator("#pp")).toBeHidden();
-  await expect(page).toHaveTitle("Alpha · DevPulse");
+  await expect(page).toHaveTitle("Alpha · DevPulse Developer");
   expect(await page.evaluate(() => history.length)).toBe(before + 1);
   await expect(page.locator(".proj", { hasText: "Alpha" }).locator("a.lg-name")).toHaveAttribute("aria-current", "true");
   await page.locator(".proj", { hasText: "Gamma" }).click(); // switch: replaces, still one extra entry
@@ -133,18 +133,18 @@ test("pane: row click fills it, URL /p/<name>, Back closes, Forward reopens, swi
   expect(await page.evaluate(() => history.length)).toBe(before + 1);
   await page.goBack();
   await expect(pane(page)).toBeHidden();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page).toHaveTitle("DevPulse");
+  await expect(page).toHaveURL(/\/dev\/$/);
+  await expect(page).toHaveTitle("DevPulse Developer");
   await page.goForward();
   await expect(pane(page)).toBeVisible();
   await pane(page).getByRole("button", { name: /Close Gamma details/ }).click();
   await expect(pane(page)).toBeHidden();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dev\/$/);
 });
 
 test("pane content: stats, uptime strip, README inert, chart readout, links, snippets", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await open(page, "/p/Alpha");
+  await open(page, "/dev/p/Alpha");
   const p = pane(page);
   await expect(p).toBeVisible();
   await expect(p).toContainText("Alpha ships tiny tools fast");
@@ -173,7 +173,7 @@ test("pane content: stats, uptime strip, README inert, chart readout, links, sni
 });
 
 test("pane: Beta shows a down site; no live site / no commits are friendly", async ({ page }) => {
-  await open(page, "/p/Beta%20%3Cb%3Ex%3C%2Fb%3E");
+  await open(page, "/dev/p/Beta%20%3Cb%3Ex%3C%2Fb%3E");
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Beta <b>x</b>");
   await expect(pane(page).locator(".dp-status[data-s=attn]")).toContainText("Down");
   await page.locator(".proj", { hasText: "NoSite" }).click();
@@ -184,7 +184,7 @@ test("pane: Beta shows a down site; no live site / no commits are friendly", asy
 });
 
 test("pane topic chip filters the ledger and toggles", async ({ page }) => {
-  await open(page, "/p/Alpha");
+  await open(page, "/dev/p/Alpha");
   const chip = pane(page).getByRole("button", { name: "vite", exact: true });
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "true");
@@ -195,21 +195,21 @@ test("pane topic chip filters the ledger and toggles", async ({ page }) => {
 });
 
 test("deep link /p/<name> cold load opens the pane; unknown name is a friendly page; legacy #p/ redirects", async ({ page }) => {
-  await open(page, "/p/Alpha");
+  await open(page, "/dev/p/Alpha");
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Alpha");
   await expect(page.locator(".proj", { hasText: "Alpha" })).toHaveAttribute("data-sel", "");
-  await page.goto("/p/Beta%20%3Cb%3Ex%3C%2Fb%3E");
+  await page.goto("/dev/p/Beta%20%3Cb%3Ex%3C%2Fb%3E");
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Beta <b>x</b>");
   await expect(pane(page).locator("h3 b")).toHaveCount(0);
-  await page.goto("/#p/Gamma");
-  await expect(page).toHaveURL(/\/p\/Gamma$/);
+  await page.goto("/dev/#p/Gamma");
+  await expect(page).toHaveURL(/\/dev\/p\/Gamma$/);
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Gamma");
-  await page.goto("/p/Nope");
+  await page.goto("/dev/p/Nope");
   await expect(page.locator("#pp h1")).toHaveText("Project not found");
   await expect(page.locator("#pp")).toContainText("No project named “Nope”.");
-  await expect(page).toHaveTitle("Not found · DevPulse");
+  await expect(page).toHaveTitle("Not found · DevPulse Developer");
   await page.getByRole("link", { name: "← All projects" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dev\/$/);
   await expect(page.locator(".proj")).toHaveCount(4);
 });
 
@@ -227,7 +227,7 @@ test("palette: / opens it, fuzzy pick opens the pane and selects the row, Ctrl+K
   await expect(pal.getByRole("option").first()).toContainText("Gamma");
   await page.keyboard.press("Enter");
   await expect(pal).toBeHidden();
-  await expect(page).toHaveURL(/\/p\/Gamma$/);
+  await expect(page).toHaveURL(/\/dev\/p\/Gamma$/);
   await expect(pane(page).getByRole("heading", { level: 3 })).toHaveText("Gamma");
   await expect(page.locator(".proj", { hasText: "Gamma" })).toHaveAttribute("data-sel", "");
   await page.goBack();
@@ -257,12 +257,12 @@ test("phone: tap opens the full page (h1 focused, title), Back restores the list
   await open(page);
   const baseTitle = await page.title();
   await page.locator(".proj", { hasText: "Alpha" }).click();
-  await expect(page).toHaveURL(/\/p\/Alpha$/);
+  await expect(page).toHaveURL(/\/dev\/p\/Alpha$/);
   await expect(page.locator("#pp h1")).toHaveText("Alpha");
   await expect(page.locator("#pp h1")).toBeFocused();
   await expect(pane(page)).toBeHidden();
   await expect(page.locator("#projects")).toBeHidden();
-  await expect(page).toHaveTitle("Alpha · DevPulse");
+  await expect(page).toHaveTitle("Alpha · DevPulse Developer");
   await expect(page.locator("#pp .up-bar--lg i")).toHaveCount(30);
   await page.goBack();
   await expect(page.locator("#pp")).toBeHidden();
@@ -295,7 +295,7 @@ for (const theme of ["dark", "light"]) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
-      await open(page, width === 1280 ? "/p/Alpha" : "/");
+      await open(page, width === 1280 ? "/dev/p/Alpha" : "/dev/");
       if (width === 1280) await expect(pane(page)).toBeVisible();
       await page.locator("#projects").scrollIntoViewIfNeeded();
       expect((await new AxeBuilder({ page }).include("#projects").analyze()).violations).toEqual([]);
@@ -308,10 +308,10 @@ for (const theme of ["dark", "light"]) {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
-    await open(page, "/p/Alpha");
+    await open(page, "/dev/p/Alpha");
     await expect(page.locator("#pp h1")).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    await page.goto("/p/Nope");
+    await page.goto("/dev/p/Nope");
     await expect(page.locator("#pp h1")).toHaveText("Project not found");
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });

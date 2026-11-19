@@ -69,10 +69,10 @@ describe("snippet", () => {
       "",
       "[![Current screenshot of koi-pond](https://d.dev/shot/koi-pond.jpg)](https://o.github.io/koi-pond/)",
       "",
-      "[Live site](https://o.github.io/koi-pond/) · [Health on DevPulse](https://d.dev/p/koi-pond)",
+      "[Live site](https://o.github.io/koi-pond/) · [Health on DevPulse](https://d.dev/dev/p/koi-pond)",
       "<!-- devpulse:end -->",
     ].join("\n"));
-    expect(snippet("https://d.dev", "x", null)).toContain("](https://d.dev/p/x)\n\n[Health on DevPulse]");
+    expect(snippet("https://d.dev", "x", null)).toContain("](https://d.dev/p/x)\n\n[Health on DevPulse](https://d.dev/dev/p/x)");
     expect(snippet("https://d.dev", "x", "https://x.dev/a(b)")).toContain("https://x.dev/a%28b%29");
   });
 });

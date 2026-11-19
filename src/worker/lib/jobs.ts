@@ -51,6 +51,9 @@ export function staleSince(j: JobRow | undefined, limit: number, t = now()): num
 
 export const daysLeft = (exp: string | null | undefined, t = now()) => (exp && Number.isFinite(+exp) ? Math.floor((+exp - t) / 86400) : null);
 
+/** Fixed error codes only: anything else in the column (never expected) is reported as null, so no free text can leak. */
+const CODES = new Set<string>(["auth", "rate", "http", "parse", "budget", "unknown"]);
+
 export function computeHealth(rows: JobRow[], exp: string | null | undefined, t = now()) {
   const by = new Map(rows.map((r) => [r.job, r]));
   const since = [staleSince(by.get("github"), GITHUB_STALE_S, t), staleSince(by.get("uptime"), UPTIME_STALE_S, t)].filter((x): x is number => x != null);
@@ -58,6 +61,6 @@ export function computeHealth(rows: JobRow[], exp: string | null | undefined, t 
     stale: since.length > 0,
     since: since.length ? new Date(Math.min(...since) * 1000).toISOString() : null,
     tokenDaysLeft: daysLeft(exp, t),
-    jobs: Object.fromEntries(rows.map((r) => [r.job, { ageMin: r.last_ok == null ? null : Math.max(0, Math.floor((t - r.last_ok) / 60)), ok: r.last_err_code == null && r.last_ok != null }])),
+    jobs: Object.fromEntries(rows.map((r) => [r.job, { ageMin: r.last_ok == null ? null : Math.max(0, Math.floor((t - r.last_ok) / 60)), ok: r.last_err_code == null && r.last_ok != null, code: CODES.has(r.last_err_code ?? "") ? r.last_err_code : null }])),
   };
 }

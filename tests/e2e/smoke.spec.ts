@@ -26,11 +26,11 @@ const loaded = (page: Page) => expect(page.locator("body")).toHaveAttribute("dat
 
 test("populated state", async ({ page }) => {
   await mock(page, "full");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".proj")).toHaveCount(4);
-  await expect(page.locator(".proj a.lg-name").first()).toHaveAttribute("href", "/p/Alpha");
+  await expect(page.locator(".proj a.lg-name").first()).toHaveAttribute("href", "/dev/p/Alpha");
   await expect(page.locator(".proj").nth(1)).toContainText("Beta <b>x</b>"); // escaped, not parsed
   await expect(page.locator(".proj", { hasText: "NoSite" }).locator(".up-bar")).toHaveCount(0);
   await expect(page.locator(".proj").nth(3)).toContainText("no data yet");
@@ -41,7 +41,7 @@ test("populated state", async ({ page }) => {
 
 test("empty state", async ({ page }) => {
   await mock(page, "empty");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   for (const id of SECTIONS.filter((s) => s !== "posts")) await expect(page.locator(`#${id} .empty`)).toContainText("no data yet");
   await expect(page.locator("#posts")).toBeHidden(); // no posts: section and tab are hidden, not a permanent "no data yet"
@@ -49,7 +49,7 @@ test("empty state", async ({ page }) => {
 
 test("API failure state", async ({ page }) => {
   await mock(page, "fail");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   for (const id of SECTIONS) await expect(page.locator(`#${id} .empty`)).toContainText("couldn't load");
   await expect(page.locator(".creator")).toBeVisible();
@@ -57,7 +57,7 @@ test("API failure state", async ({ page }) => {
 
 test("theme toggle persists", async ({ page }) => {
   await mock(page, "full");
-  await page.goto("/");
+  await page.goto("/dev/");
   await page.click("#theme");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
@@ -67,7 +67,7 @@ test("theme toggle persists", async ({ page }) => {
 test("no horizontal scroll at 375px", async ({ page }) => {
   await mock(page, "full");
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -77,7 +77,7 @@ for (const theme of ["dark", "light"]) {
     test(`axe ${theme} ${mode}`, async ({ page }) => {
       await mock(page, mode);
       await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
-      await page.goto("/");
+      await page.goto("/dev/");
       await loaded(page);
       await page.locator(".creator").scrollIntoViewIfNeeded();
       const r = await new AxeBuilder({ page }).analyze();
@@ -93,7 +93,7 @@ for (const theme of ["dark", "light"]) {
       await mock(page, "full");
       await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
       await page.setViewportSize({ width: w, height: 900 });
-      await page.goto("/");
+      await page.goto("/dev/");
       await loaded(page);
       await page.screenshot({ path: `docs/screens/m1-${w}-${theme}.png`, fullPage: true });
     });
@@ -102,7 +102,7 @@ for (const theme of ["dark", "light"]) {
 
 test("project ledger: columns, sort and filter", async ({ page }) => {
   await mock(page, "full");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   const first = page.locator(".proj").first();
   await expect(first).toContainText("Alpha ships tiny tools fast");
@@ -126,7 +126,7 @@ for (const theme of ["dark", "light"]) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
-    await page.goto("/");
+    await page.goto("/dev/");
     await loaded(page);
     const opener = page.locator("a.lg-name", { hasText: "Beta" });
     await opener.focus();
@@ -147,7 +147,7 @@ for (const theme of ["dark", "light"]) {
 
 test("status section: strips, readout, incidents", async ({ page }) => {
   await mock(page, "full");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   const alpha = page.locator("#status .st__site").first();
   await expect(alpha.locator(".st__bar")).toHaveCount(90);
@@ -167,7 +167,7 @@ test("status section: strips, readout, incidents", async ({ page }) => {
 test("status: no incidents empty state", async ({ page }) => {
   await mock(page, "full");
   await page.route("**/api/status", (r) => r.fulfill({ json: { ...status, incidents: [] } }));
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#status .st__inc")).toContainText("no incidents in 90 days");
 });
@@ -176,7 +176,7 @@ test("activity: show more", async ({ page }) => {
   const many = Array.from({ length: 14 }, (_, i) => ({ repo: "alpha", sha: `abcdef${i}`, message: `Commit ${i}`, author: "v", ts: new Date(Date.parse("2026-10-08T10:00:00Z") - i * 36e5 * 7).toISOString(), url: "https://github.com/o/alpha/commit/x" }));
   await mock(page, "full");
   await page.route("**/api/commits", (r) => r.fulfill({ json: many }));
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#activity .act li")).toHaveCount(10);
   await page.getByRole("button", { name: /Show more/ }).click();
@@ -186,7 +186,7 @@ test("activity: show more", async ({ page }) => {
 test("reduced motion keeps content visible", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await mock(page, "full");
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#activity .act li").first()).toHaveCSS("opacity", "1");
   await expect(page.locator("#tile-totals .tot__v").nth(1)).toHaveText("3.5K");

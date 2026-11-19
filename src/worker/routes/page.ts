@@ -24,16 +24,22 @@ export function injectMeta(html: string, m: Meta): string {
   return html;
 }
 
-/** GET /p/:name -> the SPA shell with per-project social tags. Unknown name: same shell, status 404 (the client shows its own not-found). */
+/**
+ * GET /p/:name -> the Project Hub shell ("/") with per-project social tags; GET /dev/p/:name -> the Developer shell ("/dev/").
+ * Unknown name: same shell, status 404 (the client shows its own not-found).
+ */
 export async function route(req: Request, env: Env, pathname: string): Promise<Response | null> {
-  if ((req.method !== "GET" && req.method !== "HEAD") || !pathname.startsWith("/p/")) return null;
-  const name = pathname.slice(3).replace(/\/$/, "");
+  if (req.method !== "GET" && req.method !== "HEAD") return null;
+  const dev = pathname.startsWith("/dev/p/");
+  if (!dev && !pathname.startsWith("/p/")) return null;
+  const base = dev ? "/dev/p/" : "/p/";
+  const name = pathname.slice(base.length).replace(/\/$/, "");
   const origin = new URL(req.url).origin;
-  // "/" not "/index.html": the assets binding redirects the latter.
-  const shell = await env.ASSETS.fetch(new Request(new URL("/", origin)));
+  // "/" and "/dev/" not ".../index.html": the assets binding redirects the latter.
+  const shell = await env.ASSETS.fetch(new Request(new URL(dev ? "/dev/" : "/", origin)));
   if (!shell.ok) return json({ error: "not found" }, 404);
   const canon = NAME.test(name) ? await canonicalName(env, name) : null;
-  if (canon && canon !== name) return redirect(`/p/${canon}`);
+  if (canon && canon !== name) return redirect(`${base}${canon}`);
   const p = canon
     ? await env.DB.prepare("SELECT name, description, tagline, COALESCE(cover_path, readme_image) AS cover_path FROM projects WHERE name = ?").bind(canon).first<{ name: string; description: string | null; tagline: string | null; cover_path: string | null }>()
     : null;
@@ -44,9 +50,9 @@ export async function route(req: Request, env: Env, pathname: string): Promise<R
     return new Response(req.method === "HEAD" ? null : shell.body, { status: 404, headers });
   }
   const html = injectMeta(await shell.text(), {
-    title: `${p.name} · DevPulse`,
-    description: clip(p.tagline || p.description || `Live health of ${p.name}: uptime, CI, activity.`, 200),
-    url: `${origin}/p/${p.name}`,
+    title: dev ? `${p.name} · DevPulse Developer` : `${p.name} · DevPulse`,
+    description: clip(p.tagline || p.description || (dev ? `Live health of ${p.name}: uptime, CI, activity.` : `${p.name}, a project by Vin.`), 200),
+    url: `${origin}${base}${p.name}`,
     image: `${origin}${p.cover_path ? `/img/${p.name}` : "/og.png"}`,
   });
   headers.set("Cache-Control", "public, max-age=300");

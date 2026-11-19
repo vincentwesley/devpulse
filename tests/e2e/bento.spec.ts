@@ -21,7 +21,7 @@ async function open(page: Page, over: Record<string, unknown> = {}, fail: string
     if (fail.includes(name)) return r.fulfill({ status: 500, body: "boom" });
     return r.fulfill({ json: over[name] ?? bodies[name] ?? [] });
   });
-  await page.goto("/");
+  await page.goto("/dev/");
   await expect(page.locator("body")).toHaveAttribute("data-loaded", "1");
 }
 const box = async (l: ReturnType<Page["locator"]>) => (await l.boundingBox())!;
@@ -31,7 +31,7 @@ test("featured: name, links, languages, status", async ({ page }) => {
   await open(page);
   const f = page.locator("#tile-featured");
   await expect(f.locator("h3")).toHaveCount(1);
-  await expect(f.locator("a", { hasText: "View project" })).toHaveAttribute("href", /^\/p\//);
+  await expect(f.locator("a", { hasText: "View project" })).toHaveAttribute("href", /^\/dev\/p\//);
   await expect(f.locator("a", { hasText: "Repo" })).toHaveAttribute("rel", "noopener noreferrer");
   await expect(f.locator(".ft__media")).toBeVisible();
   await expect(f.locator(".ft__langs li").first()).toBeVisible();
@@ -71,7 +71,7 @@ test("pulse: one cell per repo, summary, readout, navigate on select", async ({ 
   await page.keyboard.press("ArrowRight");
   await expect(cells.nth(1)).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/p\//);
+  await expect(page).toHaveURL(/\/dev\/p\//);
 });
 
 test("pulse: attention state has a name and a glyph, not just colour", async ({ page }) => {

@@ -47,7 +47,12 @@ self.addEventListener("fetch", (e) => {
   else if (u.pathname.startsWith("/assets/"))
     e.respondWith(caches.open(ASSETS).then(async (c) => (await c.match(r)) ?? fetch(r).then((res) => { if (res.ok) e.waitUntil(c.put(r, res.clone()).catch(() => {})); return res; })));
   else if (u.pathname.startsWith("/img/") || u.pathname.startsWith("/shot/")) e.respondWith(imgFirst(e, r));
-  else if (r.mode === "navigate" && u.pathname.startsWith("/p/")) // project page: network, offline falls back to the cached "/" shell (same app)
-    e.respondWith(fetch(r).catch(async () => (await (await caches.open(PAGE)).match("/")) ?? Response.error()));
-  else if (r.mode === "navigate" && u.pathname === "/") e.respondWith(networkFirst(e, r, PAGE, "/"));
+  else if (r.mode === "navigate") {
+    // Two pages: the Project Hub ("/", "/p/<name>") and Developer ("/dev/", "/dev/p/<name>"). Each shell is cached network-first;
+    // a project page falls back to its page's cached shell offline (same app, client routed).
+    const shell = u.pathname === "/" || u.pathname.startsWith("/p/") ? "/" : u.pathname === "/dev/" || u.pathname.startsWith("/dev/p/") ? "/dev/" : null;
+    if (!shell) return;
+    if (u.pathname === shell) e.respondWith(networkFirst(e, r, PAGE, shell));
+    else e.respondWith(fetch(r).catch(async () => (await (await caches.open(PAGE)).match(shell)) ?? Response.error()));
+  }
 });

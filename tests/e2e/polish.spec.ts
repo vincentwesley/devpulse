@@ -11,7 +11,7 @@ import status from "./fixtures/status.json" with { type: "json" };
 test.use({ serviceWorkers: "block" });
 
 const bodies: Record<string, unknown> = { projects, heatmap, commits, posts, stats, languages, status };
-async function open(page: Page, url = "/", over: Record<string, unknown> = {}) {
+async function open(page: Page, url = "/dev/", over: Record<string, unknown> = {}) {
   await page.route("**/api/*", (r) => {
     const name = new URL(r.request().url()).pathname.split("/").pop()!;
     return r.fulfill({ json: over[name] ?? bodies[name] ?? [] });
@@ -44,7 +44,7 @@ test("390: one Sort select replaces the headers; rows have no dashes and a full-
 
 test("1280: the sort select is hidden on desktop and the Activity/Uptime columns drop when empty", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await open(page, "/", {
+  await open(page, "/dev/", {
     projects: (projects as Record<string, unknown>[]).map((p) => ({ ...p, codeFreq: [], url: null })),
     status: { ...status, sites: [], incidents: [] },
   });
@@ -79,10 +79,10 @@ test("pulse lists attention repos by name (max 3, then +N)", async ({ page }) =>
   await open(page);
   const chips = page.locator("#tile-pulse .pulse__chip");
   await expect(chips.first()).toContainText("Beta");
-  await expect(chips.first()).toHaveAttribute("href", /^\/p\//);
+  await expect(chips.first()).toHaveAttribute("href", /^\/dev\/p\//);
   const bad = (projects as Record<string, unknown>[]).map((p) => ({ ...p, ciState: "FAILURE" }));
   await page.unroute("**/api/*");
-  await open(page, "/", { projects: bad });
+  await open(page, "/dev/", { projects: bad });
   await expect(page.locator("#tile-pulse .pulse__chip")).toHaveCount(3);
   await expect(page.locator("#tile-pulse .pulse__more")).toHaveText("+1");
 });
@@ -100,7 +100,7 @@ test("mobile: Pulse comes before Featured; the placeholder cover is capped", asy
 test("README is clamped with a Read more toggle", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const long = Array.from({ length: 12 }, (_, i) => `Line ${i} of a longer readme paragraph.`).join("\n");
-  await open(page, "/p/Alpha", { projects: (projects as Record<string, unknown>[]).map((p) => (p.name === "Alpha" ? { ...p, readme: long } : p)) });
+  await open(page, "/dev/p/Alpha", { projects: (projects as Record<string, unknown>[]).map((p) => (p.name === "Alpha" ? { ...p, readme: long } : p)) });
   const read = page.locator("#detail-pane .pp-read");
   const more = page.locator("#detail-pane").getByRole("button", { name: "Read more" });
   await expect(read).toHaveAttribute("data-clamped", "");

@@ -36,12 +36,37 @@ Each job writes a heartbeat to `jobs` (an error code `auth|rate|http|parse|budge
 ## Public routes
 `/api/{projects,status,stats,languages,heatmap,commits,posts,health}`, `/badge/:name.svg`, `/card/:name.svg` (495x120 project card), `/grid.svg` (every public, non-archived repo with its stage: a self-updating image for a profile README), `/feed.xml` (Atom: commits, releases, posts), and the sheet-sync view `/sync.md`, `/sync.json`, `/sync.csv`, `/sync/snippets.md` (below). All GET, edge-cached 300s (keyed on path only; `/api/stats` 60s because it carries `health`), unknown names return a grey "unknown" SVG with status 404.
 
-Project pages: `/p/:name` serves the app shell with per-project title, description, canonical, Open Graph and Twitter tags (values from D1, HTML-escaped; unknown names get the shell with status 404, `no-store`). `/img/:name` serves a project's declared cover image, else the first image in its README; `/img/:name/:i` (0-5) serves README showcase image i; `/shot/:name.jpg` serves the live-site screenshot (see *Snapshots*).
+Project pages: `/p/:name` serves the Project Hub shell and `/dev/p/:name` the Developer shell, each with per-project title, description, canonical, Open Graph and Twitter tags (values from D1, HTML-escaped; unknown names get the shell with status 404, `no-store`). `/img/:name` serves a project's declared cover image, else the first image in its README; `/img/:name/:i` (0-5) serves README showcase image i; `/shot/:name.jpg` serves the live-site screenshot (see *Snapshots*).
 
 ## Layout and keyboard
-Header: verdict pill (click "N need attention" to filter the ledger to Failing), updated-ago, command palette and theme buttons; a slim banner appears when data is stale or the GitHub token is near expiry (`/api/health`). Then a bento strip (Pulse, Featured, Contributions, Totals, Languages), the **project ledger** (search, status chips, language filter, sortable columns; a Sort select replaces the headers on phones; the Activity and Uptime columns hide while nobody has data), a sticky detail pane on desktop or a full `/p/<name>` page on phones, then Activity, Uptime, Latest posts and the credits card. Dark by default, light via the toggle. Print gives a light status report (no controls, banner, pane or credits art).
+Header: verdict pill (click "N need attention" to filter the ledger to Failing), updated-ago, command palette and theme buttons; a slim banner appears when data is stale or the GitHub token is near expiry (`/api/health`). Then a bento strip (Pulse, Featured, Contributions, Totals, Languages), the **project ledger** (search, status chips, language filter, sortable columns; a Sort select replaces the headers on phones; the Activity and Uptime columns hide while nobody has data), a sticky detail pane on desktop or a full `/dev/p/<name>` page on phones, then Activity, Uptime, Latest posts and the credits card. Dark by default, light via the toggle. Print gives a light status report (no controls, banner, pane or credits art).
 
-**Modes.** A header toggle switches between **Developer** (the health dashboard above, default) and **Showcase** (`?mode=showcase`, remembered per browser): a gallery of every public project, and on `/p/<name>` a full showcase generated only from the repo itself: what it does (tagline, description, README summary), the live snapshot, README highlights and screenshots, the language breakdown, topics and license, the README's getting-started steps and commands, numbers (commits, approximate lines changed, stars, dates, release) and recent commits. Sections without real data are left out; nothing is invented.
+**Two pages.** Like a portfolio's professional / personal sides, DevPulse has two separate pages with a header switch (two links, the current one marked `aria-current="page"`; on phones the switch sits at the top of the page):
+- **Project Hub** at `/` (and `/p/<name>` per project): for visitors. What each project is, what it can do, and pictures, generated only from the repo itself; sections without real data are left out, nothing is invented.
+- **Developer** at `/dev/` (and `/dev/p/<name>`): the health dashboard described above (status, git, CI, uptime, freshness, gaps). `/dev` redirects to `/dev/` (assets binding).
+
+**Project Hub content.** It reads like a portfolio, not a dashboard. It loads only `/api/projects` (no d3, no command palette).
+- Home: a short intro, a project count, *Featured* (`.devpulse.json` `featured`), then *More projects* (newest push first), and a collapsed *Archive*.
+- Filter chips: All / Live sites / Extensions / Other, kept in `?kind=live|ext|other`. A chip only appears when it has projects.
+- Kind rules: a project is an *Extension* if its stage is `released-extension` or it has a `chrome-extension`, `browser-extension` or `firefox-addon` topic. Otherwise it's a *Live site* if it has a live URL. Otherwise it's *Other*.
+- Cards show:
+  - the picture;
+  - name and tagline (or description);
+  - a kind tag and the release version;
+  - language **names**;
+  - "Updated N days ago";
+  - two actions: *Try it* (the live URL, opens in a new tab) and *Read more* (the story page).
+- Picture order: the live snapshot `/shot/<name>.jpg`, then the `.devpulse.json` cover, then the first README screenshot. When there is none, a typographic tile with the name, never a stock image.
+- Story page `/p/<name>`: a hero with *Try it* / *Source on GitHub* / *Developer view*. Then these sections, each shown only when the repo provides it:
+  - *What it is*: README summary, else the README excerpt, else the description;
+  - *What it can do*: README features or highlights;
+  - *Gallery*: README screenshots in a keyboard picture viewer;
+  - *Built with*: language names, topics, license;
+  - *Try it yourself*: README getting-started steps and commands, with Copy;
+  - *Latest release*: version and date.
+- Deliberately **not** on the hub: CI, uptime, latency, stars, forks, commit counts, line counts, language percentages, audit gaps, stale flags, sheet IDs and the embed snippet. Those are all on `/dev/`.
+
+Old links keep working: on `/`, any dashboard query (`q`, `sort`, `lang`, `status`, `topic`, `stage`), `?mode=dev` or a legacy `#p/<name>` hash is sent to `/dev/` with the query and hash kept, before paint (`public/hub-redirect.js`); a round-5 `?mode=showcase` is simply dropped. Card, badge, `/grid.svg`, `/sync*` and snippet URLs are unchanged; the README snippet's card links the hub story page and "Health on DevPulse" links `/dev/p/<name>`.
 Keyboard: `/` or Ctrl/Cmd+K command palette (projects, sections, theme, *Copy feed URL*, *Copy status summary*), `?` shortcut help, `j`/`k` move through the ledger, `f` focuses its search, Enter opens, Esc closes. Tap targets are at least 44px on phones.
 Alert emails: see *Secrets* above (`ALERT_TO` + Email Routing); `/api/health` shows the job ages behind them.
 

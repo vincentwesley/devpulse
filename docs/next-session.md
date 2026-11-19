@@ -2,38 +2,21 @@
 
 Continue work on **DevPulse**, the public project hub at https://devpulse.vwesley.workers.dev (workers.dev subdomain renamed vincentwesleybiz → vwesley on 2026-10-24; Atom entry ids keep the `tag:devpulse.vincentwesleybiz.workers.dev` prefix on purpose). Repo is PUBLIC. Only do what the owner asks.
 
-## State (2026-10-29)
-- **Round 5 is pushed but NOT DEPLOYED.** Live is still round 4 (version f34716a3; rollbacks cbeac656, 29f505ca). The cloud session had no Cloudflare credentials, so deploy is an owner step (below).
-- Round 5 adds:
-  - list pass every 15 min and detail pass at most once a day, only on change;
-  - live-URL discovery, stages and freshness, audit gaps;
-  - `/sync.md|json|csv`, `/sync/snippets.md`;
-  - Browser Run snapshots `/shot/:name.jpg` (stored in D1);
-  - `/img/:name/:i`, `/grid.svg`;
-  - Developer/Showcase modes.
-- Migration **0008** (additive). README documents every rule.
-- Verified locally:
-  - typecheck clean;
-  - 195 unit tests and 147 e2e (+4 skipped) green, axe 0 in both modes, both themes, 390 and 1280;
-  - build ok, initial JS 33 KB gz;
-  - `wrangler deploy --dry-run` ok (175 KiB gz, BROWSER binding resolves);
-  - migrations 0001-0008 apply cleanly on local D1.
-- Expected after deploy (audit run on real public data 2026-10-29):
-  - black-hole (package.json), koi-pond (README link) and devpulse (wrangler) get live URLs automatically.
-  - No live URL: DueReminder, access-ease, tldr-panel, glass-compiler, llm-microscope, earth-through-time.
-  - Proposed fixes are in `docs/repo-cleanup.md` (not applied; owner approves).
-- Accounts: all repos, Autopilot included, are under `vincentwesley`. `Pincenw` (owner's email) has one 2023 repo and is not included; including it would need a second token plus an `EXTRA_OWNERS` var.
-- access-ease CI is FAILURE (hands-off).
+## State (2026-11-19)
+- **Rounds 5 and 6 are pushed on `claude/relaxed-goodall-cepw4q` but NOT DEPLOYED.** Live is still round 4 (version f34716a3; rollbacks cbeac656, 29f505ca); master's Vin's Atelier logo/kit commits are merged into this branch and also not deployed yet. Deploy is an owner step (below).
+- Round 6: two pages. **Project Hub** at `/` (portfolio-style gallery, `/p/<name>` story pages from README content; no CI/uptime/stars/commits/LOC/%, only release version and "updated N ago") and **Developer** at `/dev/` (the dashboard, `/dev/p/<name>`). Header switch on both; old dashboard links on `/` are sent to `/dev/` by `public/hub-redirect.js`. `/api/health` jobs now carry `code` (fixed error enum).
+- Round 5: list pass every 15 min + detail pass once a day on change, live-URL discovery, stages/freshness, audit gaps, `/sync.md|json|csv`, `/sync/snippets.md`, Browser Run snapshots `/shot/:name.jpg` (D1), `/img/:name/:i`, `/grid.svg`. Migration **0008** (additive).
+- Live 2026-11-19: 18 public + 22 private repos; the github job showed `ok:false` (round-4 code has no error code in health). After deploy, read `/api/health` `jobs.github.code`.
+- Expected after deploy: black-hole (package.json), koi-pond (README link), devpulse (wrangler) get live URLs automatically; repos created since 2026-10-29 are audited live (see `/sync.md`). Clean-up proposals: `docs/repo-cleanup.md` (not applied).
+- Accounts: all repos are under `vincentwesley`; `Pincenw` is not included (would need a second token + `EXTRA_OWNERS`). access-ease CI FAILURE (hands-off).
 
-## Deploy order (needs Cloudflare credentials)
-1. `npx wrangler d1 export DB --remote --output backup-2026-10-29.sql`
-2. `npm run db:migrate:remote` (0008 BEFORE deploying: new code reads the new columns and the `shots` table).
-3. `npx wrangler deploy`
-4. Smoke test:
-   - `/api/health` ok, with `listAt` within 15 min;
-   - `/sync.md` lists 11 repos, all stages set, no private names;
-   - after 1-2 quarter slots, black-hole, koi-pond and devpulse have URLs, and a `/shot/` image appears for a live site.
-5. `ratelimits` `namespace_id` "1001" must stay unused by other Workers on the account.
+## Deploy order (owner's PC, PowerShell, from this branch)
+1. `cd` to the repo, `fnm use 24`, `git status` clean, `git fetch origin claude/relaxed-goodall-cepw4q`, `git checkout claude/relaxed-goodall-cepw4q`, `git pull`.
+2. `npm ci`, `npm run build`, `npx wrangler whoami` (login if needed).
+3. Backup: `npx wrangler d1 export devpulse --remote --output "$HOME\devpulse-backups\devpulse-<date>.sql"`.
+4. `npm run db:migrate:remote` (0008 BEFORE deploying), then `npx wrangler deploy`.
+5. Smoke: `/` = Project Hub, `/dev/` = dashboard, `/?sort=name` lands on `/dev/?sort=name`, `/sync.md` 200 with no private names, `/api/health` has `listAt` and `jobs.*.code`; after 1-2 quarter slots URLs are discovered and a `/shot/` image appears.
+6. `ratelimits` `namespace_id` "1001" must stay unused by other Workers. Rollback: `npx wrangler rollback f34716a3` (0008 is additive).
 
 ## How to work here
 - Orchestrator rule: dispatch builders, don't write code inline. House rules are in `../CLAUDE.md`.
@@ -56,7 +39,7 @@ Worst case per slot, as fetches / D1 queries (free cap 50 each):
 - How a Browser Run session counts against subrequests isn't documented; it's assumed to be 1, and there are 3 spare.
 
 ## Needs the owner
-1. Deploy credentials, or run the deploy order above locally.
+1. Run the deploy order above.
 2. Browser Run needs no new secret (Workers binding). Check the dashboard shows usage after deploy.
 3. Optional:
    - `.devpulse.json` `sheetId`/`site`/`kind` per repo;

@@ -1,20 +1,12 @@
 import { el } from "./api";
-import { keepMode } from "./mode";
-import { parseProjectPath, toProjectPath } from "./urlstate";
+import { DEV_HOME, parseProjectPath, toProjectPath } from "./urlstate";
 
 let handler: () => void = () => {};
 /** The router registers itself here so links and the palette can navigate without importing it. */
 export const setRouteHandler = (f: () => void) => { handler = f; };
 
-/** "/p/x?q=1#h" with the current ?mode kept in its query. */
-const moded = (path: string) => {
-  const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(path)!;
-  return m[1] + keepMode(m[2] ?? "") + (m[3] ?? "");
-};
-
-/** Client-side navigation: push one history entry (unless already there) and re-route. The current mode stays in the URL. */
+/** Client-side navigation: push one history entry (unless already there) and re-route. */
 export function navigate(path: string) {
-  path = moded(path);
   if (location.pathname + location.search + location.hash !== path) history.pushState({ route: 1 }, "", path);
   handler();
 }
@@ -36,12 +28,12 @@ export const wide = () => matchMedia("(min-width: 1024px)").matches;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * Open a project: desktop shows it in the sticky pane (URL /p/<name>, one history entry; switching rows replaces it),
+ * Open a project: desktop shows it in the sticky pane (URL /dev/p/<name>, one history entry; switching rows replaces it),
  * phones and tablets go to the full page with a view transition when the browser has one.
  */
 export function openDetail(name: string) {
   if (parseProjectPath(location.pathname) === name) return;
-  const path = moded(toProjectPath(name));
+  const path = toProjectPath(name);
   if (wide() && parseProjectPath(location.pathname) !== null) {
     history.replaceState({ route: 1 }, "", path);
     dispatchEvent(new PopStateEvent("popstate"));
@@ -57,7 +49,7 @@ export function closeDetail() {
   if (parseProjectPath(location.pathname) === null) return;
   if (history.state?.route) history.back();
   else {
-    history.replaceState(null, "", `/${location.search}`);
+    history.replaceState(null, "", `${DEV_HOME}${location.search}`);
     dispatchEvent(new PopStateEvent("popstate"));
   }
 }

@@ -41,6 +41,18 @@ describe("/p and /img", () => {
     const miss = await handleApi(new Request("http://x/p/nope", { method: "HEAD" }), env([]));
     expect(miss.status).toBe(404);
   });
+  it("/p/name injects into the hub shell, /dev/p/name into the developer shell", async () => {
+    const shells: string[] = [];
+    const e = { DB: fakeDb({ "FROM projects": [{ name: "alpha", description: "d", tagline: null, cover_path: null }] }).db, GITHUB_OWNER: "o",
+      ASSETS: { fetch: async (r: Request) => { shells.push(new URL(r.url).pathname); return new Response(shell); } } } as unknown as Env;
+    const hub = await (await handleApi(new Request("http://x/p/alpha"), e)).text();
+    expect(hub).toContain("<title>alpha · DevPulse</title>");
+    const dev = await handleApi(new Request("http://x/dev/p/alpha/"), e);
+    expect(dev.status).toBe(200);
+    expect(await dev.text()).toContain("<title>alpha · DevPulse Developer</title>");
+    expect(shells).toEqual(["/", "/dev/"]);
+    expect((await handleApi(new Request("http://x/dev/p/nope"), { ...e, DB: fakeDb({}).db } as unknown as Env)).status).toBe(404);
+  });
   it("HEAD /img/name: headers, no body", async () => {
     vi.stubGlobal("fetch", async () => new Response(new Uint8Array([1, 2, 3]), { headers: { "Content-Type": "image/png" } }));
     const e = env([{ name: "alpha", repo: "o/alpha", cover_path: "c.png" }]);

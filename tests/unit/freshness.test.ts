@@ -266,7 +266,13 @@ describe("health", () => {
     const t = now();
     const j = (last_err_at: number) => [{ job: "github", last_ok: null, last_err_code: "auth", last_err_at, alerted_at: null }];
     expect(computeHealth(j(t - 3600), null).stale).toBe(false);
-    expect(computeHealth(j(t - 4 * 3600), null)).toMatchObject({ stale: true, jobs: { github: { ageMin: null, ok: false } } });
+    expect(computeHealth(j(t - 4 * 3600), null)).toMatchObject({ stale: true, jobs: { github: { ageMin: null, ok: false, code: "auth" } } });
+  });
+  it("health reports each job's fixed error code, never other text", () => {
+    const row = (code: string | null) => [{ job: "github", last_ok: now(), last_err_code: code, last_err_at: code ? now() : null, alerted_at: null }];
+    expect(computeHealth(row(null), null).jobs.github).toMatchObject({ ok: true, code: null });
+    expect(computeHealth(row("rate"), null).jobs.github).toMatchObject({ ok: false, code: "rate" });
+    expect(computeHealth(row("o/secret-repo failed"), null).jobs.github.code).toBeNull();
   });
 });
 

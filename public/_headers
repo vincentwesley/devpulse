@@ -1,4 +1,4 @@
-# script-src carries the sha256 of the one inline theme script in index.html; vite.config.ts (csp-hash) fills the placeholder at build.
+# script-src carries the sha256 of the inline theme script of each page (index.html, dev/index.html); vite.config.ts (csp-hash) fills the placeholder at build.
 # Strict headers for Workers Static Assets (served by the assets binding). No external hosts: fonts and the credits image are bundled into /assets/.
 # To widen: append one host at a time to connect-src or img-src; never a wildcard, never 'unsafe-inline' for script-src.
 /*

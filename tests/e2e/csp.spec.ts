@@ -21,14 +21,15 @@ test("_headers CSP: no unsafe-inline in style-src or script-src", () => {
   expect(csp).not.toContain("unsafe-eval");
 });
 
-test("_headers allows exactly the inline theme script in index.html by sha256 (no drift, no external theme-init.js)", async ({ request }) => {
-  const html = await (await request.get("/")).text();
-  const inline = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)];
-  expect(inline).toHaveLength(1);
-  expect(csp).toContain(`'sha256-${createHash("sha256").update(inline[0][1]).digest("base64")}'`);
-  expect(csp).not.toContain("__THEME_HASH__");
-  expect(html).not.toContain("theme-init.js");
-});
+for (const path of ["/", "/dev/"])
+  test(`_headers allows exactly the inline theme script of ${path} by sha256 (no drift, no external theme-init.js)`, async ({ request }) => {
+    const html = await (await request.get(path)).text();
+    const inline = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)];
+    expect(inline).toHaveLength(1);
+    expect(csp).toContain(`'sha256-${createHash("sha256").update(inline[0][1]).digest("base64")}'`);
+    expect(csp).not.toContain("__THEME_HASH__");
+    expect(html).not.toContain("theme-init.js");
+  });
 
 test("page, service worker registration, project dialog and palette raise no CSP / Trusted Types violations", async ({ page }) => {
   const bad: string[] = [];
@@ -41,7 +42,7 @@ test("page, service worker registration, project dialog and palette raise no CSP
     const res = await r.fetch();
     await r.fulfill({ response: res, headers: { ...res.headers(), "content-security-policy": csp } });
   });
-  await page.goto("/");
+  await page.goto("/dev/");
   await expect(page.locator(".proj")).not.toHaveCount(0);
   await page.locator("body").click({ position: { x: 2, y: 2 } });
   await page.keyboard.press("Control+k");

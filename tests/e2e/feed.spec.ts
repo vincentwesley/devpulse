@@ -16,7 +16,7 @@ async function open(page: Page, o: Over = {}) {
     const b: Record<string, unknown> = { commits, posts, status, ...o };
     return route.fulfill({ json: b[name] ?? (name === "heatmap" ? { days: [] } : name === "languages" ? { all: [] } : name === "stats" ? {} : []) });
   });
-  await page.goto("/");
+  await page.goto("/dev/");
   await expect(page.locator("body")).toHaveAttribute("data-loaded", "1");
 }
 
@@ -54,7 +54,7 @@ test("uptime: rows, 90 bars, keyboard + tap readout, incidents", async ({ page }
   const rows = page.locator("#status .st__site");
   await expect(rows).toHaveCount(2);
   const alpha = rows.first();
-  await expect(alpha.locator("h3 a")).toHaveAttribute("href", "/p/Alpha");
+  await expect(alpha.locator("h3 a")).toHaveAttribute("href", "/dev/p/Alpha");
   await expect(alpha.locator(".st__pill")).toHaveText("Up");
   await expect(rows.nth(1).locator(".st__pill")).toHaveText("Down");
   await expect(alpha.locator(".st__bar")).toHaveCount(90);

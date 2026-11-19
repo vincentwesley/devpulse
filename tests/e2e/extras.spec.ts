@@ -13,7 +13,7 @@ test.use({ serviceWorkers: "block" });
 const bodies: Record<string, unknown> = { projects, heatmap, commits, posts, stats, languages, status };
 async function open(page: Page) {
   await page.route("**/api/*", (r) => r.fulfill({ json: bodies[new URL(r.request().url()).pathname.split("/").pop()!] ?? [] }));
-  await page.goto("/");
+  await page.goto("/dev/");
   await expect(page.locator("body")).toHaveAttribute("data-loaded", "1");
 }
 

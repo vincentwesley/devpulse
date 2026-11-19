@@ -95,7 +95,7 @@ Every repo's ready-made block is at https://devpulse.vwesley.workers.dev/sync/sn
 
 [![Current screenshot of black-hole](https://devpulse.vwesley.workers.dev/shot/black-hole.jpg)](https://vincentwesley.github.io/black-hole/)
 
-[Live site](https://vincentwesley.github.io/black-hole/) · [Health on DevPulse](https://devpulse.vwesley.workers.dev/p/black-hole)
+[Live site](https://vincentwesley.github.io/black-hole/) · [Health on DevPulse](https://devpulse.vwesley.workers.dev/dev/p/black-hole)
 <!-- devpulse:end -->
 ```
 
@@ -118,9 +118,9 @@ The `vincentwesley/vincentwesley` repo exists but is private. GitHub only shows 
 ```md
 ### Hi, I'm Vincent 👋
 
-Software engineer: modern web platforms, data architecture and applied AI. Everything I ship, with live status, lives on **[DevPulse](https://devpulse.vwesley.workers.dev/?mode=showcase)**.
+Software engineer: modern web platforms, data architecture and applied AI. Everything I ship, with live status, lives on **[DevPulse](https://devpulse.vwesley.workers.dev/)**.
 
-[![All my projects, live status](https://devpulse.vwesley.workers.dev/grid.svg)](https://devpulse.vwesley.workers.dev/?mode=showcase)
+[![All my projects, live status](https://devpulse.vwesley.workers.dev/grid.svg)](https://devpulse.vwesley.workers.dev/)
 
 #### Featured
 [![black-hole](https://devpulse.vwesley.workers.dev/card/black-hole.svg)](https://devpulse.vwesley.workers.dev/p/black-hole)

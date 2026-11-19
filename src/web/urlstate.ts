@@ -41,25 +41,19 @@ export function toSearch(s: Omit<UrlState, "p">): string {
 /** "#p/<name>" or "". */
 export const toHash = (name: string) => (name ? `#p/${encodeURIComponent(name)}` : "");
 
-/** "/p/<name>" -> decoded name; null for any other path (the list view). */
+/** Developer home: the dashboard lives under /dev/ (the Project Hub owns "/"). */
+export const DEV_HOME = "/dev/";
+
+/** "/dev/p/<name>" -> decoded name; null for any other path (the list view). */
 export function parseProjectPath(pathname: string): string | null {
+  const m = /^\/dev\/p\/([^/]+)\/?$/.exec(pathname);
+  return m ? dec(m[1]).slice(0, 120) || null : null;
+}
+export const toProjectPath = (name: string) => `/dev/p/${encodeURIComponent(name)}`;
+
+/** Project Hub story page: "/p/<name>" -> decoded name, or null. */
+export function parseHubPath(pathname: string): string | null {
   const m = /^\/p\/([^/]+)\/?$/.exec(pathname);
   return m ? dec(m[1]).slice(0, 120) || null : null;
 }
-export const toProjectPath = (name: string) => `/p/${encodeURIComponent(name)}`;
-
-/** Developer (default, the health dashboard) or Showcase (project gallery). */
-export type Mode = "dev" | "showcase";
-/** `?mode=showcase|dev` -> the mode, or null when the URL does not say (the stored choice applies). */
-export function parseMode(search: string): Mode | null {
-  const m = new URLSearchParams(search).get("mode");
-  return m === "showcase" || m === "dev" ? m : null;
-}
-/** `search` with the mode param set (showcase) or removed (dev, the default). Other params keep their order. */
-export function withMode(search: string, mode: Mode): string {
-  const u = new URLSearchParams(search);
-  u.delete("mode");
-  if (mode === "showcase") u.set("mode", "showcase");
-  const str = u.toString();
-  return str ? `?${str}` : "";
-}
+export const toHubPath = (name: string) => `/p/${encodeURIComponent(name)}`;

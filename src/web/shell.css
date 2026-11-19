@@ -90,24 +90,26 @@ main > section[hidden] { display: none; }
   a { color: inherit; text-decoration: none; }
 }
 
-/* ---- Developer / Showcase mode ---- */
-.modesw { display: inline-flex; border: var(--rule-strong); }
-.modesw__b { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg-muted); background: transparent; border: 0; border-radius: 0; cursor: pointer; }
-.modesw__b + .modesw__b { border-inline-start: var(--rule-strong); }
-.modesw__b[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); }
-@media (hover: hover) { .modesw__b[aria-pressed="false"]:hover { color: var(--accent); } }
-.modesw__s { display: none; }
-@media (min-width: 640px) and (max-width: 719.98px) { .modesw__l { display: none; } .modesw__s { display: inline; } }
-/* Phones: the toggle sits at the top of the page (not sticky), full width; wider screens keep it in the header. */
-.modesw--top, .modebar { display: none; }
-@media (min-width: 640px) { .modesw--top { display: inline-flex; } }
-@media (max-width: 639.98px) {
-  .modebar { display: flex; margin-bottom: calc(var(--s3) - var(--s6)); }
-  html body[data-view="project"] main > div.modebar:not(#pp) { display: flex; }
-  .modesw--bar { flex: 1; }
-  .modesw--bar .modesw__b { flex: 1; }
+/* ---- Page switch: Project Hub (/) | Developer (/dev/). Two real links, static markup in both pages (no layout shift). ---- */
+.sitenav { display: inline-flex; border: var(--rule-strong); }
+.sitenav a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 var(--s3); box-sizing: border-box; font: 400 var(--fs-meta)/1 var(--font-data); color: var(--fg-muted); text-decoration: none; white-space: nowrap; }
+.sitenav a + a { border-inline-start: var(--rule-strong); }
+.sitenav a[aria-current="page"] { color: var(--accent-fg); background: var(--accent); }
+.sitenav a:focus-visible { outline: var(--ring); outline-offset: 2px; }
+@media (hover: hover) { .sitenav a:not([aria-current]):hover { color: var(--accent); } }
+/* 640-779px: the header also holds the verdict pill; short labels keep it readable. The full label stays the accessible name. */
+.sitenav__s { display: none; }
+@media (min-width: 640px) and (max-width: 779.98px) {
+  .sitenav--top .sitenav__s { display: inline; }
+  .sitenav--top .sitenav__l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 }
-html:not([data-mode="showcase"]) #showcase { display: none; }
-html[data-mode="showcase"] :is(#bento, #projects, main > .split) { display: none; }
-#showcase .skel { min-height: 40rem; }
-@media print { .modesw, .modebar { display: none !important; } }
+/* Phones: the switch sits at the top of the page, full width; wider screens keep it in the header. Only one is ever displayed. */
+.sitenav--top, .sitenav--bar { display: none; }
+@media (min-width: 640px) { .sitenav--top { display: inline-flex; } }
+@media (max-width: 639.98px) {
+  .sitenav--bar { display: flex; margin-bottom: calc(var(--s3) - var(--s6)); }
+  html body[data-view="project"] main > nav.sitenav--bar { display: flex; }
+  .sitenav--bar a { flex: 1; }
+  :root[data-page="hub"] { --header-h: 56px; } /* the hub header has no "Updated" row */
+}
+@media print { .sitenav { display: none !important; } }

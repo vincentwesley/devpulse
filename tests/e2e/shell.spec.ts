@@ -23,7 +23,7 @@ async function mock(page: Page, opts: { fail?: () => boolean; delay?: number; ov
 
 test("header verdict, stale + token banners, palette button", async ({ page }) => {
   await mock(page);
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#verdict")).toContainText(/needs? attention/);
   await expect(page.locator("#banner")).toBeHidden();
@@ -34,7 +34,7 @@ test("header verdict, stale + token banners, palette button", async ({ page }) =
 test("banner: stale data and token expiry from stats.health", async ({ page }) => {
   const since = new Date(Date.now() - 3 * 36e5).toISOString();
   await mock(page, { over: { stats: { ...stats, health: { stale: true, since, tokenDaysLeft: 5 } } } });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#banner")).toBeVisible();
   await expect(page.locator("#banner")).toContainText(/stale since 3 hr/);
@@ -43,7 +43,7 @@ test("banner: stale data and token expiry from stats.health", async ({ page }) =
 
 test("banner: expired token", async ({ page }) => {
   await mock(page, { over: { stats: { ...stats, health: { stale: false, tokenDaysLeft: 0 } } } });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#banner")).toContainText("GitHub token has expired");
   await expect(page.locator("#banner")).not.toContainText("stale");
@@ -51,7 +51,7 @@ test("banner: expired token", async ({ page }) => {
 
 test("offline banner follows connectivity", async ({ page, context }) => {
   await mock(page);
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#offline")).toBeHidden();
   await context.setOffline(true);
@@ -61,7 +61,7 @@ test("offline banner follows connectivity", async ({ page, context }) => {
 });
 test("skip link is first tab stop and targets main", async ({ page }) => {
   await mock(page);
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "Skip to content" });
@@ -73,7 +73,7 @@ test("skip link is first tab stop and targets main", async ({ page }) => {
 
 test("skeleton while loading, then content; aria-busy cleared", async ({ page }) => {
   await mock(page, { delay: 600 });
-  await page.goto("/");
+  await page.goto("/dev/");
   await expect(page.locator("#posts")).toHaveAttribute("aria-busy", "true");
   await expect(page.locator("#posts .skel")).toBeVisible();
   await expect(page.locator("#posts .empty")).toHaveCount(0);
@@ -86,7 +86,7 @@ test("skeleton while loading, then content; aria-busy cleared", async ({ page })
 test("error shows Retry, retry recovers", async ({ page }) => {
   let broken = true;
   await mock(page, { fail: () => broken });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   const retry = page.locator("#posts").getByRole("button", { name: "Retry" });
   await expect(retry).toBeVisible();
@@ -99,7 +99,7 @@ test("error shows Retry, retry recovers", async ({ page }) => {
 
 test("updated line shows age from stats.syncedAt", async ({ page }) => {
   await mock(page, { over: { stats: { ...stats, syncedAt: new Date(Date.now() - 5 * 6e4).toISOString() } } });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await expect(page.locator("#updated")).toHaveText(/Updated [45]m ago/);
 });
@@ -107,7 +107,7 @@ test("updated line shows age from stats.syncedAt", async ({ page }) => {
 test("375px: no overflow, hero tiles wrap (no carousel), no overflow", async ({ page }) => {
   await mock(page);
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const hero = page.locator("#tile-totals .tot");
@@ -116,7 +116,7 @@ test("375px: no overflow, hero tiles wrap (no carousel), no overflow", async ({ 
 
 test("theme: toggle updates theme-color and persists before paint", async ({ page }) => {
   await mock(page);
-  await page.goto("/");
+  await page.goto("/dev/");
   await loaded(page);
   await page.click("#theme");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#eef7f1");
@@ -140,7 +140,7 @@ test.describe("service worker", () => {
   test.use({ serviceWorkers: "allow" });
   test("registers and activates", async ({ page }) => {
     await mock(page);
-    await page.goto("/");
+    await page.goto("/dev/");
     await loaded(page);
     expect(await page.evaluate(() => navigator.serviceWorker.ready.then((r) => !!r.active))).toBe(true);
   });

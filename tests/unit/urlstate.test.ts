@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMode, parseUrl, toHash, toSearch, withMode } from "../../src/web/urlstate";
+import { parseHubPath, parseProjectPath, parseUrl, toHash, toHubPath, toProjectPath, toSearch } from "../../src/web/urlstate";
 
 describe("url state", () => {
   it("parses filters and the dialog hash", () => {
@@ -25,13 +25,14 @@ describe("url state", () => {
     expect(parseUrl("?stage=released-extension", "").stage).toBe("released-extension");
     expect(parseUrl("?stage=bogus", "").stage).toBe("");
   });
-  it("mode: parse and set without touching other params", () => {
-    expect(parseMode("?mode=showcase")).toBe("showcase");
-    expect(parseMode("?mode=dev")).toBe("dev");
-    expect(parseMode("?mode=x")).toBeNull();
-    expect(parseMode("")).toBeNull();
-    expect(withMode("?q=a", "showcase")).toBe("?q=a&mode=showcase");
-    expect(withMode("?mode=showcase&q=a", "dev")).toBe("?q=a");
-    expect(withMode("", "dev")).toBe("");
+  it("developer detail lives under /dev/p/, the hub story page under /p/", () => {
+    expect(parseProjectPath("/dev/p/Alpha")).toBe("Alpha");
+    expect(parseProjectPath("/dev/p/My%20App/")).toBe("My App");
+    expect(parseProjectPath("/p/Alpha")).toBeNull();
+    expect(parseProjectPath("/dev/")).toBeNull();
+    expect(toProjectPath("My App")).toBe("/dev/p/My%20App");
+    expect(parseHubPath("/p/Alpha")).toBe("Alpha");
+    expect(parseHubPath("/dev/p/Alpha")).toBeNull();
+    expect(toHubPath("a/b")).toBe("/p/a%2Fb");
   });
 });

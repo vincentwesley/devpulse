@@ -39,7 +39,7 @@ const offenders = (page: Page) => page.evaluate(() => {
 });
 
 for (const width of [360, 390]) {
-  for (const url of ["/", "/p/Alpha"]) {
+  for (const url of ["/dev/", "/dev/p/Alpha"]) {
     test(`${width} ${url}: no tap target under 44px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await open(page, url);

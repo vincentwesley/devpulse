@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import page from "../fixtures/github/repos-graphql.json";
 import calendar from "../fixtures/github/calendar.json";
-import { isHttps, mapCalendar, mapDetail, mapList, parseDeps, parseHubMeta, type GqlDetail, type GqlRepo } from "../../src/worker/lib/github-parse";
+import { isHttps, isMetaRepo, mapCalendar, mapDetail, mapList, parseDeps, parseHubMeta, type GqlDetail, type GqlRepo } from "../../src/worker/lib/github-parse";
 import { MAX_LIST_PAGES } from "../../src/worker/config";
 import { syncGithub } from "../../src/worker/github";
 import { route } from "../../src/worker/routes/github";
@@ -25,6 +25,20 @@ describe("parsers", () => {
     expect(pub.find((r) => r.full_name === "o/old")!.archived).toBe(true);
     expect(pub.map((r) => r.pushed_at)).toEqual([...pub.map((r) => r.pushed_at)].sort().reverse());
     expect(isHttps("ftp://x")).toBe(false);
+  });
+  it("isMetaRepo", () => {
+    expect(isMetaRepo("vincentwesley/VincentWesley")).toBe(true);
+    expect(isMetaRepo("vincentwesley/.github")).toBe(true);
+    expect(isMetaRepo("vincentwesley/devpulse")).toBe(false);
+  });
+  it("list: the profile repo and .github are never projects; private aggregates unchanged", () => {
+    const base = { isPrivate: false, isArchived: false, pushedAt: "2026-11-01T00:00:00Z", repositoryTopics: { nodes: [] } };
+    const extra = [{ ...base, id: "P1", nameWithOwner: "O/o", name: "o" }, { ...base, id: "P2", nameWithOwner: "o/.github", name: ".github" }, { ...base, id: "P3", nameWithOwner: "o/o-site", name: "o-site" }] as GqlRepo[];
+    const m = mapList([...fx, ...extra]);
+    expect(m.pub.map((r) => r.full_name)).toContain("o/o-site");
+    expect(m.pub.map((r) => r.full_name)).not.toContain("O/o");
+    expect(m.pub.map((r) => r.full_name)).not.toContain("o/.github");
+    expect(m.priv).toEqual(mapList(fx).priv);
   });
   it("list: maps the light fields", () => {
     const m = mapList(fx).pub.find((r) => r.full_name === "o/metalens")!;

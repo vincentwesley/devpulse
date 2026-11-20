@@ -28,9 +28,13 @@ describe("site discovery (pure)", () => {
     expect(wranglerUrls(parseWranglerToml('name = "tw"\nmain = "src/index.ts"\n[vars]\nname = "nope"'), "s")).toEqual(["https://tw.s.workers.dev"]);
     expect(wranglerUrls(parseWranglerToml('name = "pg"\npages_build_output_dir = "./dist"'))).toEqual(["https://pg.pages.dev"]);
   });
-  it("README: first pages.dev / workers.dev / own github.io link", () => {
+  it("README: the repo's own pages.dev / workers.dev / github.io link only", () => {
     expect(readmeSite("See [demo](https://vincentwesley.github.io/koi-pond/).", "vincentwesley", "koi-pond")).toBe("https://vincentwesley.github.io/koi-pond/");
-    expect(readmeSite("Live at https://metalensvgc.pages.dev**.", "o", "x")).toBe("https://metalensvgc.pages.dev");
+    expect(readmeSite("Live at https://metalensvgc.pages.dev**.", "vincentwesley", "MetaLensVGC")).toBe("https://metalensvgc.pages.dev");
+    expect(readmeSite("Live at https://metalensvgc.pages.dev**.", "o", "x")).toBeNull(); // another project's site
+    expect(readmeSite("https://due-reminder.vwesley.workers.dev", "o", "due_reminder")).toBe("https://due-reminder.vwesley.workers.dev");
+    // profile README linking DevPulse is not the profile repo's own site
+    expect(readmeSite("All my projects: https://devpulse.vwesley.workers.dev/?mode=showcase", "vincentwesley", "vincentwesley")).toBeNull();
     expect(readmeSite("https://someone.github.io/other/ and https://github.com/o/x", "o", "x")).toBeNull();
   });
   it("candidates: ordered, de-duplicated, GitHub Pages guess last", () => {

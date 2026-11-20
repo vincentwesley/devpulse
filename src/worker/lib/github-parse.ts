@@ -122,9 +122,15 @@ function mapLight(n: GqlRepo): LightRepo {
   };
 }
 
-/** Split the list into public rows (every non-fork, non-ignored public repo, archived included; newest push first) and private aggregates; private details die here. */
+/** `<owner>/<owner>` (the profile README repo) and `<owner>/.github` are account plumbing, not projects. */
+export const isMetaRepo = (nameWithOwner: string): boolean => {
+  const [o, n] = nameWithOwner.toLowerCase().split("/");
+  return !!o && (n === o || n === ".github");
+};
+
+/** Split the list into public rows (every non-fork, non-ignored public repo except the profile and .github repos, archived included; newest push first) and private aggregates; private details die here. */
 export function mapList(nodes: GqlRepo[]): { pub: LightRepo[]; priv: PrivAgg } {
-  const pub = nodes.filter((n) => !n.isPrivate && !topicsOf(n).includes(IGNORE)).map(mapLight).sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""));
+  const pub = nodes.filter((n) => !n.isPrivate && !topicsOf(n).includes(IGNORE) && !isMetaRepo(n.nameWithOwner)).map(mapLight).sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""));
   const bytes = new Map<string, Lang>();
   let count = 0, commits = 0;
   for (const n of nodes) {

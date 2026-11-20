@@ -78,14 +78,16 @@ export function packageHomepage(t: string | null | undefined): string | null {
   try { return cleanUrl((JSON.parse(t) as { homepage?: unknown } | null)?.homepage); } catch { return null; }
 }
 
-/** First README link to a *.pages.dev / *.workers.dev host or this repo's <owner>.github.io/<repo> page. */
+const slug = (repo: string) => repo.toLowerCase().replace(/[_.]/g, "-");
+
+/** First README link to this repo's own site: <repo>.pages.dev, <repo>.<sub>.workers.dev or <owner>.github.io/<repo>. A link to another project's site is not this repo's site. */
 export function readmeSite(md: string | null | undefined, owner: string, repo: string): string | null {
   if (!md) return null;
   for (const m of md.slice(0, 64 * 1024).matchAll(/https:\/\/[^\s)<>"'`\]*]+/g)) {
     const u = cleanUrl(m[0].replace(/[.,;:!?]+$/, ""));
     if (!u) continue;
     const x = new URL(u), h = x.hostname.toLowerCase();
-    if (h.endsWith(".pages.dev") || h.endsWith(".workers.dev")) return u;
+    if ((h.endsWith(".pages.dev") || h.endsWith(".workers.dev")) && h.split(".")[0] === slug(repo)) return u;
     if (h === `${owner.toLowerCase()}.github.io` && x.pathname.toLowerCase().replace(/\/$/, "").split("/")[1] === repo.toLowerCase()) return u;
   }
   return null;

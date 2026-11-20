@@ -2,6 +2,11 @@
 
 Continue work on **DevPulse**, the public project hub at https://devpulse.vwesley.workers.dev (workers.dev subdomain renamed vincentwesleybiz → vwesley on 2026-10-24; Atom entry ids keep the `tag:devpulse.vincentwesleybiz.workers.dev` prefix on purpose). Repo is PUBLIC. Only do what the owner asks.
 
+## Deploys (since 2026-11-20)
+- **Cloudflare Workers Builds** is connected to this repo: every push to `claude/relaxed-goodall-cepw4q` runs `npm run build` + `npx wrangler deploy` on Cloudflare (free: 3,000 build min/month). No GitHub Actions minutes.
+- Migrations are NOT run by the builder: apply them first from the session (`npx wrangler d1 migrations apply DB --remote`; D1 API calls work through the session proxy with the saved `api.cloudflare.com` credential), then push.
+- Why not `wrangler deploy` from the cloud session: the proxy overwrites the asset-upload JWT in `Authorization`, so `/workers/assets/upload` returns 401.
+
 ## State (2026-11-19)
 - **Deployed** round 5+6 as version 2a3c87be (owner ran `wrangler deploy` on their PC; 0008 migrated remotely from the cloud session with a Cloudflare token; asset upload can't go through the session proxy). Round 7 (Project Hub revamp, README titles/how-it-works, parser v2 re-read, 3 s shot settle) is pushed, deploy = `npm run build` + `npx wrangler deploy` on the owner's PC (no migration). After deploy: delete the two pre-settle shots (`DELETE FROM shots` via `wrangler d1 execute DB --remote`) so they are retaken.
 - **Rounds 5 and 6 are pushed on `claude/relaxed-goodall-cepw4q` but NOT DEPLOYED.** Live is still round 4 (version f34716a3; rollbacks cbeac656, 29f505ca); master's Vin's Atelier logo/kit commits are merged into this branch and also not deployed yet. Deploy is an owner step (below).
